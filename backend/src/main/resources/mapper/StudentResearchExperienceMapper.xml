@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentResearchExperienceMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentResearchExperience">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="project_name" property="projectName"/>
+    <result column="start_date" property="startDate"/>
+    <result column="end_date" property="endDate"/>
+    <result column="content_summary" property="contentSummary"/>
+    <result column="has_publication" property="hasPublication"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT id, user_id, project_name, start_date, end_date, content_summary, has_publication
+    FROM student_research_experience
+    WHERE user_id = #{userId}
+    ORDER BY id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE FROM student_research_experience
+    WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    INSERT INTO student_research_experience(
+      user_id, project_name, start_date, end_date, content_summary, has_publication
+    )
+    VALUES(
+      #{userId}, #{projectName}, #{startDate}, #{endDate}, #{contentSummary}, #{hasPublication}
+    )
+  </insert>
+</mapper>

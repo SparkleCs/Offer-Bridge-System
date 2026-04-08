@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentCompetitionExperienceMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentCompetitionExperience">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="competition_name" property="competitionName"/>
+    <result column="competition_level" property="competitionLevel"/>
+    <result column="award" property="award"/>
+    <result column="role_desc" property="roleDesc"/>
+    <result column="event_date" property="eventDate"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT id, user_id, competition_name, competition_level, award, role_desc, event_date
+    FROM student_competition_experience
+    WHERE user_id = #{userId}
+    ORDER BY id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE FROM student_competition_experience
+    WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO student_competition_experience(user_id, competition_name, competition_level, award, role_desc, event_date)
+    VALUES(#{userId}, #{competitionName}, #{competitionLevel}, #{award}, #{roleDesc}, #{eventDate})
+  </insert>
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentPublicationMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentPublication">
+    <id column="id" property="id"/>
+    <result column="research_id" property="researchId"/>
+    <result column="title" property="title"/>
+    <result column="author_role" property="authorRole"/>
+    <result column="journal_name" property="journalName"/>
+    <result column="published_year" property="publishedYear"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT p.id, p.research_id, p.title, p.author_role, p.journal_name, p.published_year
+    FROM student_publication p
+    INNER JOIN student_research_experience r ON r.id = p.research_id
+    WHERE r.user_id = #{userId}
+    ORDER BY p.id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE p
+    FROM student_publication p
+    INNER JOIN student_research_experience r ON r.id = p.research_id
+    WHERE r.user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO student_publication(research_id, title, author_role, journal_name, published_year)
+    VALUES(#{researchId}, #{title}, #{authorRole}, #{journalName}, #{publishedYear})
+  </insert>
+</mapper>

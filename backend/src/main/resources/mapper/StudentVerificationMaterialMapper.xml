@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentVerificationMaterialMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentVerificationMaterial">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="real_name" property="realName"/>
+    <result column="id_no_masked" property="idNoMasked"/>
+    <result column="id_card_image_url" property="idCardImageUrl"/>
+    <result column="student_card_image_url" property="studentCardImageUrl"/>
+  </resultMap>
+
+  <select id="findByUserId" resultMap="BaseMap">
+    SELECT id, user_id, real_name, id_no_masked, id_card_image_url, student_card_image_url
+    FROM student_verification_material
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO student_verification_material(
+      user_id,
+      real_name,
+      id_no_masked,
+      id_card_image_url,
+      student_card_image_url
+    )
+    VALUES(
+      #{userId},
+      #{realName},
+      #{idNoMasked},
+      #{idCardImageUrl},
+      #{studentCardImageUrl}
+    )
+    ON DUPLICATE KEY UPDATE
+      real_name = VALUES(real_name),
+      id_no_masked = VALUES(id_no_masked),
+      id_card_image_url = VALUES(id_card_image_url),
+      student_card_image_url = VALUES(student_card_image_url)
+  </insert>
+</mapper>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AuthRefreshTokenMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AuthRefreshToken">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="token_hash" property="tokenHash"/>
+    <result column="expires_at" property="expiresAt"/>
+    <result column="revoked_at" property="revokedAt"/>
+  </resultMap>
+
+  <insert id="insertToken">
+    INSERT INTO auth_refresh_token(user_id, token_hash, device_info, ip, user_agent, expires_at)
+    VALUES(#{userId}, #{tokenHash}, #{deviceInfo}, #{ip}, #{userAgent}, #{expiresAt})
+  </insert>
+
+  <select id="findValidToken" resultMap="BaseMap">
+    SELECT id, user_id, token_hash, expires_at, revoked_at
+    FROM auth_refresh_token
+    WHERE token_hash = #{tokenHash}
+      AND revoked_at IS NULL
+      AND expires_at > NOW()
+    LIMIT 1
+  </select>
+
+  <update id="revokeToken">
+    UPDATE auth_refresh_token
+    SET revoked_at = NOW()
+    WHERE token_hash = #{tokenHash} AND revoked_at IS NULL
+  </update>
+</mapper>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.VerificationRecordMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.VerificationRecord">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="verify_type" property="verifyType"/>
+    <result column="status" property="status"/>
+    <result column="payload_json" property="payloadJson"/>
+    <result column="reject_reason" property="rejectReason"/>
+    <result column="submitted_at" property="submittedAt"/>
+  </resultMap>
+
+  <select id="findOne" resultMap="BaseMap">
+    SELECT id, user_id, verify_type, status, payload_json, reject_reason, submitted_at
+    FROM verification_record
+    WHERE user_id = #{userId} AND verify_type = #{verifyType}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO verification_record(user_id, verify_type, status, payload_json, submitted_at)
+    VALUES(#{userId}, #{verifyType}, #{status}, #{payloadJson}, #{submittedAt})
+    ON DUPLICATE KEY UPDATE
+      status = VALUES(status),
+      payload_json = VALUES(payload_json),
+      reject_reason = NULL,
+      submitted_at = VALUES(submitted_at),
+      reviewed_by = NULL,
+      reviewed_at = NULL
+  </insert>
+</mapper>

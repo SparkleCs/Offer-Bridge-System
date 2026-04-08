@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentLanguageScoreMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentLanguageScore">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="language_type" property="languageType"/>
+    <result column="score" property="score"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT id, user_id, language_type, score
+    FROM student_language_score
+    WHERE user_id = #{userId}
+    ORDER BY id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE FROM student_language_score
+    WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO student_language_score(user_id, language_type, score)
+    VALUES(#{userId}, #{languageType}, #{score})
+  </insert>
+</mapper>

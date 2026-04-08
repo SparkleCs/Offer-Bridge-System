@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentWorkExperienceMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentWorkExperience">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="company_name" property="companyName"/>
+    <result column="position_name" property="positionName"/>
+    <result column="start_date" property="startDate"/>
+    <result column="end_date" property="endDate"/>
+    <result column="keywords" property="keywords"/>
+    <result column="content_summary" property="contentSummary"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT id, user_id, company_name, position_name, start_date, end_date, keywords, content_summary
+    FROM student_work_experience
+    WHERE user_id = #{userId}
+    ORDER BY id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE FROM student_work_experience
+    WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
+    INSERT INTO student_work_experience(user_id, company_name, position_name, start_date, end_date, keywords, content_summary)
+    VALUES(#{userId}, #{companyName}, #{positionName}, #{startDate}, #{endDate}, #{keywords}, #{contentSummary})
+  </insert>
+</mapper>

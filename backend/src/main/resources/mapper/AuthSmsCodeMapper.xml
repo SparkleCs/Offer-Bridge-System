@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AuthSmsCodeMapper">
+  <insert id="insertCode">
+    INSERT INTO auth_sms_code(phone, scene, code_hash, expires_at, attempt_count)
+    VALUES(#{phone}, #{scene}, #{codeHash}, #{expiresAt}, 0)
+  </insert>
+
+  <select id="countAnyValidCode" resultType="int">
+    SELECT COUNT(1)
+    FROM auth_sms_code
+    WHERE phone = #{phone}
+      AND scene = #{scene}
+      AND used_at IS NULL
+      AND expires_at > NOW()
+  </select>
+
+  <select id="countValidCode" resultType="int">
+    SELECT COUNT(1)
+    FROM auth_sms_code
+    WHERE phone = #{phone}
+      AND scene = #{scene}
+      AND code_hash = #{codeHash}
+      AND used_at IS NULL
+      AND expires_at > NOW()
+  </select>
+
+  <update id="markUsedByCode">
+    UPDATE auth_sms_code
+    SET used_at = NOW()
+    WHERE phone = #{phone}
+      AND scene = #{scene}
+      AND code_hash = #{codeHash}
+      AND used_at IS NULL
+      AND expires_at > NOW()
+    ORDER BY id DESC
+    LIMIT 1
+  </update>
+
+  <update id="increaseAttempt">
+    UPDATE auth_sms_code
+    SET attempt_count = attempt_count + 1
+    WHERE phone = #{phone}
+      AND scene = #{scene}
+      AND used_at IS NULL
+      AND expires_at > NOW()
+    ORDER BY id DESC
+    LIMIT 1
+  </update>
+</mapper>

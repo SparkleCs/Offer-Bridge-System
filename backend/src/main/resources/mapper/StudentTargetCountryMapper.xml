@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentTargetCountryMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentTargetCountry">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="country_name" property="countryName"/>
+  </resultMap>
+
+  <select id="listByUserId" resultMap="BaseMap">
+    SELECT id, user_id, country_name
+    FROM student_target_country
+    WHERE user_id = #{userId}
+    ORDER BY id ASC
+  </select>
+
+  <delete id="deleteByUserId">
+    DELETE FROM student_target_country
+    WHERE user_id = #{userId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO student_target_country(user_id, country_name)
+    VALUES(#{userId}, #{countryName})
+  </insert>
+</mapper>

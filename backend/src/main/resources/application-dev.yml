@@ -1,0 +1,30 @@
+server:
+  port: 8080
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/offer_bridge?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: root
+    password: 121380hxy
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      timeout: 2s
+
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+
+app:
+  jwt:
+    issuer: offer-bridge
+    access-expire-seconds: 7200
+    refresh-expire-seconds: 604800
+    secret: CHANGE_ME_TO_A_LONG_RANDOM_SECRET_32_BYTES_MINIMUM
+  sms:
+    mock-enabled: true
+    code-ttl-seconds: 300
+    send-interval-seconds: 60
