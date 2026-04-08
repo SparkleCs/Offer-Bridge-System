@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentExchangeExperienceMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentExchangeExperience">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="country_name" property="countryName"/>
+    <result column="university_name" property="universityName"/>
+    <result column="gpa_value" property="gpaValue"/>
+    <result column="major_courses" property="majorCourses"/>
+    <result column="start_date" property="startDate"/>
+    <result column="end_date" property="endDate"/>
+  </resultMap>
+
+  <select id="findByUserId" resultMap="BaseMap">
+    SELECT id, user_id, country_name, university_name, gpa_value, major_courses, start_date, end_date
+    FROM student_exchange_experience
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO student_exchange_experience(user_id, country_name, university_name, gpa_value, major_courses, start_date, end_date)
+    VALUES(#{userId}, #{countryName}, #{universityName}, #{gpaValue}, #{majorCourses}, #{startDate}, #{endDate})
+    ON DUPLICATE KEY UPDATE
+      country_name = VALUES(country_name),
+      university_name = VALUES(university_name),
+      gpa_value = VALUES(gpa_value),
+      major_courses = VALUES(major_courses),
+      start_date = VALUES(start_date),
+      end_date = VALUES(end_date)
+  </insert>
+</mapper>

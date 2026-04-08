@@ -294,12 +294,64 @@ public class StudentDtos {
     public void setItems(List<WorkItem> items) { this.items = items; }
   }
 
+  public static class ExchangeExperienceItem {
+    private String countryName;
+    private String universityName;
+    private BigDecimal gpaValue;
+    private String majorCourses;
+    private String startDate;
+    private String endDate;
+
+    public String getCountryName() { return countryName; }
+    public void setCountryName(String countryName) { this.countryName = countryName; }
+    public String getUniversityName() { return universityName; }
+    public void setUniversityName(String universityName) { this.universityName = universityName; }
+    public BigDecimal getGpaValue() { return gpaValue; }
+    public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
+    public String getMajorCourses() { return majorCourses; }
+    public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
+  }
+
+  public static class ExchangeExperienceSaveRequest {
+    @NotBlank
+    private String countryName;
+    @NotBlank
+    private String universityName;
+    @NotNull
+    @DecimalMin(value = "0", inclusive = true)
+    private BigDecimal gpaValue;
+    @NotBlank
+    private String majorCourses;
+    @NotBlank
+    private String startDate;
+    @NotBlank
+    private String endDate;
+
+    public String getCountryName() { return countryName; }
+    public void setCountryName(String countryName) { this.countryName = countryName; }
+    public String getUniversityName() { return universityName; }
+    public void setUniversityName(String universityName) { this.universityName = universityName; }
+    public BigDecimal getGpaValue() { return gpaValue; }
+    public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
+    public String getMajorCourses() { return majorCourses; }
+    public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
+  }
+
   public static class DebugSourceCheckView {
     private boolean enabled;
     private String databaseName;
     private String researchTable;
     private String competitionTable;
     private String workTable;
+    private String exchangeTable;
 
     public boolean isEnabled() { return enabled; }
     public void setEnabled(boolean enabled) { this.enabled = enabled; }
@@ -311,6 +363,8 @@ public class StudentDtos {
     public void setCompetitionTable(String competitionTable) { this.competitionTable = competitionTable; }
     public String getWorkTable() { return workTable; }
     public void setWorkTable(String workTable) { this.workTable = workTable; }
+    public String getExchangeTable() { return exchangeTable; }
+    public void setExchangeTable(String exchangeTable) { this.exchangeTable = exchangeTable; }
   }
 
   public static class VerificationSubmitRequest {

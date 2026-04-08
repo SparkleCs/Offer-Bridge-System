@@ -1,6 +1,7 @@
 import { apiRequest } from './http'
 import type {
   CompetitionView,
+  ExchangeExperience,
   ResearchView,
   StudentProfile,
   StudentSourceCheckView,
@@ -74,6 +75,21 @@ export function getStudentWork() {
 export function saveStudentWork(payload: WorkView) {
   return apiRequest<WorkView>(
     '/api/v1/student/work',
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload)
+    },
+    true
+  )
+}
+
+export function getStudentExchangeExperience() {
+  return apiRequest<ExchangeExperience>('/api/v1/student/exchange', { method: 'GET' }, true)
+}
+
+export function saveStudentExchangeExperience(payload: ExchangeExperience) {
+  return apiRequest<ExchangeExperience>(
+    '/api/v1/student/exchange',
     {
       method: 'PUT',
       body: JSON.stringify(payload)

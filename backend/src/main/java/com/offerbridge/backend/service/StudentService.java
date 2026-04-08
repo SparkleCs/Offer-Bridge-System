@@ -12,6 +12,8 @@ public interface StudentService {
   StudentDtos.CompetitionView saveCompetition(Long userId, StudentDtos.CompetitionSaveRequest request);
   StudentDtos.WorkView getWork(Long userId);
   StudentDtos.WorkView saveWork(Long userId, StudentDtos.WorkSaveRequest request);
+  StudentDtos.ExchangeExperienceItem getExchangeExperience(Long userId);
+  StudentDtos.ExchangeExperienceItem saveExchangeExperience(Long userId, StudentDtos.ExchangeExperienceSaveRequest request);
   void submitVerification(Long userId, StudentDtos.VerificationSubmitRequest request);
   StudentDtos.VerificationStatusView getVerificationStatus(Long userId);
 }

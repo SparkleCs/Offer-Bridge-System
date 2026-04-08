@@ -3,6 +3,7 @@ package com.offerbridge.backend.service.impl;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.offerbridge.backend.dto.StudentDtos;
 import com.offerbridge.backend.entity.StudentCompetitionExperience;
+import com.offerbridge.backend.entity.StudentExchangeExperience;
 import com.offerbridge.backend.entity.StudentLanguageScore;
 import com.offerbridge.backend.entity.StudentProfile;
 import com.offerbridge.backend.entity.StudentPublication;
@@ -14,6 +15,7 @@ import com.offerbridge.backend.entity.UserAccount;
 import com.offerbridge.backend.entity.VerificationRecord;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.StudentCompetitionExperienceMapper;
+import com.offerbridge.backend.mapper.StudentExchangeExperienceMapper;
 import com.offerbridge.backend.mapper.StudentLanguageScoreMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.StudentPublicationMapper;
@@ -50,6 +52,7 @@ public class StudentServiceImpl implements StudentService {
   private final StudentPublicationMapper studentPublicationMapper;
   private final StudentCompetitionExperienceMapper studentCompetitionExperienceMapper;
   private final StudentWorkExperienceMapper studentWorkExperienceMapper;
+  private final StudentExchangeExperienceMapper studentExchangeExperienceMapper;
   private final StudentVerificationMaterialMapper studentVerificationMaterialMapper;
   private final VerificationRecordMapper verificationRecordMapper;
   private final ObjectMapper objectMapper;
@@ -62,6 +65,7 @@ public class StudentServiceImpl implements StudentService {
                             StudentPublicationMapper studentPublicationMapper,
                             StudentCompetitionExperienceMapper studentCompetitionExperienceMapper,
                             StudentWorkExperienceMapper studentWorkExperienceMapper,
+                            StudentExchangeExperienceMapper studentExchangeExperienceMapper,
                             StudentVerificationMaterialMapper studentVerificationMaterialMapper,
                             VerificationRecordMapper verificationRecordMapper,
                             ObjectMapper objectMapper) {
@@ -73,6 +77,7 @@ public class StudentServiceImpl implements StudentService {
     this.studentPublicationMapper = studentPublicationMapper;
     this.studentCompetitionExperienceMapper = studentCompetitionExperienceMapper;
     this.studentWorkExperienceMapper = studentWorkExperienceMapper;
+    this.studentExchangeExperienceMapper = studentExchangeExperienceMapper;
     this.studentVerificationMaterialMapper = studentVerificationMaterialMapper;
     this.verificationRecordMapper = verificationRecordMapper;
     this.objectMapper = objectMapper;
@@ -251,6 +256,30 @@ public class StudentServiceImpl implements StudentService {
     }
 
     return buildWorkView(userId);
+  }
+
+  @Override
+  public StudentDtos.ExchangeExperienceItem getExchangeExperience(Long userId) {
+    requireUser(userId);
+    StudentExchangeExperience entity = studentExchangeExperienceMapper.findByUserId(userId);
+    return toExchangeItem(entity);
+  }
+
+  @Override
+  @Transactional
+  public StudentDtos.ExchangeExperienceItem saveExchangeExperience(Long userId, StudentDtos.ExchangeExperienceSaveRequest request) {
+    requireUser(userId);
+    validateExchangeGpa(request.getGpaValue());
+    StudentExchangeExperience entity = new StudentExchangeExperience();
+    entity.setUserId(userId);
+    entity.setCountryName(request.getCountryName().trim());
+    entity.setUniversityName(request.getUniversityName().trim());
+    entity.setGpaValue(request.getGpaValue());
+    entity.setMajorCourses(request.getMajorCourses().trim());
+    entity.setStartDate(request.getStartDate().trim());
+    entity.setEndDate(request.getEndDate().trim());
+    studentExchangeExperienceMapper.upsert(entity);
+    return toExchangeItem(studentExchangeExperienceMapper.findByUserId(userId));
   }
 
   @Override
@@ -437,6 +466,20 @@ public class StudentServiceImpl implements StudentService {
     return item;
   }
 
+  private StudentDtos.ExchangeExperienceItem toExchangeItem(StudentExchangeExperience entity) {
+    StudentDtos.ExchangeExperienceItem item = new StudentDtos.ExchangeExperienceItem();
+    if (entity == null) {
+      return item;
+    }
+    item.setCountryName(entity.getCountryName());
+    item.setUniversityName(entity.getUniversityName());
+    item.setGpaValue(entity.getGpaValue());
+    item.setMajorCourses(entity.getMajorCourses());
+    item.setStartDate(entity.getStartDate());
+    item.setEndDate(entity.getEndDate());
+    return item;
+  }
+
   private void validateLanguageScores(List<StudentDtos.LanguageScoreItem> items) {
     if (items == null || items.isEmpty()) {
       throw new BizException("BIZ_BAD_REQUEST", "请至少填写一项语言成绩");
@@ -484,6 +527,12 @@ public class StudentServiceImpl implements StudentService {
     if (rankValue == null) return;
     if (rankValue <= 0 || rankValue > 100) {
       throw new BizException("BIZ_BAD_REQUEST", "排名百分位应在 1-100 之间");
+    }
+  }
+
+  private void validateExchangeGpa(BigDecimal gpaValue) {
+    if (gpaValue == null || gpaValue.compareTo(BigDecimal.ZERO) < 0 || gpaValue.compareTo(new BigDecimal("4.00")) > 0) {
+      throw new BizException("BIZ_BAD_REQUEST", "交换经历 GPA 范围应为 0-4.00");
     }
   }
 

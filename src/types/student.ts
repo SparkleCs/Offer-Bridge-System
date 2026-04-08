@@ -103,6 +103,15 @@ export interface WorkView {
   items: WorkItem[]
 }
 
+export interface ExchangeExperience {
+  countryName: string
+  universityName: string
+  gpaValue: number | null
+  majorCourses: string
+  startDate: string
+  endDate: string
+}
+
 export interface VerificationSubmitPayload {
   realName: string
   idNo: string
@@ -136,4 +145,5 @@ export interface StudentSourceCheckView {
   researchTable: 'OK' | 'MISSING' | 'ERROR'
   competitionTable: 'OK' | 'MISSING' | 'ERROR'
   workTable: 'OK' | 'MISSING' | 'ERROR'
+  exchangeTable: 'OK' | 'MISSING' | 'ERROR'
 }

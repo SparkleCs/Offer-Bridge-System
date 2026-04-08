@@ -76,6 +76,18 @@ public class StudentController {
     return ApiResponse.ok(studentService.saveWork(AuthContext.getUserId(), request));
   }
 
+  @GetMapping("/exchange")
+  public ApiResponse<StudentDtos.ExchangeExperienceItem> getExchangeExperience() {
+    return ApiResponse.ok(studentService.getExchangeExperience(AuthContext.getUserId()));
+  }
+
+  @PutMapping("/exchange")
+  public ApiResponse<StudentDtos.ExchangeExperienceItem> saveExchangeExperience(
+    @Valid @RequestBody StudentDtos.ExchangeExperienceSaveRequest request
+  ) {
+    return ApiResponse.ok(studentService.saveExchangeExperience(AuthContext.getUserId(), request));
+  }
+
   @PostMapping("/verification/submit")
   public ApiResponse<Void> submitVerification(@Valid @RequestBody StudentDtos.VerificationSubmitRequest request) {
     studentService.submitVerification(AuthContext.getUserId(), request);
@@ -96,6 +108,7 @@ public class StudentController {
       view.setResearchTable("ERROR");
       view.setCompetitionTable("ERROR");
       view.setWorkTable("ERROR");
+      view.setExchangeTable("ERROR");
       return ApiResponse.ok(view);
     }
 
@@ -104,6 +117,7 @@ public class StudentController {
     view.setResearchTable(checkTable("student_research_experience"));
     view.setCompetitionTable(checkTable("student_competition_experience"));
     view.setWorkTable(checkTable("student_work_experience"));
+    view.setExchangeTable(checkTable("student_exchange_experience"));
     return ApiResponse.ok(view);
   }
 

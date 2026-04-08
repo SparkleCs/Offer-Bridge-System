@@ -123,6 +123,48 @@
         </div>
       </section>
 
+      <section id="exchange" class="page-card section-card">
+        <h2>交换经历</h2>
+        <el-form label-position="top">
+          <el-row :gutter="12">
+            <el-col :span="12">
+              <el-form-item label="国家">
+                <el-select v-model="exchangeForm.countryName" placeholder="请选择国家">
+                  <el-option v-for="item in targetCountryOptions" :key="item" :label="item" :value="item" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12"><el-form-item label="大学"><el-input v-model="exchangeForm.universityName" placeholder="请输入交换大学" /></el-form-item></el-col>
+            <el-col :span="12">
+              <el-form-item label="GPA（4分满分）">
+                <el-input-number
+                  v-model="exchangeForm.gpaValue"
+                  :min="0"
+                  :max="4"
+                  :step="0.01"
+                  controls-position="right"
+                />
+              </el-form-item>
+            </el-col>
+            <el-col :span="6"><el-form-item label="开始时间"><el-input v-model="exchangeForm.startDate" placeholder="如：2025-09" /></el-form-item></el-col>
+            <el-col :span="6"><el-form-item label="结束时间"><el-input v-model="exchangeForm.endDate" placeholder="如：2026-01" /></el-form-item></el-col>
+          </el-row>
+          <el-form-item label="主修课程">
+            <el-input
+              v-model="exchangeForm.majorCourses"
+              type="textarea"
+              :autosize="{ minRows: 2, maxRows: 8 }"
+              placeholder="请输入主修课程，可用逗号分隔"
+            />
+          </el-form-item>
+        </el-form>
+
+        <div class="section-footer">
+          <div class="footer-left"></div>
+          <el-button type="primary" :loading="savingExchange" @click="saveExchange">保存交换经历</el-button>
+        </div>
+      </section>
+
       <section id="research" class="page-card section-card">
         <h2>科研经历</h2>
         <div v-for="(item, index) in researchForm.items" :key="index" class="list-card">
@@ -273,11 +315,13 @@ import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../services/http'
 import {
   getStudentCompetition,
+  getStudentExchangeExperience,
   getStudentResearch,
   getStudentSourceCheck,
   getStudentVerificationStatus,
   getStudentWork,
   saveStudentCompetition,
+  saveStudentExchangeExperience,
   saveStudentResearch,
   saveStudentWork,
   submitStudentVerification,
@@ -289,6 +333,7 @@ import type {
   ApplicationProgressView,
   CompetitionItem,
   EducationLevel,
+  ExchangeExperience,
   GpaScale,
   LanguageType,
   PublicationItem,
@@ -311,6 +356,7 @@ const loadErrors = ref<LoadErrorItem[]>([])
 const navItems = [
   { id: 'basic', label: '基础信息' },
   { id: 'academic', label: '学术背景' },
+  { id: 'exchange', label: '交换经历' },
   { id: 'research', label: '科研经历' },
   { id: 'competition', label: '竞赛经历' },
   { id: 'work', label: '工作经历' },
@@ -333,6 +379,7 @@ const languageOptions: LanguageType[] = ['CET4', 'CET6', 'TOEFL', 'IELTS', 'PTE'
 
 const savingBasic = ref(false)
 const savingAcademic = ref(false)
+const savingExchange = ref(false)
 const savingResearch = ref(false)
 const savingCompetition = ref(false)
 const savingWork = ref(false)
@@ -365,6 +412,14 @@ const academicForm = reactive({
 const researchForm = reactive({ items: [] as ResearchItem[] })
 const competitionForm = reactive({ items: [] as CompetitionItem[] })
 const workForm = reactive({ items: [] as WorkItem[] })
+const exchangeForm = reactive<ExchangeExperience>({
+  countryName: '',
+  universityName: '',
+  gpaValue: null,
+  majorCourses: '',
+  startDate: '',
+  endDate: ''
+})
 
 const verifyForm = reactive({
   realName: '',
@@ -597,6 +652,19 @@ async function loadData() {
     onSuccess: (value: unknown) => void
   }> = [
     {
+      source: 'exchange',
+      request: getStudentExchangeExperience,
+      onSuccess: (value) => {
+        const data = value as ExchangeExperience
+        exchangeForm.countryName = data.countryName || ''
+        exchangeForm.universityName = data.universityName || ''
+        exchangeForm.gpaValue = data.gpaValue ?? null
+        exchangeForm.majorCourses = data.majorCourses || ''
+        exchangeForm.startDate = data.startDate || ''
+        exchangeForm.endDate = data.endDate || ''
+      }
+    },
+    {
       source: 'research',
       request: getStudentResearch,
       onSuccess: (value) => {
@@ -704,6 +772,44 @@ async function saveAcademic() {
   }
 }
 
+function validateExchangeForm() {
+  if (!exchangeForm.countryName || !exchangeForm.universityName || !exchangeForm.majorCourses || !exchangeForm.startDate || !exchangeForm.endDate) {
+    ElMessage.warning('请完整填写交换经历信息')
+    return false
+  }
+  if (exchangeForm.gpaValue === null || exchangeForm.gpaValue < 0 || exchangeForm.gpaValue > 4) {
+    ElMessage.warning('交换经历 GPA 应在 0-4.00 之间')
+    return false
+  }
+  return true
+}
+
+async function saveExchange() {
+  if (!validateExchangeForm()) return
+  savingExchange.value = true
+  try {
+    const result = await saveStudentExchangeExperience({
+      countryName: exchangeForm.countryName,
+      universityName: exchangeForm.universityName,
+      gpaValue: exchangeForm.gpaValue,
+      majorCourses: exchangeForm.majorCourses,
+      startDate: exchangeForm.startDate,
+      endDate: exchangeForm.endDate
+    })
+    exchangeForm.countryName = result.countryName || ''
+    exchangeForm.universityName = result.universityName || ''
+    exchangeForm.gpaValue = result.gpaValue ?? null
+    exchangeForm.majorCourses = result.majorCourses || ''
+    exchangeForm.startDate = result.startDate || ''
+    exchangeForm.endDate = result.endDate || ''
+    ElMessage.success('交换经历已保存')
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
+  } finally {
+    savingExchange.value = false
+  }
+}
+
 async function saveResearch() {
   savingResearch.value = true
   try {
@@ -797,6 +903,7 @@ const progress = computed<ApplicationProgressView>(() => {
   const sectionStates = [
     Boolean(basicForm.name && basicForm.schoolName && basicForm.major),
     Boolean(academicForm.gpaScale && academicForm.gpaValue !== null && academicForm.languageScores.length > 0),
+    Boolean(exchangeForm.countryName && exchangeForm.universityName && exchangeForm.gpaValue !== null && exchangeForm.majorCourses),
     researchForm.items.length > 0,
     competitionForm.items.length > 0,
     workForm.items.length > 0,
@@ -814,14 +921,16 @@ const progress = computed<ApplicationProgressView>(() => {
     : !sectionStates[1]
       ? '补全学术背景与语言成绩'
       : !sectionStates[2]
-        ? '完善科研经历'
+        ? '补全交换经历'
         : !sectionStates[3]
-          ? '完善竞赛经历'
+          ? '完善科研经历'
           : !sectionStates[4]
-            ? '完善工作经历'
+            ? '完善竞赛经历'
             : !sectionStates[5]
-              ? '提交并通过身份认证'
-              : '继续推进机构联动申请流程'
+              ? '完善工作经历'
+              : !sectionStates[6]
+                ? '提交并通过身份认证'
+                : '继续推进机构联动申请流程'
 
   const milestones = stageNames.map((name, index) => ({
     name,
@@ -874,6 +983,9 @@ onMounted(() => {
 .left-nav h3,
 .right-progress h3 {
   margin: 0 0 10px;
+  font-size: 20pt;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .center-pane {
@@ -893,6 +1005,8 @@ onMounted(() => {
   border-radius: 8px;
   margin-bottom: 8px;
   cursor: pointer;
+  font-size: 14pt;
+  line-height: 1.25;
 }
 
 .nav-item.active {
@@ -907,7 +1021,9 @@ onMounted(() => {
 
 .section-card h2 {
   margin: 0 0 12px;
-  font-size: 22px;
+  font-size: 20pt;
+  line-height: 1.2;
+  font-weight: 700;
 }
 
 .section-head-inline {
