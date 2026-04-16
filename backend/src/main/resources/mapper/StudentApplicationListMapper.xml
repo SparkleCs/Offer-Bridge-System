@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentApplicationListMapper">
+  <resultMap id="ApplicationProgramMap" type="com.offerbridge.backend.entity.StudentApplicationProgramRow">
+    <id column="program_id" property="id"/>
+    <result column="application_id" property="applicationId"/>
+    <result column="status_code" property="statusCode"/>
+    <result column="note_text" property="noteText"/>
+
+    <result column="program_id" property="id"/>
+    <result column="school_id" property="schoolId"/>
+    <result column="program_name" property="programName"/>
+    <result column="college_name" property="collegeName"/>
+    <result column="degree_type" property="degreeType"/>
+    <result column="subject_category_code" property="subjectCategoryCode"/>
+    <result column="subject_category_name" property="subjectCategoryName"/>
+    <result column="direction_code" property="directionCode"/>
+    <result column="direction_name" property="directionName"/>
+    <result column="study_mode" property="studyMode"/>
+    <result column="duration_months" property="durationMonths"/>
+    <result column="tuition_amount" property="tuitionAmount"/>
+    <result column="tuition_currency" property="tuitionCurrency"/>
+    <result column="language_type" property="languageType"/>
+    <result column="language_min_score" property="languageMinScore"/>
+    <result column="gpa_min_recommend" property="gpaMinRecommend"/>
+    <result column="requires_gre" property="requiresGre"/>
+    <result column="requires_gmat" property="requiresGmat"/>
+    <result column="background_preference" property="backgroundPreference"/>
+    <result column="application_rounds_overview" property="applicationRoundsOverview"/>
+    <result column="suitable_tags" property="suitableTags"/>
+    <result column="intake_term" property="intakeTerm"/>
+    <result column="program_summary" property="programSummary"/>
+    <result column="school_name_cn" property="schoolNameCn"/>
+    <result column="school_name_en" property="schoolNameEn"/>
+    <result column="country_code" property="countryCode"/>
+    <result column="country_name" property="countryName"/>
+    <result column="qs_rank" property="qsRank"/>
+  </resultMap>
+
+  <insert id="upsert">
+    INSERT INTO student_application_list(user_id, program_id, status_code, note_text)
+    VALUES(#{userId}, #{programId}, #{statusCode}, #{noteText})
+    ON DUPLICATE KEY UPDATE
+      status_code = VALUES(status_code),
+      note_text = VALUES(note_text),
+      updated_at = CURRENT_TIMESTAMP
+  </insert>
+
+  <select id="listByUserId" resultMap="ApplicationProgramMap">
+    SELECT
+      a.id AS application_id,
+      a.status_code,
+      a.note_text,
+      p.id AS program_id,
+      p.school_id,
+      p.program_name,
+      p.college_name,
+      p.degree_type,
+      p.subject_category_code,
+      p.subject_category_name,
+      p.direction_code,
+      p.direction_name,
+      p.study_mode,
+      p.duration_months,
+      p.tuition_amount,
+      p.tuition_currency,
+      p.language_type,
+      p.language_min_score,
+      p.gpa_min_recommend,
+      p.requires_gre,
+      p.requires_gmat,
+      p.background_preference,
+      p.application_rounds_overview,
+      p.suitable_tags,
+      p.intake_term,
+      p.program_summary,
+      s.school_name_cn,
+      s.school_name_en,
+      s.country_code,
+      s.country_name,
+      s.qs_rank
+    FROM student_application_list a
+    INNER JOIN program p ON p.id = a.program_id
+    INNER JOIN school s ON s.id = p.school_id
+    WHERE a.user_id = #{userId}
+    ORDER BY s.qs_rank ASC, p.id ASC
+  </select>
+
+  <update id="updateStatus">
+    UPDATE student_application_list
+    SET status_code = #{statusCode},
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = #{userId}
+      AND id = #{applicationId}
+  </update>
+
+  <delete id="deleteById">
+    DELETE FROM student_application_list
+    WHERE user_id = #{userId}
+      AND id = #{applicationId}
+  </delete>
+</mapper>

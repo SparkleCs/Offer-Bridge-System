@@ -5,7 +5,7 @@
         <p class="tag">AI 驱动的留学申请辅助平台</p>
         <h1>透明筛选中介，智能规划申请路径</h1>
         <p>
-          覆盖中介筛选、个人进度、论坛交流、订单管理与世界大学库，帮助学生用更低成本做出更稳妥选择。
+          覆盖中介筛选、院校筛选与论坛交流，帮助学生用更低成本做出更稳妥选择。
         </p>
         <el-button class="cta" type="primary" size="large" round @click="go('/agencies')">
           开始筛选中介
@@ -49,11 +49,11 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const featureItems: FeatureItem[] = [
+  { title: '首页', desc: '查看平台核心能力入口与使用引导', path: '/' },
   { title: '中介筛选', desc: '按国家、专业、价格与信誉分多维筛选优质中介', path: '/agencies' },
-  { title: '个人中心', desc: '查看申请进度、待办事项和个人资料入口', path: '/me' },
+  { title: '院校', desc: '按国家、学科与专业方向筛选院校与项目', path: '/universities' },
   { title: '论坛', desc: '浏览经验帖、问答讨论与政策交流话题', path: '/forum' },
-  { title: '订单', desc: '管理服务订单、支付状态与历史记录', path: '/orders' },
-  { title: '世界大学库', desc: '检索院校与项目信息，辅助制定申请策略', path: '/universities' },
+  { title: '个人中心', desc: '管理申请清单、进度与个人资料', path: '/me' },
   { title: '账号入口', desc: '统一登录/注册入口，支持身份与方式切换', path: '/auth' }
 ]
 

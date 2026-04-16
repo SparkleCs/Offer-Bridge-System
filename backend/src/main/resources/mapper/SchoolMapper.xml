@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.SchoolMapper">
+  <resultMap id="SchoolMap" type="com.offerbridge.backend.entity.School">
+    <id column="id" property="id"/>
+    <result column="school_name_cn" property="schoolNameCn"/>
+    <result column="school_name_en" property="schoolNameEn"/>
+    <result column="country_code" property="countryCode"/>
+    <result column="country_name" property="countryName"/>
+    <result column="city_name" property="cityName"/>
+    <result column="qs_rank" property="qsRank"/>
+    <result column="ranking_year" property="rankingYear"/>
+    <result column="school_summary" property="schoolSummary"/>
+    <result column="tuition_min" property="tuitionMin"/>
+    <result column="tuition_max" property="tuitionMax"/>
+    <result column="tuition_currency" property="tuitionCurrency"/>
+    <result column="duration_min_month" property="durationMinMonths"/>
+    <result column="duration_max_month" property="durationMaxMonths"/>
+    <result column="language_requirement_range" property="languageRequirementRange"/>
+    <result column="advantage_subjects" property="advantageSubjects"/>
+  </resultMap>
+
+  <resultMap id="CategoryMap" type="com.offerbridge.backend.entity.SubjectCategory">
+    <id column="id" property="id"/>
+    <result column="category_code" property="categoryCode"/>
+    <result column="category_name" property="categoryName"/>
+  </resultMap>
+
+  <select id="listSchools" resultMap="SchoolMap">
+    SELECT DISTINCT s.id, s.school_name_cn, s.school_name_en, s.country_code, s.country_name,
+      s.city_name, s.qs_rank, s.ranking_year, s.school_summary, s.tuition_min, s.tuition_max,
+      s.tuition_currency, s.duration_min_month, s.duration_max_month, s.language_requirement_range, s.advantage_subjects
+    FROM school s
+    <where>
+      <if test="countryCode != null and countryCode != ''">
+        AND s.country_code = #{countryCode}
+      </if>
+      <if test="subjectCategoryCode != null and subjectCategoryCode != ''">
+        AND EXISTS (
+          SELECT 1 FROM school_subject_rel ssr
+          WHERE ssr.school_id = s.id AND ssr.subject_category_code = #{subjectCategoryCode}
+        )
+      </if>
+      <if test="directionCode != null and directionCode != ''">
+        AND EXISTS (
+          SELECT 1 FROM program p
+          WHERE p.school_id = s.id AND p.direction_code = #{directionCode}
+        )
+      </if>
+      <if test="rankMin != null">
+        AND s.qs_rank &gt;= #{rankMin}
+      </if>
+      <if test="rankMax != null">
+        AND s.qs_rank &lt;= #{rankMax}
+      </if>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          s.school_name_cn LIKE CONCAT('%', #{keyword}, '%')
+          OR s.school_name_en LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+    </where>
+    ORDER BY s.qs_rank ASC, s.id ASC
+  </select>
+
+  <select id="findById" resultMap="SchoolMap">
+    SELECT id, school_name_cn, school_name_en, country_code, country_name,
+      city_name, qs_rank, ranking_year, school_summary, tuition_min, tuition_max,
+      tuition_currency, duration_min_month, duration_max_month, language_requirement_range, advantage_subjects
+    FROM school
+    WHERE id = #{schoolId}
+    LIMIT 1
+  </select>
+
+  <select id="listSubjectCategories" resultMap="CategoryMap">
+    SELECT id, category_code, category_name
+    FROM subject_category
+    ORDER BY sort_order ASC, id ASC
+  </select>
+
+  <select id="listCountries" resultType="com.offerbridge.backend.entity.CountryOption">
+    SELECT DISTINCT country_code AS countryCode, country_name AS countryName
+    FROM school
+    ORDER BY country_code ASC
+  </select>
+</mapper>

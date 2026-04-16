@@ -11,7 +11,7 @@ const routes = [
   { path: '/me', name: 'me', component: () => import('../pages/MePage.vue'), meta: { requiresAuth: true } },
   { path: '/forum', name: 'forum', component: () => import('../pages/ForumPage.vue') },
   { path: '/orders', name: 'orders', component: () => import('../pages/OrdersPage.vue'), meta: { requiresAuth: true } },
-  { path: '/universities', name: 'universities', component: () => import('../pages/UniversitiesPage.vue') }
+  { path: '/universities', name: 'universities', component: () => import('../pages/UniversitiesPage.vue'), meta: { requiresAuth: true } }
 ]
 
 const router = createRouter({

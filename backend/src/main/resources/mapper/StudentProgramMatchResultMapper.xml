@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentProgramMatchResultMapper">
+  <resultMap id="MatchMap" type="com.offerbridge.backend.entity.StudentProgramMatchResult">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="program_id" property="programId"/>
+    <result column="match_score" property="matchScore"/>
+    <result column="match_tier" property="matchTier"/>
+    <result column="reason_tags_json" property="reasonTagsJson"/>
+  </resultMap>
+
+  <insert id="upsert">
+    INSERT INTO student_program_match_result(user_id, program_id, match_score, match_tier, reason_tags_json)
+    VALUES(#{userId}, #{programId}, #{matchScore}, #{matchTier}, #{reasonTagsJson})
+    ON DUPLICATE KEY UPDATE
+      match_score = VALUES(match_score),
+      match_tier = VALUES(match_tier),
+      reason_tags_json = VALUES(reason_tags_json),
+      updated_at = CURRENT_TIMESTAMP
+  </insert>
+
+  <select id="findOne" resultMap="MatchMap">
+    SELECT id, user_id, program_id, match_score, match_tier, reason_tags_json
+    FROM student_program_match_result
+    WHERE user_id = #{userId}
+      AND program_id = #{programId}
+    LIMIT 1
+  </select>
+
+  <select id="listByUserId" resultMap="MatchMap">
+    SELECT id, user_id, program_id, match_score, match_tier, reason_tags_json
+    FROM student_program_match_result
+    WHERE user_id = #{userId}
+  </select>
+</mapper>

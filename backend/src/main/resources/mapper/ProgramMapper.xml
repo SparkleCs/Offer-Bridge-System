@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ProgramMapper">
+  <resultMap id="ProgramMap" type="com.offerbridge.backend.entity.Program">
+    <id column="id" property="id"/>
+    <result column="school_id" property="schoolId"/>
+    <result column="program_name" property="programName"/>
+    <result column="college_name" property="collegeName"/>
+    <result column="degree_type" property="degreeType"/>
+    <result column="subject_category_code" property="subjectCategoryCode"/>
+    <result column="subject_category_name" property="subjectCategoryName"/>
+    <result column="direction_code" property="directionCode"/>
+    <result column="direction_name" property="directionName"/>
+    <result column="study_mode" property="studyMode"/>
+    <result column="duration_months" property="durationMonths"/>
+    <result column="tuition_amount" property="tuitionAmount"/>
+    <result column="tuition_currency" property="tuitionCurrency"/>
+    <result column="language_type" property="languageType"/>
+    <result column="language_min_score" property="languageMinScore"/>
+    <result column="gpa_min_recommend" property="gpaMinRecommend"/>
+    <result column="requires_gre" property="requiresGre"/>
+    <result column="requires_gmat" property="requiresGmat"/>
+    <result column="background_preference" property="backgroundPreference"/>
+    <result column="application_rounds_overview" property="applicationRoundsOverview"/>
+    <result column="suitable_tags" property="suitableTags"/>
+    <result column="intake_term" property="intakeTerm"/>
+    <result column="program_summary" property="programSummary"/>
+    <result column="school_name_cn" property="schoolNameCn"/>
+    <result column="school_name_en" property="schoolNameEn"/>
+    <result column="country_code" property="countryCode"/>
+    <result column="country_name" property="countryName"/>
+    <result column="qs_rank" property="qsRank"/>
+  </resultMap>
+
+  <resultMap id="DirectionMap" type="com.offerbridge.backend.entity.MajorDirection">
+    <id column="id" property="id"/>
+    <result column="subject_category_code" property="subjectCategoryCode"/>
+    <result column="direction_code" property="directionCode"/>
+    <result column="direction_name" property="directionName"/>
+  </resultMap>
+
+  <sql id="ProgramColumns">
+    p.id, p.school_id, p.program_name, p.college_name, p.degree_type,
+    p.subject_category_code, p.subject_category_name, p.direction_code, p.direction_name,
+    p.study_mode, p.duration_months, p.tuition_amount, p.tuition_currency,
+    p.language_type, p.language_min_score, p.gpa_min_recommend,
+    p.requires_gre, p.requires_gmat, p.background_preference,
+    p.application_rounds_overview, p.suitable_tags, p.intake_term, p.program_summary,
+    s.school_name_cn, s.school_name_en, s.country_code, s.country_name, s.qs_rank
+  </sql>
+
+  <select id="listPrograms" resultMap="ProgramMap">
+    SELECT <include refid="ProgramColumns"/>
+    FROM program p
+    INNER JOIN school s ON s.id = p.school_id
+    <where>
+      <if test="schoolId != null">
+        AND p.school_id = #{schoolId}
+      </if>
+      <if test="countryCode != null and countryCode != ''">
+        AND s.country_code = #{countryCode}
+      </if>
+      <if test="subjectCategoryCode != null and subjectCategoryCode != ''">
+        AND p.subject_category_code = #{subjectCategoryCode}
+      </if>
+      <if test="directionCode != null and directionCode != ''">
+        AND p.direction_code = #{directionCode}
+      </if>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          p.program_name LIKE CONCAT('%', #{keyword}, '%')
+          OR p.college_name LIKE CONCAT('%', #{keyword}, '%')
+          OR s.school_name_cn LIKE CONCAT('%', #{keyword}, '%')
+          OR s.school_name_en LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+    </where>
+    ORDER BY s.qs_rank ASC, p.id ASC
+  </select>
+
+  <select id="listProgramsBySchoolId" resultMap="ProgramMap">
+    SELECT <include refid="ProgramColumns"/>
+    FROM program p
+    INNER JOIN school s ON s.id = p.school_id
+    WHERE p.school_id = #{schoolId}
+    ORDER BY p.id ASC
+    LIMIT #{limit}
+  </select>
+
+  <select id="findById" resultMap="ProgramMap">
+    SELECT <include refid="ProgramColumns"/>
+    FROM program p
+    INNER JOIN school s ON s.id = p.school_id
+    WHERE p.id = #{programId}
+    LIMIT 1
+  </select>
+
+  <select id="listMajorDirections" resultMap="DirectionMap">
+    SELECT id, subject_category_code, direction_code, direction_name
+    FROM major_direction
+    ORDER BY sort_order ASC, id ASC
+  </select>
+</mapper>

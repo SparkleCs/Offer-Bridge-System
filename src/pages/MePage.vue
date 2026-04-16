@@ -61,6 +61,53 @@
         </div>
       </section>
 
+      <section id="applicationList" class="page-card section-card">
+        <div class="section-head-inline">
+          <h2>申请清单</h2>
+          <el-button :loading="loadingApplicationList" @click="loadApplicationList">刷新</el-button>
+        </div>
+
+        <el-empty v-if="applicationList.items.length === 0 && !loadingApplicationList" description="暂无申请清单，请先从院校项目页添加" />
+
+        <el-table v-else :data="applicationList.items" v-loading="loadingApplicationList" stripe>
+          <el-table-column label="项目" min-width="230">
+            <template #default="{ row }">
+              <div class="program-cell-title">{{ row.program.programName }}</div>
+              <div class="program-cell-sub">{{ row.program.schoolNameCn }} · {{ row.program.directionName }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="匹配" width="120">
+            <template #default="{ row }">
+              <div class="match-mini-score">{{ row.matchResult.matchScore }}</div>
+              <div class="match-mini-tier">{{ row.matchResult.matchTier }}</div>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="180">
+            <template #default="{ row }">
+              <el-select
+                :model-value="row.statusCode"
+                :disabled="updatingApplicationId === row.id"
+                @update:model-value="(value: string) => changeApplicationStatus(row.id, String(value))"
+              >
+                <el-option v-for="option in applicationStatusOptions" :key="option.code" :label="option.name" :value="option.code" />
+              </el-select>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="110">
+            <template #default="{ row }">
+              <el-button
+                link
+                type="danger"
+                :loading="removingApplicationId === row.id"
+                @click="removeApplicationItem(row.id)"
+              >
+                移除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </section>
+
       <section id="academic" class="page-card section-card">
         <h2>学术背景</h2>
         <el-form label-position="top">
@@ -329,6 +376,11 @@ import {
   updateStudentBasicProfile,
   uploadStudentFile
 } from '../services/student'
+import {
+  getApplicationList,
+  updateApplicationStatus as updateUniversityApplicationStatus,
+  removeApplication as removeUniversityApplication
+} from '../services/university'
 import type {
   ApplicationProgressView,
   CompetitionItem,
@@ -340,6 +392,7 @@ import type {
   ResearchItem,
   WorkItem
 } from '../types/student'
+import type { ApplicationListItem } from '../types/university'
 
 interface LoadErrorItem {
   source: string
@@ -355,6 +408,7 @@ const loadErrors = ref<LoadErrorItem[]>([])
 
 const navItems = [
   { id: 'basic', label: '基础信息' },
+  { id: 'applicationList', label: '申请清单' },
   { id: 'academic', label: '学术背景' },
   { id: 'exchange', label: '交换经历' },
   { id: 'research', label: '科研经历' },
@@ -384,6 +438,9 @@ const savingResearch = ref(false)
 const savingCompetition = ref(false)
 const savingWork = ref(false)
 const savingVerification = ref(false)
+const loadingApplicationList = ref(false)
+const updatingApplicationId = ref<number | null>(null)
+const removingApplicationId = ref<number | null>(null)
 const uploadingIdCard = ref(false)
 const uploadingStudentCard = ref(false)
 
@@ -420,6 +477,20 @@ const exchangeForm = reactive<ExchangeExperience>({
   startDate: '',
   endDate: ''
 })
+
+const applicationList = reactive({
+  items: [] as ApplicationListItem[]
+})
+
+const applicationStatusOptions = [
+  { code: 'COLLECTED', name: '已收藏' },
+  { code: 'TO_EVALUATE', name: '待评估' },
+  { code: 'PREPARING', name: '准备申请' },
+  { code: 'APPLYING', name: '申请中' },
+  { code: 'SUBMITTED', name: '已提交' },
+  { code: 'ADMITTED', name: '已录取' },
+  { code: 'REJECTED', name: '已拒绝' }
+]
 
 const verifyForm = reactive({
   realName: '',
@@ -572,6 +643,42 @@ function removeWork(index: number) {
   workForm.items.splice(index, 1)
 }
 
+async function loadApplicationList() {
+  loadingApplicationList.value = true
+  try {
+    const result = await getApplicationList()
+    applicationList.items = result.items || []
+  } finally {
+    loadingApplicationList.value = false
+  }
+}
+
+async function changeApplicationStatus(applicationId: number, statusCode: string) {
+  updatingApplicationId.value = applicationId
+  try {
+    const result = await updateUniversityApplicationStatus(applicationId, statusCode)
+    applicationList.items = result.items || []
+    ElMessage.success('申请状态已更新')
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '状态更新失败')
+  } finally {
+    updatingApplicationId.value = null
+  }
+}
+
+async function removeApplicationItem(applicationId: number) {
+  removingApplicationId.value = applicationId
+  try {
+    const result = await removeUniversityApplication(applicationId)
+    applicationList.items = result.items || []
+    ElMessage.success('已从申请清单移除')
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '移除失败')
+  } finally {
+    removingApplicationId.value = null
+  }
+}
+
 function validateBasicForm() {
   if (!basicForm.name || !basicForm.educationLevel || !basicForm.schoolName || !basicForm.major) {
     ElMessage.warning('请完整填写基础信息')
@@ -695,6 +802,14 @@ async function loadData() {
         const data = value as { realNameStatus: string; educationStatus: string }
         verificationStatus.realNameStatus = data.realNameStatus
         verificationStatus.educationStatus = data.educationStatus
+      }
+    },
+    {
+      source: 'application-list',
+      request: getApplicationList,
+      onSuccess: (value) => {
+        const data = value as { items: ApplicationListItem[] }
+        applicationList.items = data.items || []
       }
     }
   ]
@@ -902,6 +1017,7 @@ async function submitVerification() {
 const progress = computed<ApplicationProgressView>(() => {
   const sectionStates = [
     Boolean(basicForm.name && basicForm.schoolName && basicForm.major),
+    applicationList.items.length > 0,
     Boolean(academicForm.gpaScale && academicForm.gpaValue !== null && academicForm.languageScores.length > 0),
     Boolean(exchangeForm.countryName && exchangeForm.universityName && exchangeForm.gpaValue !== null && exchangeForm.majorCourses),
     researchForm.items.length > 0,
@@ -919,16 +1035,18 @@ const progress = computed<ApplicationProgressView>(() => {
   const nextAction = !sectionStates[0]
     ? '补全基础信息'
     : !sectionStates[1]
-      ? '补全学术背景与语言成绩'
+      ? '从院校项目页加入申请清单'
       : !sectionStates[2]
+      ? '补全学术背景与语言成绩'
+      : !sectionStates[3]
         ? '补全交换经历'
-        : !sectionStates[3]
+        : !sectionStates[4]
           ? '完善科研经历'
-          : !sectionStates[4]
+          : !sectionStates[5]
             ? '完善竞赛经历'
-            : !sectionStates[5]
+            : !sectionStates[6]
               ? '完善工作经历'
-              : !sectionStates[6]
+              : !sectionStates[7]
                 ? '提交并通过身份认证'
                 : '继续推进机构联动申请流程'
 
@@ -1090,6 +1208,27 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1.4fr 1fr 1fr 150px 70px;
   gap: 8px;
+}
+
+.program-cell-title {
+  font-weight: 600;
+  color: #30405b;
+}
+
+.program-cell-sub {
+  color: #7a8aa3;
+  font-size: 12px;
+}
+
+.match-mini-score {
+  font-weight: 700;
+  color: #1f6bff;
+  font-size: 18px;
+}
+
+.match-mini-tier {
+  color: #5f6f88;
+  font-size: 12px;
 }
 
 .muted {

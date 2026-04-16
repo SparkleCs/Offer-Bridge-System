@@ -8,11 +8,10 @@
         </button>
 
         <el-menu :default-active="route.path" mode="horizontal" class="main-menu" @select="go">
+          <el-menu-item index="/">首页</el-menu-item>
           <el-menu-item index="/agencies">中介筛选</el-menu-item>
-          <el-menu-item index="/me">个人中心</el-menu-item>
+          <el-menu-item index="/universities">院校</el-menu-item>
           <el-menu-item index="/forum">论坛</el-menu-item>
-          <el-menu-item index="/orders">订单</el-menu-item>
-          <el-menu-item index="/universities">世界大学库</el-menu-item>
         </el-menu>
 
         <div class="auth-area">
