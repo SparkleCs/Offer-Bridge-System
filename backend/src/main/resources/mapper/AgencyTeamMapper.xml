@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyTeamMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyTeam">
+    <id column="id" property="id"/>
+    <result column="org_id" property="orgId"/>
+    <result column="team_name" property="teamName"/>
+    <result column="team_type" property="teamType"/>
+    <result column="team_intro" property="teamIntro"/>
+    <result column="service_country_scope" property="serviceCountryScope"/>
+    <result column="service_major_scope" property="serviceMajorScope"/>
+  </resultMap>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO agency_team(org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope, is_front_visible, status)
+    VALUES(#{orgId}, #{teamName}, #{teamType}, #{teamIntro}, #{serviceCountryScope}, #{serviceMajorScope}, 1, 'ACTIVE')
+  </insert>
+
+  <select id="findById" resultMap="BaseMap">
+    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope
+    FROM agency_team WHERE id = #{id} LIMIT 1
+  </select>
+
+  <select id="listByOrgId" resultMap="BaseMap">
+    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope
+    FROM agency_team
+    WHERE org_id = #{orgId} AND status = 'ACTIVE'
+    ORDER BY id DESC
+  </select>
+
+  <select id="listDiscoveryTeams" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryTeamItem">
+    SELECT
+      t.id AS teamId,
+      t.team_name AS teamName,
+      t.team_intro AS teamIntro,
+      o.org_name AS orgName,
+      o.city AS city,
+      t.service_country_scope AS serviceCountryScope,
+      t.service_major_scope AS serviceMajorScope,
+      COALESCE(SUM(mm.case_count), 0) AS caseCount,
+      COALESCE(ROUND(AVG(mm.success_rate), 2), 0) AS successRate,
+      COALESCE(ROUND(AVG(mm.avg_rating), 2), 0) AS avgRating,
+      COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
+      '价格待上线' AS priceTextPlaceholder
+    FROM agency_team t
+    JOIN agency_org o ON o.id = t.org_id
+    LEFT JOIN agency_team_member_rel tm ON tm.team_id = t.id AND tm.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tm.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
+    LEFT JOIN user_account ua ON ua.id = m.user_id AND ua.status = 'ACTIVE'
+    LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
+    LEFT JOIN agency_member_role_rel rr ON rr.member_id = m.id AND rr.role_status = 'ACTIVE'
+    WHERE t.status = 'ACTIVE'
+      AND t.is_front_visible = 1
+      AND o.status = 'ACTIVE'
+      <if test="keyword != null and keyword != ''">
+        AND (
+          t.team_name LIKE CONCAT('%', #{keyword}, '%')
+          OR o.org_name LIKE CONCAT('%', #{keyword}, '%')
+          OR t.team_intro LIKE CONCAT('%', #{keyword}, '%')
+          OR t.service_country_scope LIKE CONCAT('%', #{keyword}, '%')
+          OR t.service_major_scope LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+      <if test="country != null and country != ''">
+        AND t.service_country_scope LIKE CONCAT('%', #{country}, '%')
+      </if>
+      <if test="direction != null and direction != ''">
+        AND t.service_major_scope LIKE CONCAT('%', #{direction}, '%')
+      </if>
+      <if test="city != null and city != ''">
+        AND o.city = #{city}
+      </if>
+      <if test="roleCode != null and roleCode != ''">
+        AND rr.role_code = #{roleCode}
+      </if>
+      <if test="serviceTag != null and serviceTag != ''">
+        AND mm.service_tags LIKE CONCAT('%', #{serviceTag}, '%')
+      </if>
+    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope
+    ORDER BY avgRating DESC, successRate DESC, caseCount DESC, t.id DESC
+    LIMIT 200
+  </select>
+
+  <select id="findDiscoveryTeamDetail" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryTeamDetail">
+    SELECT
+      t.id AS teamId,
+      t.team_name AS teamName,
+      t.team_type AS teamType,
+      t.team_intro AS teamIntro,
+      o.org_name AS orgName,
+      o.city AS city,
+      t.service_country_scope AS serviceCountryScope,
+      t.service_major_scope AS serviceMajorScope,
+      COALESCE(SUM(mm.case_count), 0) AS caseCount,
+      COALESCE(ROUND(AVG(mm.success_rate), 2), 0) AS successRate,
+      COALESCE(ROUND(AVG(mm.avg_rating), 2), 0) AS avgRating,
+      COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
+      '价格待上线' AS priceTextPlaceholder,
+      '套餐内容（开发中）' AS packagePlaceholderTitle,
+      '后续将展示该团队服务产品、分档价格、服务边界和交付内容。' AS packagePlaceholderDesc
+    FROM agency_team t
+    JOIN agency_org o ON o.id = t.org_id
+    LEFT JOIN agency_team_member_rel tm ON tm.team_id = t.id AND tm.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tm.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
+    LEFT JOIN user_account ua ON ua.id = m.user_id AND ua.status = 'ACTIVE'
+    LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
+    LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
+    WHERE t.id = #{teamId}
+      AND t.status = 'ACTIVE'
+      AND t.is_front_visible = 1
+      AND o.status = 'ACTIVE'
+      AND o.verification_status IN ('APPROVED', 'PENDING')
+      AND (
+        (vrn.status = 'APPROVED' AND vre.status = 'APPROVED')
+        OR m.verified_badge_status = 'APPROVED'
+        OR m.id IS NULL
+      )
+    GROUP BY t.id, t.team_name, t.team_type, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope
+    LIMIT 1
+  </select>
+
+  <select id="listDiscoveryTeamMembers" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryTeamMemberItem">
+    SELECT DISTINCT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.job_title AS jobTitle,
+      COALESCE(pr.role_code, '') AS roleCode,
+      m.bio AS bio,
+      m.special_countries AS specialCountries,
+      m.special_directions AS specialDirections,
+      m.years_of_experience AS yearsOfExperience,
+      m.education_level AS educationLevel
+    FROM agency_team_member_rel tm
+    JOIN agency_member_profile m ON m.id = tm.member_id
+    JOIN user_account ua ON ua.id = m.user_id
+    LEFT JOIN agency_member_role_rel pr ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
+    WHERE tm.team_id = #{teamId}
+      AND tm.status = 'ACTIVE'
+      AND m.status = 'ACTIVE'
+      AND m.public_status = 'PUBLIC'
+      AND ua.status = 'ACTIVE'
+      AND (
+        (vrn.status = 'APPROVED' AND vre.status = 'APPROVED')
+        OR m.verified_badge_status = 'APPROVED'
+      )
+    ORDER BY
+      CASE roleCode
+        WHEN 'CONSULTANT' THEN 1
+        WHEN 'PLANNER' THEN 2
+        WHEN 'WRITER' THEN 3
+        WHEN 'APPLY_SPECIALIST' THEN 4
+        WHEN 'VISA_SPECIALIST' THEN 5
+        WHEN 'AFTERCARE' THEN 6
+        ELSE 99
+      END,
+      memberId ASC
+  </select>
+</mapper>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyMemberMetricsMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyMemberMetrics">
+    <id column="id" property="id"/>
+    <result column="member_id" property="memberId"/>
+    <result column="case_count" property="caseCount"/>
+    <result column="success_rate" property="successRate"/>
+    <result column="avg_rating" property="avgRating"/>
+    <result column="response_efficiency_score" property="responseEfficiencyScore"/>
+    <result column="service_tags" property="serviceTags"/>
+    <result column="budget_tags" property="budgetTags"/>
+  </resultMap>
+
+  <select id="findByMemberId" resultMap="BaseMap">
+    SELECT id, member_id, case_count, success_rate, avg_rating, response_efficiency_score, service_tags, budget_tags
+    FROM agency_member_metrics
+    WHERE member_id = #{memberId}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO agency_member_metrics(member_id, case_count, success_rate, avg_rating, response_efficiency_score, service_tags, budget_tags)
+    VALUES(#{memberId}, #{caseCount}, #{successRate}, #{avgRating}, #{responseEfficiencyScore}, #{serviceTags}, #{budgetTags})
+    ON DUPLICATE KEY UPDATE
+      case_count = VALUES(case_count),
+      success_rate = VALUES(success_rate),
+      avg_rating = VALUES(avg_rating),
+      response_efficiency_score = VALUES(response_efficiency_score),
+      service_tags = VALUES(service_tags),
+      budget_tags = VALUES(budget_tags)
+  </insert>
+</mapper>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyTeamPublisherRelMapper">
+  <insert id="upsert">
+    INSERT INTO agency_team_publisher_rel(team_id, member_id, role_code, status)
+    VALUES(#{teamId}, #{memberId}, #{roleCode}, 'ACTIVE')
+    ON DUPLICATE KEY UPDATE
+      status = 'ACTIVE',
+      updated_at = CURRENT_TIMESTAMP
+  </insert>
+
+  <select id="countActivePublisher" resultType="int">
+    SELECT COUNT(1)
+    FROM agency_team_publisher_rel
+    WHERE team_id = #{teamId}
+      AND member_id = #{memberId}
+      AND role_code = #{roleCode}
+      AND status = 'ACTIVE'
+  </select>
+</mapper>

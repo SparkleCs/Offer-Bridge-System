@@ -8,6 +8,8 @@ const routes = [
   { path: '/login', redirect: '/auth' },
   { path: '/register', redirect: '/auth' },
   { path: '/agencies', name: 'agencies', component: () => import('../pages/AgenciesPage.vue') },
+  { path: '/agency-center', name: 'agency-center', component: () => import('../pages/AgencyCenterPage.vue'), meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG', 'AGENT_MEMBER'] } },
+  { path: '/messages', name: 'messages', component: () => import('../pages/MessagesPage.vue'), meta: { requiresAuth: true } },
   { path: '/me', name: 'me', component: () => import('../pages/MePage.vue'), meta: { requiresAuth: true } },
   { path: '/forum', name: 'forum', component: () => import('../pages/ForumPage.vue') },
   { path: '/orders', name: 'orders', component: () => import('../pages/OrdersPage.vue'), meta: { requiresAuth: true } },
@@ -32,6 +34,18 @@ router.beforeEach(async (to) => {
   const refreshed = await authStore.refreshSession()
   if (refreshed) return true
   return '/auth'
+})
+
+router.beforeEach((to) => {
+  const authStore = useAuthStore()
+  const allowedRoles = to.meta?.allowedRoles as string[] | undefined
+  if (!allowedRoles || allowedRoles.length === 0) return true
+
+  const role = authStore.authMeta?.role
+  if (!role || !allowedRoles.includes(role)) {
+    return '/'
+  }
+  return true
 })
 
 export default router

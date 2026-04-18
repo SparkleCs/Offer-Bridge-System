@@ -1,0 +1,444 @@
+package com.offerbridge.backend.service.impl;
+
+import com.offerbridge.backend.dto.AgencyDtos;
+import com.offerbridge.backend.entity.AgencyInvitation;
+import com.offerbridge.backend.entity.AgencyMemberMetrics;
+import com.offerbridge.backend.entity.AgencyMemberProfile;
+import com.offerbridge.backend.entity.AgencyOrg;
+import com.offerbridge.backend.entity.AgencyTeam;
+import com.offerbridge.backend.entity.UserAccount;
+import com.offerbridge.backend.entity.VerificationRecord;
+import com.offerbridge.backend.exception.BizException;
+import com.offerbridge.backend.mapper.AgencyInvitationMapper;
+import com.offerbridge.backend.mapper.AgencyMemberMetricsMapper;
+import com.offerbridge.backend.mapper.AgencyMemberProfileMapper;
+import com.offerbridge.backend.mapper.AgencyMemberRoleRelMapper;
+import com.offerbridge.backend.mapper.AgencyOrgMapper;
+import com.offerbridge.backend.mapper.AgencyTeamMapper;
+import com.offerbridge.backend.mapper.AgencyTeamMemberRelMapper;
+import com.offerbridge.backend.mapper.UserAccountMapper;
+import com.offerbridge.backend.mapper.VerificationRecordMapper;
+import com.offerbridge.backend.service.AgencyService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+public class AgencyServiceImpl implements AgencyService {
+  private final AgencyOrgMapper agencyOrgMapper;
+  private final AgencyTeamMapper agencyTeamMapper;
+  private final AgencyInvitationMapper agencyInvitationMapper;
+  private final AgencyMemberProfileMapper agencyMemberProfileMapper;
+  private final AgencyTeamMemberRelMapper agencyTeamMemberRelMapper;
+  private final AgencyMemberRoleRelMapper agencyMemberRoleRelMapper;
+  private final AgencyMemberMetricsMapper agencyMemberMetricsMapper;
+  private final VerificationRecordMapper verificationRecordMapper;
+  private final UserAccountMapper userAccountMapper;
+
+  public AgencyServiceImpl(AgencyOrgMapper agencyOrgMapper,
+                           AgencyTeamMapper agencyTeamMapper,
+                           AgencyInvitationMapper agencyInvitationMapper,
+                           AgencyMemberProfileMapper agencyMemberProfileMapper,
+                           AgencyTeamMemberRelMapper agencyTeamMemberRelMapper,
+                           AgencyMemberRoleRelMapper agencyMemberRoleRelMapper,
+                           AgencyMemberMetricsMapper agencyMemberMetricsMapper,
+                           VerificationRecordMapper verificationRecordMapper,
+                           UserAccountMapper userAccountMapper) {
+    this.agencyOrgMapper = agencyOrgMapper;
+    this.agencyTeamMapper = agencyTeamMapper;
+    this.agencyInvitationMapper = agencyInvitationMapper;
+    this.agencyMemberProfileMapper = agencyMemberProfileMapper;
+    this.agencyTeamMemberRelMapper = agencyTeamMemberRelMapper;
+    this.agencyMemberRoleRelMapper = agencyMemberRoleRelMapper;
+    this.agencyMemberMetricsMapper = agencyMemberMetricsMapper;
+    this.verificationRecordMapper = verificationRecordMapper;
+    this.userAccountMapper = userAccountMapper;
+  }
+
+  @Override
+  public AgencyDtos.OrgProfileView getOrgProfile(Long userId) {
+    AgencyOrg org = resolveOrgForUser(userId);
+    if (org == null) {
+      return null;
+    }
+    return toOrgView(org);
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.OrgProfileView createOrgProfile(Long userId, AgencyDtos.OrgProfileUpsertRequest request) {
+    UserAccount user = requireUser(userId);
+    requireRole(user, "AGENT_ORG");
+    if (agencyOrgMapper.findByAdminUserId(userId) != null) {
+      throw new BizException("BIZ_BAD_REQUEST", "机构档案已存在，请改用更新接口");
+    }
+    AgencyOrg entity = buildOrgEntity(userId, request);
+    agencyOrgMapper.insertOne(entity);
+    return toOrgView(entity);
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.OrgProfileView updateOrgProfile(Long userId, AgencyDtos.OrgProfileUpsertRequest request) {
+    UserAccount user = requireUser(userId);
+    requireRole(user, "AGENT_ORG");
+    AgencyOrg existing = agencyOrgMapper.findByAdminUserId(userId);
+    if (existing == null) {
+      throw new BizException("BIZ_NOT_FOUND", "机构档案不存在，请先创建");
+    }
+    AgencyOrg update = buildOrgEntity(userId, request);
+    update.setId(existing.getId());
+    agencyOrgMapper.updateOne(update);
+    return toOrgView(agencyOrgMapper.findById(existing.getId()));
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.TeamView createTeam(Long userId, AgencyDtos.TeamCreateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    AgencyTeam team = new AgencyTeam();
+    team.setOrgId(org.getId());
+    team.setTeamName(request.getTeamName().trim());
+    team.setTeamType(request.getTeamType());
+    team.setTeamIntro(request.getTeamIntro());
+    team.setServiceCountryScope(request.getServiceCountryScope());
+    team.setServiceMajorScope(request.getServiceMajorScope());
+    agencyTeamMapper.insertOne(team);
+    return toTeamView(team);
+  }
+
+  @Override
+  public List<AgencyDtos.TeamView> listTeams(Long userId) {
+    AgencyOrg org = resolveOrgForUser(userId);
+    if (org == null) return List.of();
+    return agencyTeamMapper.listByOrgId(org.getId()).stream().map(this::toTeamView).toList();
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.InvitationView createInvitation(Long userId, AgencyDtos.InvitationCreateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    AgencyTeam team = agencyTeamMapper.findById(request.getTeamId());
+    if (team == null || !org.getId().equals(team.getOrgId())) {
+      throw new BizException("BIZ_BAD_REQUEST", "团队不存在或不属于当前机构");
+    }
+
+    AgencyInvitation invitation = new AgencyInvitation();
+    invitation.setOrgId(org.getId());
+    invitation.setTeamId(team.getId());
+    invitation.setEmail(request.getEmail().trim());
+    invitation.setInviteeName(request.getInviteeName());
+    invitation.setRoleHint(request.getRoleHint());
+    invitation.setToken(UUID.randomUUID().toString().replace("-", ""));
+    invitation.setExpiresAt(LocalDateTime.now().plusDays(7));
+    invitation.setCreatedBy(userId);
+    agencyInvitationMapper.insertOne(invitation);
+
+    AgencyDtos.InvitationView view = new AgencyDtos.InvitationView();
+    view.setId(invitation.getId());
+    view.setEmail(invitation.getEmail());
+    view.setStatus("PENDING");
+    view.setToken(invitation.getToken());
+    return view;
+  }
+
+  @Override
+  @Transactional
+  public void acceptInvitation(Long userId, String token) {
+    UserAccount user = requireUser(userId);
+    AgencyInvitation invitation = agencyInvitationMapper.findByToken(token);
+    if (invitation == null) {
+      throw new BizException("BIZ_NOT_FOUND", "邀请不存在");
+    }
+    if (!"PENDING".equals(invitation.getStatus())) {
+      throw new BizException("BIZ_BAD_REQUEST", "邀请已失效");
+    }
+    if (invitation.getExpiresAt() != null && invitation.getExpiresAt().isBefore(LocalDateTime.now())) {
+      throw new BizException("BIZ_BAD_REQUEST", "邀请已过期");
+    }
+
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      member = new AgencyMemberProfile();
+      member.setUserId(userId);
+      member.setOrgId(invitation.getOrgId());
+      member.setDisplayName(defaultStr(invitation.getInviteeName(), "顾问" + userId));
+      member.setRealName(null);
+      member.setJobTitle(defaultStr(invitation.getRoleHint(), "咨询顾问"));
+      member.setEducationLevel("UNKNOWN");
+      member.setGraduatedSchool("待完善");
+      member.setMajor(null);
+      member.setYearsOfExperience(0);
+      member.setSpecialCountries("待完善");
+      member.setSpecialDirections("待完善");
+      member.setBio("该成员尚未完善个人简介");
+      member.setServiceStyleTags(null);
+      member.setPublicStatus("PRIVATE");
+      member.setVerifiedBadgeStatus("PENDING");
+      agencyMemberProfileMapper.insertOne(member);
+    } else if (!invitation.getOrgId().equals(member.getOrgId())) {
+      throw new BizException("BIZ_FORBIDDEN", "当前账号已归属其他机构");
+    }
+
+    Long existingTeamId = agencyTeamMemberRelMapper.findTeamIdByMemberId(member.getId());
+    if (existingTeamId == null) {
+      agencyTeamMemberRelMapper.insertOne(invitation.getTeamId(), member.getId());
+    } else {
+      agencyTeamMemberRelMapper.updateTeamByMemberId(invitation.getTeamId(), member.getId());
+    }
+
+    if (invitation.getRoleHint() != null && !invitation.getRoleHint().isBlank()) {
+      agencyMemberRoleRelMapper.deleteByMemberId(member.getId());
+      agencyMemberRoleRelMapper.insertOne(member.getId(), invitation.getRoleHint().trim(), true);
+    }
+
+    AgencyMemberMetrics metrics = agencyMemberMetricsMapper.findByMemberId(member.getId());
+    if (metrics == null) {
+      metrics = new AgencyMemberMetrics();
+      metrics.setMemberId(member.getId());
+      metrics.setCaseCount(0);
+      metrics.setSuccessRate(java.math.BigDecimal.ZERO);
+      metrics.setAvgRating(java.math.BigDecimal.ZERO);
+      metrics.setResponseEfficiencyScore(java.math.BigDecimal.ZERO);
+      metrics.setServiceTags(null);
+      metrics.setBudgetTags(null);
+      agencyMemberMetricsMapper.upsert(metrics);
+    }
+
+    if (!"AGENT_MEMBER".equals(user.getRole())) {
+      userAccountMapper.updateRole(userId, "AGENT_MEMBER");
+    }
+    agencyInvitationMapper.markAccepted(invitation.getId(), userId);
+  }
+
+  @Override
+  @Transactional
+  public void updateMyProfile(Long userId, AgencyDtos.MemberProfileUpdateRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在，请先接受机构邀请");
+    }
+    member.setDisplayName(request.getDisplayName().trim());
+    member.setJobTitle(request.getJobTitle().trim());
+    member.setEducationLevel(request.getEducationLevel().trim());
+    member.setGraduatedSchool(request.getGraduatedSchool().trim());
+    member.setMajor(request.getMajor());
+    member.setYearsOfExperience(request.getYearsOfExperience());
+    member.setSpecialCountries(request.getSpecialCountries().trim());
+    member.setSpecialDirections(request.getSpecialDirections().trim());
+    member.setBio(request.getBio().trim());
+    member.setServiceStyleTags(request.getServiceStyleTags());
+    member.setPublicStatus(request.getPublicStatus().trim());
+    member.setVerifiedBadgeStatus(calcMemberBadgeStatus(userId));
+    agencyMemberProfileMapper.updateByUserId(member);
+  }
+
+  @Override
+  @Transactional
+  public void updateMyRoles(Long userId, AgencyDtos.MemberRolesUpdateRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+
+    long primaryCount = request.getRoles().stream().filter(r -> Boolean.TRUE.equals(r.getIsPrimary())).count();
+    if (primaryCount != 1) {
+      throw new BizException("BIZ_BAD_REQUEST", "必须且只能设置一个主角色");
+    }
+
+    agencyMemberRoleRelMapper.deleteByMemberId(member.getId());
+    for (AgencyDtos.RoleItem item : request.getRoles()) {
+      agencyMemberRoleRelMapper.insertOne(member.getId(), item.getRoleCode().trim(), Boolean.TRUE.equals(item.getIsPrimary()));
+    }
+  }
+
+  @Override
+  @Transactional
+  public void updateMyMetrics(Long userId, AgencyDtos.MemberMetricsUpdateRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    AgencyMemberMetrics metrics = new AgencyMemberMetrics();
+    metrics.setMemberId(member.getId());
+    metrics.setCaseCount(request.getCaseCount());
+    metrics.setSuccessRate(request.getSuccessRate());
+    metrics.setAvgRating(request.getAvgRating());
+    metrics.setResponseEfficiencyScore(request.getResponseEfficiencyScore());
+    metrics.setServiceTags(request.getServiceTags());
+    metrics.setBudgetTags(request.getBudgetTags());
+    agencyMemberMetricsMapper.upsert(metrics);
+  }
+
+  @Override
+  public List<AgencyDtos.DiscoveryMemberItem> listDiscoveryMembers(String roleCode,
+                                                                    String country,
+                                                                    String direction,
+                                                                    String city,
+                                                                    String serviceTag,
+                                                                    String budgetTag) {
+    return agencyMemberProfileMapper.listDiscovery(roleCode, country, direction, city, serviceTag, budgetTag);
+  }
+
+  @Override
+  public AgencyDtos.DiscoveryMemberDetail getDiscoveryMemberDetail(Long memberId) {
+    AgencyDtos.DiscoveryMemberItem item = agencyMemberProfileMapper.findDiscoveryByMemberId(memberId);
+    if (item == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员不存在或不可展示");
+    }
+    AgencyMemberProfile member = agencyMemberProfileMapper.findById(memberId);
+    AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
+
+    AgencyDtos.DiscoveryMemberDetail detail = new AgencyDtos.DiscoveryMemberDetail();
+    detail.setMember(item);
+    detail.setOrg(toOrgView(org));
+    detail.setRoleCodes(agencyMemberRoleRelMapper.listRoleCodesByMemberId(memberId));
+    return detail;
+  }
+
+  @Override
+  public List<AgencyDtos.DiscoveryTeamItem> listDiscoveryTeams(String keyword,
+                                                               String country,
+                                                               String direction,
+                                                               String city,
+                                                               String roleCode,
+                                                               String serviceTag) {
+    return agencyTeamMapper.listDiscoveryTeams(keyword, country, direction, city, roleCode, serviceTag);
+  }
+
+  @Override
+  public AgencyDtos.DiscoveryTeamDetail getDiscoveryTeamDetail(Long teamId) {
+    AgencyDtos.DiscoveryTeamDetail detail = agencyTeamMapper.findDiscoveryTeamDetail(teamId);
+    if (detail == null) {
+      throw new BizException("BIZ_NOT_FOUND", "团队不存在或不可展示");
+    }
+
+    AgencyTeam team = agencyTeamMapper.findById(teamId);
+    if (team != null) {
+      AgencyOrg org = agencyOrgMapper.findById(team.getOrgId());
+      if (org != null) {
+        detail.setOrg(toOrgView(org));
+      }
+    }
+    detail.setMembers(agencyTeamMapper.listDiscoveryTeamMembers(teamId));
+    return detail;
+  }
+
+  private String calcMemberBadgeStatus(Long userId) {
+    VerificationRecord real = verificationRecordMapper.findOne(userId, "AGENT_REAL_NAME");
+    VerificationRecord edu = verificationRecordMapper.findOne(userId, "AGENT_EDUCATION");
+    if (real != null && edu != null && "APPROVED".equals(real.getStatus()) && "APPROVED".equals(edu.getStatus())) {
+      return "APPROVED";
+    }
+    return "PENDING";
+  }
+
+  private AgencyOrg requireOrgByAdmin(Long userId) {
+    requireRole(requireUser(userId), "AGENT_ORG");
+    AgencyOrg org = agencyOrgMapper.findByAdminUserId(userId);
+    if (org == null) {
+      throw new BizException("BIZ_NOT_FOUND", "机构档案不存在，请先创建机构信息");
+    }
+    return org;
+  }
+
+  private AgencyOrg resolveOrgForUser(Long userId) {
+    UserAccount user = requireUser(userId);
+    if ("AGENT_ORG".equals(user.getRole())) {
+      return agencyOrgMapper.findByAdminUserId(userId);
+    }
+    if ("AGENT_MEMBER".equals(user.getRole())) {
+      return agencyOrgMapper.findByMemberUserId(userId);
+    }
+    return null;
+  }
+
+  private UserAccount requireUser(Long userId) {
+    UserAccount user = userAccountMapper.findById(userId);
+    if (user == null) {
+      throw new BizException("BIZ_UNAUTHORIZED", "用户不存在");
+    }
+    if (!"ACTIVE".equals(user.getStatus())) {
+      throw new BizException("BIZ_ACCOUNT_DISABLED", "账号不可用");
+    }
+    return user;
+  }
+
+  private void requireRole(UserAccount user, String role) {
+    if (!role.equals(user.getRole())) {
+      throw new BizException("BIZ_FORBIDDEN", "无权限执行该操作");
+    }
+  }
+
+  private AgencyOrg buildOrgEntity(Long userId, AgencyDtos.OrgProfileUpsertRequest request) {
+    AgencyOrg entity = new AgencyOrg();
+    entity.setAdminUserId(userId);
+    entity.setOrgName(request.getOrgName().trim());
+    entity.setBrandName(request.getBrandName());
+    entity.setCountryCode(request.getCountryCode().trim());
+    entity.setProvinceOrState(request.getProvinceOrState().trim());
+    entity.setCity(request.getCity().trim());
+    entity.setDistrict(request.getDistrict());
+    entity.setAddressLine(request.getAddressLine().trim());
+    entity.setLogoUrl(request.getLogoUrl());
+    entity.setCoverImageUrl(request.getCoverImageUrl());
+    entity.setOfficeEnvironmentImages(request.getOfficeEnvironmentImages());
+    entity.setContactPhone(request.getContactPhone().trim());
+    entity.setContactEmail(request.getContactEmail());
+    entity.setWebsiteUrl(request.getWebsiteUrl());
+    entity.setSocialLinks(request.getSocialLinks());
+    entity.setFoundedYear(request.getFoundedYear());
+    entity.setTeamSizeRange(request.getTeamSizeRange());
+    entity.setServiceMode(request.getServiceMode().trim());
+    entity.setOrgIntro(request.getOrgIntro().trim());
+    entity.setOrgSlogan(request.getOrgSlogan());
+    return entity;
+  }
+
+  private AgencyDtos.OrgProfileView toOrgView(AgencyOrg org) {
+    AgencyDtos.OrgProfileView view = new AgencyDtos.OrgProfileView();
+    view.setId(org.getId());
+    view.setOrgName(org.getOrgName());
+    view.setBrandName(org.getBrandName());
+    view.setCountryCode(org.getCountryCode());
+    view.setProvinceOrState(org.getProvinceOrState());
+    view.setCity(org.getCity());
+    view.setDistrict(org.getDistrict());
+    view.setAddressLine(org.getAddressLine());
+    view.setLogoUrl(org.getLogoUrl());
+    view.setCoverImageUrl(org.getCoverImageUrl());
+    view.setOfficeEnvironmentImages(org.getOfficeEnvironmentImages());
+    view.setContactPhone(org.getContactPhone());
+    view.setContactEmail(org.getContactEmail());
+    view.setWebsiteUrl(org.getWebsiteUrl());
+    view.setSocialLinks(org.getSocialLinks());
+    view.setFoundedYear(org.getFoundedYear());
+    view.setTeamSizeRange(org.getTeamSizeRange());
+    view.setServiceMode(org.getServiceMode());
+    view.setOrgIntro(org.getOrgIntro());
+    view.setOrgSlogan(org.getOrgSlogan());
+    view.setVerificationStatus(org.getVerificationStatus());
+    return view;
+  }
+
+  private AgencyDtos.TeamView toTeamView(AgencyTeam team) {
+    AgencyDtos.TeamView view = new AgencyDtos.TeamView();
+    view.setId(team.getId());
+    view.setTeamName(team.getTeamName());
+    view.setTeamType(team.getTeamType());
+    view.setTeamIntro(team.getTeamIntro());
+    view.setServiceCountryScope(team.getServiceCountryScope());
+    view.setServiceMajorScope(team.getServiceMajorScope());
+    return view;
+  }
+
+  private String defaultStr(String input, String fallback) {
+    return (input == null || input.isBlank()) ? fallback : input.trim();
+  }
+}

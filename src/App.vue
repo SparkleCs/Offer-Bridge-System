@@ -9,13 +9,15 @@
 
         <el-menu :default-active="route.path" mode="horizontal" class="main-menu" @select="go">
           <el-menu-item index="/">首页</el-menu-item>
-          <el-menu-item index="/agencies">中介筛选</el-menu-item>
+          <el-menu-item index="/agencies">中介</el-menu-item>
+          <el-menu-item v-if="showAgencyCenter" index="/agency-center">中介入驻</el-menu-item>
           <el-menu-item index="/universities">院校</el-menu-item>
           <el-menu-item index="/forum">论坛</el-menu-item>
         </el-menu>
 
         <div class="auth-area">
           <template v-if="authStore.isLoggedIn">
+            <el-button text class="msg-btn" @click="go('/messages')">消息</el-button>
             <el-dropdown trigger="click">
               <div class="avatar-trigger">
                 <el-avatar :size="34">{{ userInitial }}</el-avatar>
@@ -54,7 +56,15 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const year = new Date().getFullYear()
-const displayName = computed(() => authStore.profile?.name || '学生用户')
+const currentRole = computed(() => authStore.authMeta?.role || '')
+const showAgencyCenter = computed(() => currentRole.value === 'AGENT_ORG' || currentRole.value === 'AGENT_MEMBER')
+const displayName = computed(() => {
+  if (authStore.profile?.name) return authStore.profile.name
+  const role = currentRole.value
+  if (role === 'AGENT_ORG') return '机构管理员'
+  if (role === 'AGENT_MEMBER') return '机构成员'
+  return '学生用户'
+})
 const userInitial = computed(() => displayName.value.slice(0, 1) || 'U')
 
 function go(path: string) {
@@ -68,3 +78,10 @@ async function handleLogout() {
   router.push('/auth')
 }
 </script>
+
+<style scoped>
+.msg-btn {
+  margin-right: 8px;
+  font-weight: 600;
+}
+</style>

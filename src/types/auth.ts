@@ -1,4 +1,4 @@
-export type UserRole = 'STUDENT' | 'AGENT_INDIVIDUAL' | 'AGENT_ORG' | 'ADMIN'
+export type UserRole = 'STUDENT' | 'AGENT_INDIVIDUAL' | 'AGENT_ORG' | 'AGENT_MEMBER' | 'ADMIN'
 
 export interface ApiResponse<T> {
   code: string
@@ -25,7 +25,7 @@ export interface SendSmsPayload {
 export interface SmsLoginPayload {
   phone: string
   code: string
-  role: 'STUDENT' | 'AGENT_ORG'
+  role: 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
 }
 
 export interface RefreshPayload {

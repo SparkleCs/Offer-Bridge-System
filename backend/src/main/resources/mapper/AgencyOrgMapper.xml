@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyOrgMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyOrg">
+    <id column="id" property="id"/>
+    <result column="admin_user_id" property="adminUserId"/>
+    <result column="org_name" property="orgName"/>
+    <result column="brand_name" property="brandName"/>
+    <result column="country_code" property="countryCode"/>
+    <result column="province_or_state" property="provinceOrState"/>
+    <result column="city" property="city"/>
+    <result column="district" property="district"/>
+    <result column="address_line" property="addressLine"/>
+    <result column="logo_url" property="logoUrl"/>
+    <result column="cover_image_url" property="coverImageUrl"/>
+    <result column="office_environment_images" property="officeEnvironmentImages"/>
+    <result column="contact_phone" property="contactPhone"/>
+    <result column="contact_email" property="contactEmail"/>
+    <result column="website_url" property="websiteUrl"/>
+    <result column="social_links" property="socialLinks"/>
+    <result column="founded_year" property="foundedYear"/>
+    <result column="team_size_range" property="teamSizeRange"/>
+    <result column="service_mode" property="serviceMode"/>
+    <result column="org_intro" property="orgIntro"/>
+    <result column="org_slogan" property="orgSlogan"/>
+    <result column="verification_status" property="verificationStatus"/>
+  </resultMap>
+
+  <sql id="BaseColumns">
+    id, admin_user_id, org_name, brand_name, country_code, province_or_state, city, district,
+    address_line, logo_url, cover_image_url, office_environment_images, contact_phone, contact_email,
+    website_url, social_links, founded_year, team_size_range, service_mode, org_intro, org_slogan,
+    verification_status
+  </sql>
+
+  <select id="findByAdminUserId" resultMap="BaseMap">
+    SELECT <include refid="BaseColumns"/> FROM agency_org WHERE admin_user_id = #{adminUserId} LIMIT 1
+  </select>
+
+  <select id="findById" resultMap="BaseMap">
+    SELECT <include refid="BaseColumns"/> FROM agency_org WHERE id = #{id} LIMIT 1
+  </select>
+
+  <select id="findByMemberUserId" resultMap="BaseMap">
+    SELECT <include refid="BaseColumns"/>
+    FROM agency_org o
+    JOIN agency_member_profile m ON m.org_id = o.id
+    WHERE m.user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO agency_org(
+      admin_user_id, org_name, brand_name, country_code, province_or_state, city, district, address_line,
+      logo_url, cover_image_url, office_environment_images, contact_phone, contact_email, website_url,
+      social_links, founded_year, team_size_range, service_mode, org_intro, org_slogan,
+      verification_status, status
+    ) VALUES(
+      #{adminUserId}, #{orgName}, #{brandName}, #{countryCode}, #{provinceOrState}, #{city}, #{district}, #{addressLine},
+      #{logoUrl}, #{coverImageUrl}, #{officeEnvironmentImages}, #{contactPhone}, #{contactEmail}, #{websiteUrl},
+      #{socialLinks}, #{foundedYear}, #{teamSizeRange}, #{serviceMode}, #{orgIntro}, #{orgSlogan},
+      'PENDING', 'ACTIVE'
+    )
+  </insert>
+
+  <update id="updateOne">
+    UPDATE agency_org
+    SET org_name = #{orgName},
+        brand_name = #{brandName},
+        country_code = #{countryCode},
+        province_or_state = #{provinceOrState},
+        city = #{city},
+        district = #{district},
+        address_line = #{addressLine},
+        logo_url = #{logoUrl},
+        cover_image_url = #{coverImageUrl},
+        office_environment_images = #{officeEnvironmentImages},
+        contact_phone = #{contactPhone},
+        contact_email = #{contactEmail},
+        website_url = #{websiteUrl},
+        social_links = #{socialLinks},
+        founded_year = #{foundedYear},
+        team_size_range = #{teamSizeRange},
+        service_mode = #{serviceMode},
+        org_intro = #{orgIntro},
+        org_slogan = #{orgSlogan}
+    WHERE id = #{id}
+  </update>
+</mapper>

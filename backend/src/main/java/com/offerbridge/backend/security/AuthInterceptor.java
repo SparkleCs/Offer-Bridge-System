@@ -19,6 +19,11 @@ public class AuthInterceptor implements HandlerInterceptor {
     if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
       return true;
     }
+    String uri = request.getRequestURI();
+    // Discovery endpoints are public for pre-sign visibility.
+    if (uri != null && uri.startsWith("/api/v1/agency/discovery/")) {
+      return true;
+    }
 
     String auth = request.getHeader("Authorization");
     if (auth == null || !auth.startsWith("Bearer ")) {

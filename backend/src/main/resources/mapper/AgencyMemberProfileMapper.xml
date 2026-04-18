@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyMemberProfileMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyMemberProfile">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="org_id" property="orgId"/>
+    <result column="display_name" property="displayName"/>
+    <result column="real_name" property="realName"/>
+    <result column="job_title" property="jobTitle"/>
+    <result column="education_level" property="educationLevel"/>
+    <result column="graduated_school" property="graduatedSchool"/>
+    <result column="major" property="major"/>
+    <result column="years_of_experience" property="yearsOfExperience"/>
+    <result column="special_countries" property="specialCountries"/>
+    <result column="special_directions" property="specialDirections"/>
+    <result column="bio" property="bio"/>
+    <result column="service_style_tags" property="serviceStyleTags"/>
+    <result column="public_status" property="publicStatus"/>
+    <result column="verified_badge_status" property="verifiedBadgeStatus"/>
+  </resultMap>
+
+  <select id="findByUserId" resultMap="BaseMap">
+    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    FROM agency_member_profile
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <select id="findById" resultMap="BaseMap">
+    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    FROM agency_member_profile
+    WHERE id = #{id}
+    LIMIT 1
+  </select>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO agency_member_profile(
+      user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+      years_of_experience, special_countries, special_directions, bio, service_style_tags,
+      public_status, verified_badge_status, status
+    ) VALUES(
+      #{userId}, #{orgId}, #{displayName}, #{realName}, #{jobTitle}, #{educationLevel}, #{graduatedSchool}, #{major},
+      #{yearsOfExperience}, #{specialCountries}, #{specialDirections}, #{bio}, #{serviceStyleTags},
+      #{publicStatus}, #{verifiedBadgeStatus}, 'ACTIVE'
+    )
+  </insert>
+
+  <update id="updateByUserId">
+    UPDATE agency_member_profile
+    SET display_name = #{displayName},
+        real_name = #{realName},
+        job_title = #{jobTitle},
+        education_level = #{educationLevel},
+        graduated_school = #{graduatedSchool},
+        major = #{major},
+        years_of_experience = #{yearsOfExperience},
+        special_countries = #{specialCountries},
+        special_directions = #{specialDirections},
+        bio = #{bio},
+        service_style_tags = #{serviceStyleTags},
+        public_status = #{publicStatus},
+        verified_badge_status = #{verifiedBadgeStatus}
+    WHERE user_id = #{userId}
+  </update>
+
+  <select id="listDiscovery" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryMemberItem">
+    SELECT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.job_title AS jobTitle,
+      COALESCE(pr.role_code, '') AS primaryRole,
+      o.org_name AS orgName,
+      t.team_name AS teamName,
+      o.city AS city,
+      m.bio AS bio,
+      m.special_countries AS specialCountries,
+      m.special_directions AS specialDirections,
+      m.years_of_experience AS yearsOfExperience,
+      m.education_level AS educationLevel,
+      COALESCE(mm.case_count, 0) AS caseCount,
+      COALESCE(mm.success_rate, 0) AS successRate,
+      COALESCE(mm.avg_rating, 0) AS avgRating,
+      COALESCE(mm.response_efficiency_score, 0) AS responseEfficiencyScore,
+      mm.service_tags AS serviceTags,
+      mm.budget_tags AS budgetTags,
+      m.verified_badge_status AS verifiedBadgeStatus,
+      o.logo_url AS logoUrl
+    FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
+    JOIN agency_org o ON o.id = m.org_id
+    LEFT JOIN agency_team_member_rel tm ON tm.member_id = m.id
+    LEFT JOIN agency_team t ON t.id = tm.team_id
+    LEFT JOIN agency_member_role_rel pr ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
+    LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
+    WHERE m.status = 'ACTIVE'
+      AND m.public_status = 'PUBLIC'
+      AND ua.status = 'ACTIVE'
+      AND o.status = 'ACTIVE'
+      AND o.verification_status = 'APPROVED'
+      AND vrn.status = 'APPROVED'
+      AND vre.status = 'APPROVED'
+      <if test="roleCode != null and roleCode != ''">
+        AND EXISTS (
+          SELECT 1 FROM agency_member_role_rel rr
+          WHERE rr.member_id = m.id AND rr.role_code = #{roleCode} AND rr.role_status = 'ACTIVE'
+        )
+      </if>
+      <if test="country != null and country != ''">
+        AND m.special_countries LIKE CONCAT('%', #{country}, '%')
+      </if>
+      <if test="direction != null and direction != ''">
+        AND m.special_directions LIKE CONCAT('%', #{direction}, '%')
+      </if>
+      <if test="city != null and city != ''">
+        AND o.city = #{city}
+      </if>
+      <if test="serviceTag != null and serviceTag != ''">
+        AND mm.service_tags LIKE CONCAT('%', #{serviceTag}, '%')
+      </if>
+      <if test="budgetTag != null and budgetTag != ''">
+        AND mm.budget_tags LIKE CONCAT('%', #{budgetTag}, '%')
+      </if>
+    ORDER BY mm.avg_rating DESC, mm.success_rate DESC, mm.case_count DESC, m.id DESC
+    LIMIT 200
+  </select>
+
+  <select id="findDiscoveryByMemberId" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryMemberItem">
+    SELECT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.job_title AS jobTitle,
+      COALESCE(pr.role_code, '') AS primaryRole,
+      o.org_name AS orgName,
+      t.team_name AS teamName,
+      o.city AS city,
+      m.bio AS bio,
+      m.special_countries AS specialCountries,
+      m.special_directions AS specialDirections,
+      m.years_of_experience AS yearsOfExperience,
+      m.education_level AS educationLevel,
+      COALESCE(mm.case_count, 0) AS caseCount,
+      COALESCE(mm.success_rate, 0) AS successRate,
+      COALESCE(mm.avg_rating, 0) AS avgRating,
+      COALESCE(mm.response_efficiency_score, 0) AS responseEfficiencyScore,
+      mm.service_tags AS serviceTags,
+      mm.budget_tags AS budgetTags,
+      m.verified_badge_status AS verifiedBadgeStatus,
+      o.logo_url AS logoUrl
+    FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
+    JOIN agency_org o ON o.id = m.org_id
+    LEFT JOIN agency_team_member_rel tm ON tm.member_id = m.id
+    LEFT JOIN agency_team t ON t.id = tm.team_id
+    LEFT JOIN agency_member_role_rel pr ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
+    LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
+    WHERE m.id = #{memberId}
+      AND m.status = 'ACTIVE'
+      AND m.public_status = 'PUBLIC'
+      AND ua.status = 'ACTIVE'
+      AND o.status = 'ACTIVE'
+      AND o.verification_status = 'APPROVED'
+      AND vrn.status = 'APPROVED'
+      AND vre.status = 'APPROVED'
+    LIMIT 1
+  </select>
+</mapper>

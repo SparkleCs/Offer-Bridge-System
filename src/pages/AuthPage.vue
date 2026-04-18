@@ -26,6 +26,7 @@
             <el-radio-group v-model="selectedRole" class="role-group" size="large">
               <el-radio-button label="STUDENT">学生</el-radio-button>
               <el-radio-button label="AGENT_ORG">机构</el-radio-button>
+              <el-radio-button label="AGENT_MEMBER">机构成员</el-radio-button>
             </el-radio-group>
           </el-form-item>
 
@@ -62,7 +63,7 @@ import { useRouter } from 'vue-router'
 import { ApiError } from '../services/http'
 import { useAuthStore } from '../stores/auth'
 
-type LoginRole = 'STUDENT' | 'AGENT_ORG'
+type LoginRole = 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
 
 const roleContents: Record<LoginRole, { title: string; desc: string; features: Array<{ title: string; desc: string }> }> = {
   STUDENT: {
@@ -81,6 +82,15 @@ const roleContents: Record<LoginRole, { title: string; desc: string; features: A
       { title: '优质用户更集中', desc: '优先触达需求明确的申请人群' },
       { title: '匹配结果更直观', desc: '快速判断与自身服务的契合程度' },
       { title: '沟通转化更顺畅', desc: '过程统一管理，减少信息流失' }
+    ]
+  },
+  AGENT_MEMBER: {
+    title: '协作更顺畅',
+    desc: '完善档案并认证后，可在前台展示专业能力。',
+    features: [
+      { title: '签约前可被看见', desc: '学生可在签约前查看你的简介、角色与擅长方向' },
+      { title: '指标透明可展示', desc: '案例数、成功率、评分、响应效率统一展示' },
+      { title: '团队协作更清晰', desc: '按角色接入机构团队，服务分工明确' }
     ]
   }
 }

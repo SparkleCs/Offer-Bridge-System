@@ -11,4 +11,5 @@ public interface UserAccountMapper {
   int insertByRole(@Param("phone") String phone, @Param("role") String role);
   int insertByRoleWithEmptyPassword(@Param("phone") String phone, @Param("role") String role);
   int updateLastLoginAt(@Param("id") Long id);
+  int updateRole(@Param("id") Long id, @Param("role") String role);
 }

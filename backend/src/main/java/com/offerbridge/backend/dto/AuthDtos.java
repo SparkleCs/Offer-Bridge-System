@@ -21,7 +21,7 @@ public class AuthDtos {
     private String phone;
     @Pattern(regexp = "^\\d{4,6}$")
     private String code;
-    @Pattern(regexp = "^(STUDENT|AGENT_ORG)$")
+    @Pattern(regexp = "^(STUDENT|AGENT_ORG|AGENT_MEMBER)$")
     private String role;
 
     public String getPhone() { return phone; }

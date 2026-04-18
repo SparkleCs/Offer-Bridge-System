@@ -183,7 +183,7 @@ public class AuthServiceImpl implements AuthService {
   }
 
   private void ensureSupportedAndActive(UserAccount user) {
-    if (!"STUDENT".equals(user.getRole()) && !"AGENT_ORG".equals(user.getRole())) {
+    if (!"STUDENT".equals(user.getRole()) && !"AGENT_ORG".equals(user.getRole()) && !"AGENT_MEMBER".equals(user.getRole())) {
       throw new BizException("BIZ_FORBIDDEN", "当前账号角色不可用");
     }
     if (!"ACTIVE".equals(user.getStatus())) {
@@ -201,7 +201,7 @@ public class AuthServiceImpl implements AuthService {
   }
 
   private String normalizeLoginRole(String role) {
-    if ("STUDENT".equals(role) || "AGENT_ORG".equals(role)) {
+    if ("STUDENT".equals(role) || "AGENT_ORG".equals(role) || "AGENT_MEMBER".equals(role)) {
       return role;
     }
     throw new BizException("BIZ_BAD_REQUEST", "role 参数不合法");

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyMemberRoleRelMapper">
+  <delete id="deleteByMemberId">
+    DELETE FROM agency_member_role_rel WHERE member_id = #{memberId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO agency_member_role_rel(member_id, role_code, is_primary, role_status)
+    VALUES(#{memberId}, #{roleCode}, #{isPrimary}, 'ACTIVE')
+  </insert>
+
+  <select id="listRoleCodesByMemberId" resultType="string">
+    SELECT role_code
+    FROM agency_member_role_rel
+    WHERE member_id = #{memberId} AND role_status = 'ACTIVE'
+    ORDER BY is_primary DESC, id ASC
+  </select>
+</mapper>

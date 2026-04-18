@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyInvitationMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyInvitation">
+    <id column="id" property="id"/>
+    <result column="org_id" property="orgId"/>
+    <result column="team_id" property="teamId"/>
+    <result column="email" property="email"/>
+    <result column="invitee_name" property="inviteeName"/>
+    <result column="role_hint" property="roleHint"/>
+    <result column="token" property="token"/>
+    <result column="status" property="status"/>
+    <result column="expires_at" property="expiresAt"/>
+  </resultMap>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO agency_invitation(org_id, team_id, email, invitee_name, role_hint, token, status, expires_at, created_by)
+    VALUES(#{orgId}, #{teamId}, #{email}, #{inviteeName}, #{roleHint}, #{token}, 'PENDING', #{expiresAt}, #{createdBy})
+  </insert>
+
+  <select id="findByToken" resultMap="BaseMap">
+    SELECT id, org_id, team_id, email, invitee_name, role_hint, token, status, expires_at
+    FROM agency_invitation
+    WHERE token = #{token}
+    LIMIT 1
+  </select>
+
+  <update id="markAccepted">
+    UPDATE agency_invitation
+    SET status = 'ACCEPTED', accepted_user_id = #{userId}, accepted_at = NOW()
+    WHERE id = #{id}
+  </update>
+</mapper>
