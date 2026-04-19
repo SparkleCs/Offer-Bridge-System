@@ -1,26 +1,100 @@
 <template>
   <section class="page-card fade-up message-shell">
     <div class="message-head">
-      <h2 class="section-title">消息</h2>
-      <p class="section-desc">会话中心（开发中），后续将接入团队沟通、系统通知与进度提醒。</p>
+      <h2 class="section-title">消息中心</h2>
+      <p class="section-desc">私聊与论坛互动通知分域管理，本期私聊保持占位，通知已接入论坛数据。</p>
     </div>
 
-    <div class="message-card">
-      <h3>当前上下文</h3>
-      <p>团队ID：{{ teamId || '未指定' }}</p>
-      <p>团队名称：{{ teamName || '未指定' }}</p>
-      <el-alert title="消息模块正在建设中，本版本仅保留入口和参数传递。" type="info" :closable="false" show-icon />
-    </div>
+    <el-tabs v-model="activeTab" class="mt16">
+      <el-tab-pane label="学生-中介私聊" name="chat">
+        <div class="message-card">
+          <h3>当前上下文</h3>
+          <p>团队ID：{{ teamId || '未指定' }}</p>
+          <p>团队名称：{{ teamName || '未指定' }}</p>
+          <el-alert title="私聊模块开发中，后续将在此接入会话列表与聊天窗口。" type="info" :closable="false" show-icon />
+        </div>
+      </el-tab-pane>
+
+      <el-tab-pane :label="`论坛通知${unreadCount > 0 ? ` (${unreadCount})` : ''}`" name="forum-notification">
+        <div class="notify-head">
+          <span>未读：{{ unreadCount }}</span>
+          <el-button link type="primary" @click="markAllRead">全部已读</el-button>
+        </div>
+        <div v-loading="loading" class="notify-list">
+          <el-empty v-if="!notifications.length" description="暂无通知" />
+          <div v-for="item in notifications" :key="item.notificationId" class="notify-item" :class="{ unread: !item.read }" @click="goPost(item.postId)">
+            <p class="notify-title">用户 {{ item.actorUserId }} {{ notificationText(item.type) }}了你的帖子</p>
+            <p class="notify-time">{{ formatTime(item.createdAt) }}</p>
+          </div>
+        </div>
+      </el-tab-pane>
+    </el-tabs>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useRoute } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
+import { ApiError } from '../services/http'
+import { listForumNotifications, markForumNotificationsRead } from '../services/forum'
+import type { ForumNotificationType, ForumNotification } from '../types/forum'
 
 const route = useRoute()
+const router = useRouter()
 const teamId = computed(() => String(route.query.teamId || ''))
 const teamName = computed(() => String(route.query.teamName || ''))
+
+const activeTab = ref('chat')
+const loading = ref(false)
+const notifications = ref<ForumNotification[]>([])
+const unreadCount = ref(0)
+
+onMounted(() => {
+  loadNotifications()
+})
+
+function formatTime(value: string) {
+  return new Date(value).toLocaleString('zh-CN', { hour12: false })
+}
+
+function notificationText(type: ForumNotificationType) {
+  if (type === 'COMMENT') return '评论'
+  if (type === 'FAVORITE') return '收藏'
+  return '点赞'
+}
+
+async function loadNotifications() {
+  loading.value = true
+  try {
+    const data = await listForumNotifications({ page: 1, pageSize: 30 })
+    notifications.value = data.items
+    unreadCount.value = data.unreadCount
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '通知加载失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function markAllRead() {
+  try {
+    await markForumNotificationsRead({ markAll: true })
+    notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
+    unreadCount.value = 0
+    ElMessage.success('已全部标记为已读')
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '操作失败')
+  }
+}
+
+async function goPost(postId: string) {
+  const unreadIds = notifications.value.filter((item) => !item.read).map((item) => item.notificationId)
+  if (unreadIds.length > 0) {
+    await markForumNotificationsRead({ notificationIds: unreadIds })
+  }
+  await router.push({ path: '/forum', query: { postId } })
+}
 </script>
 
 <style scoped>
@@ -29,8 +103,11 @@ const teamName = computed(() => String(route.query.teamName || ''))
   margin: 0 auto;
 }
 
-.message-card {
+.mt16 {
   margin-top: 16px;
+}
+
+.message-card {
   border: 1px solid #dbe6f1;
   border-radius: 14px;
   padding: 16px;
@@ -44,5 +121,40 @@ const teamName = computed(() => String(route.query.teamName || ''))
 .message-card p {
   margin: 4px 0;
   color: #5b738b;
+}
+
+.notify-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.notify-list {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.notify-item {
+  border: 1px solid #dbe6f1;
+  border-radius: 10px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.notify-item.unread {
+  border-color: #9ec1ff;
+  background: #f5f9ff;
+}
+
+.notify-title,
+.notify-time {
+  margin: 0;
+}
+
+.notify-time {
+  margin-top: 6px;
+  color: #6e829c;
+  font-size: 12px;
 }
 </style>

@@ -12,6 +12,9 @@ spring:
       host: 127.0.0.1
       port: 6379
       timeout: 2s
+    mongodb:
+      uri: mongodb://127.0.0.1:27017/offer_bridge_forum
+      auto-index-creation: true
 
 mybatis:
   mapper-locations: classpath:mapper/*.xml
