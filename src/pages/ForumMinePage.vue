@@ -2,14 +2,11 @@
   <section class="page-card fade-up forum-shell">
     <div class="forum-head">
       <div>
-        <h2 class="section-title">论坛社区</h2>
-        <p class="section-desc">搜索社区帖子，并按栏目筛选。</p>
+        <h2 class="section-title">我的论坛</h2>
+        <p class="section-desc">管理我发布、赞过、收藏的帖子。</p>
       </div>
       <div class="head-actions">
-        <el-button plain class="jump-btn" @click="goMine">我的</el-button>
-        <el-badge :value="unreadCount" :hidden="unreadCount === 0">
-          <el-button plain class="jump-btn" @click="openNotificationDrawer">互动通知</el-button>
-        </el-badge>
+        <el-button plain class="jump-btn" @click="goCommunity">返回社区</el-button>
         <el-button type="primary" class="jump-btn" :disabled="!isStudent" @click="goCreate">发布帖子</el-button>
       </div>
     </div>
@@ -24,7 +21,7 @@
     />
 
     <div class="search-hero">
-      <el-input v-model="keywordInput" size="large" placeholder="搜索标题、正文、标签" clearable @keyup.enter="handleSearch">
+      <el-input v-model="keywordInput" size="large" placeholder="搜索我的帖子/赞过/收藏" clearable @keyup.enter="handleSearch">
         <template #append>
           <el-button @click="handleSearch">搜索</el-button>
         </template>
@@ -32,6 +29,15 @@
     </div>
 
     <div class="filter-strip">
+      <div class="filter-row">
+        <span class="label">我的</span>
+        <el-radio-group v-model="mineTab" class="switch-group">
+          <el-radio-button label="POSTED">帖子</el-radio-button>
+          <el-radio-button label="LIKED">赞过</el-radio-button>
+          <el-radio-button label="FAVORITED">收藏</el-radio-button>
+        </el-radio-group>
+      </div>
+
       <div class="filter-row">
         <span class="label">栏目</span>
         <el-radio-group v-model="channel" class="switch-group">
@@ -41,8 +47,8 @@
       </div>
     </div>
 
-    <div v-loading="loadingPosts" class="post-list" :key="`${channel}-${page}`">
-      <el-empty v-if="!posts.length" description="暂无帖子，试试搜索关键词" />
+    <div v-loading="loadingPosts" class="post-list" :key="`${mineTab}-${channel}-${page}`">
+      <el-empty v-if="!posts.length" :description="emptyText" />
 
       <article v-for="item in posts" :key="item.postId" class="post-card">
         <header class="post-header">
@@ -124,20 +130,6 @@
         @current-change="(p: number) => reloadPosts(p)"
       />
     </div>
-
-    <el-drawer v-model="notificationVisible" title="论坛互动通知" size="420px">
-      <div class="notify-head">
-        <span>未读 {{ unreadCount }}</span>
-        <el-button link type="primary" @click="markAllNotificationsRead">全部已读</el-button>
-      </div>
-      <div v-loading="loadingNotifications" class="notify-list">
-        <el-empty v-if="!notifications.length" description="暂无通知" />
-        <div v-for="item in notifications" :key="item.notificationId" class="notify-item" :class="{ unread: !item.read }" @click="openNotificationPost(item.postId)">
-          <p class="notify-text">用户 {{ item.actorUserId }} {{ notificationText(item.type) }}了你的帖子</p>
-          <p class="notify-time">{{ formatTime(item.createdAt) }}</p>
-        </div>
-      </div>
-    </el-drawer>
   </section>
 </template>
 
@@ -154,27 +146,25 @@ import {
   getForumPostDetail,
   likeForumPost,
   listForumComments,
-  listForumNotifications,
   listForumPosts,
-  markForumNotificationsRead,
   shareForumPost,
   unfavoriteForumPost,
   unlikeForumPost
 } from '../services/forum'
 import { useAuthStore } from '../stores/auth'
-import type { ForumChannel, ForumComment, ForumNotification, ForumNotificationType, ForumPost } from '../types/forum'
+import type { ForumChannel, ForumComment, ForumPost } from '../types/forum'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
 const loadingPosts = ref(false)
+const mineTab = ref<'POSTED' | 'LIKED' | 'FAVORITED'>('POSTED')
 const channel = ref<ForumChannel>('EXPERIENCE')
 const keywordInput = ref('')
 const page = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const posts = ref<ForumPost[]>([])
-let reloadPostsSeq = 0
 
 const expandedContentPostIds = ref<Set<string>>(new Set())
 const detailContentByPost = ref<Record<string, string>>({})
@@ -184,31 +174,25 @@ const loadingCommentsByPost = ref<Record<string, boolean>>({})
 const commentDraftByPost = ref<Record<string, string>>({})
 const sendingCommentPostId = ref<string | null>(null)
 
-const notificationVisible = ref(false)
-const loadingNotifications = ref(false)
-const notifications = ref<ForumNotification[]>([])
-const unreadCount = ref(0)
-
 const isStudent = computed(() => authStore.authMeta?.role === 'STUDENT')
 const currentUserId = computed(() => authStore.authMeta?.userId || 0)
+let reloadPostsSeq = 0
+const emptyText = computed(() => {
+  if (mineTab.value === 'POSTED') return '你还没有发布帖子'
+  if (mineTab.value === 'LIKED') return '你还没有赞过帖子'
+  return '你还没有收藏帖子'
+})
 
-watch(channel, () => {
+watch([mineTab, channel], () => {
   reloadPosts(1)
 })
 
 onMounted(async () => {
   await reloadPosts(1)
-  await loadNotifications()
 })
 
 function channelText(value: ForumChannel) {
   return value === 'EXPERIENCE' ? '留学经验贴' : 'offer墙'
-}
-
-function notificationText(type: ForumNotificationType) {
-  if (type === 'COMMENT') return '评论'
-  if (type === 'FAVORITE') return '收藏'
-  return '点赞'
 }
 
 function formatTime(value: string) {
@@ -236,8 +220,8 @@ function getPostContentHtml(post: ForumPost) {
   return detailContentByPost.value[post.postId] || post.contentHtml || `<p>${post.summary}</p>`
 }
 
-function goMine() {
-  router.push('/forum/mine')
+function goCommunity() {
+  router.push('/forum')
 }
 
 function goCreate() {
@@ -256,9 +240,11 @@ async function reloadPosts(nextPage = page.value) {
   const seq = ++reloadPostsSeq
   loadingPosts.value = true
   try {
+    const reaction = mineTab.value === 'POSTED' ? undefined : mineTab.value
     const data = await listForumPosts({
-      mode: 'COMMUNITY',
+      mode: 'MINE',
       channel: channel.value,
+      reaction,
       keyword: keywordInput.value.trim() || undefined,
       page: nextPage,
       pageSize: pageSize.value
@@ -354,7 +340,9 @@ async function toggleLike(post: ForumPost) {
       likeCount: state.likeCount,
       favoriteCount: state.favoriteCount
     })
-    await loadNotifications()
+    if (mineTab.value === 'LIKED' && !state.liked) {
+      await reloadPosts(1)
+    }
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '操作失败')
   }
@@ -370,7 +358,9 @@ async function toggleFavorite(post: ForumPost) {
       likeCount: state.likeCount,
       favoriteCount: state.favoriteCount
     })
-    await loadNotifications()
+    if (mineTab.value === 'FAVORITED' && !state.favorited) {
+      await reloadPosts(1)
+    }
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '操作失败')
   }
@@ -411,59 +401,10 @@ async function submitComment(post: ForumPost) {
     commentDraftByPost.value = { ...commentDraftByPost.value, [post.postId]: '' }
     syncPostInList(post.postId, { commentCount: post.commentCount + 1 })
     ElMessage.success('评论成功')
-    await loadNotifications()
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '评论失败')
   } finally {
     sendingCommentPostId.value = null
-  }
-}
-
-function openNotificationDrawer() {
-  notificationVisible.value = true
-  loadNotifications()
-}
-
-async function loadNotifications() {
-  loadingNotifications.value = true
-  try {
-    const data = await listForumNotifications({ page: 1, pageSize: 20 })
-    notifications.value = data.items
-    unreadCount.value = data.unreadCount
-  } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '通知加载失败')
-  } finally {
-    loadingNotifications.value = false
-  }
-}
-
-async function markAllNotificationsRead() {
-  try {
-    await markForumNotificationsRead({ markAll: true })
-    notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
-    unreadCount.value = 0
-  } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '操作失败')
-  }
-}
-
-async function openNotificationPost(postId: string) {
-  const unreadIds = notifications.value.filter((item) => !item.read).map((item) => item.notificationId)
-  if (unreadIds.length > 0) {
-    await markForumNotificationsRead({ notificationIds: unreadIds })
-    notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
-    unreadCount.value = 0
-  }
-
-  try {
-    const detail = await getForumPostDetail(postId)
-    channel.value = detail.channel
-    await reloadPosts(1)
-    notificationVisible.value = false
-    await toggleComment(postId)
-  } catch {
-    await reloadPosts(1)
-    notificationVisible.value = false
   }
 }
 
@@ -532,6 +473,8 @@ async function copyText(text: string) {
   border-radius: 16px;
   padding: 14px;
   background: #fff;
+  display: grid;
+  gap: 12px;
 }
 
 .filter-row {
@@ -726,48 +669,6 @@ async function copyText(text: string) {
   margin-top: 18px;
   display: flex;
   justify-content: center;
-}
-
-.notify-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  color: #597292;
-}
-
-.notify-list {
-  display: grid;
-  gap: 8px;
-}
-
-.notify-item {
-  border: 1px solid #e2ebf7;
-  border-radius: 10px;
-  padding: 10px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.notify-item:hover {
-  border-color: #a9c5ef;
-  transform: translateY(-1px);
-}
-
-.notify-item.unread {
-  background: #f4f8ff;
-  border-color: #bfd7ff;
-}
-
-.notify-text {
-  margin: 0;
-  color: #2f4564;
-}
-
-.notify-time {
-  margin: 6px 0 0;
-  color: #7d91ad;
-  font-size: 12px;
 }
 
 @media (max-width: 768px) {

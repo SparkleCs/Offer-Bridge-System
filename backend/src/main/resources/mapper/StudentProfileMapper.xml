@@ -28,6 +28,16 @@
     LIMIT 1
   </select>
 
+  <select id="listByUserIds" resultMap="BaseMap">
+    SELECT id, user_id, name, email, education_level, school_name, major, gpa_value, gpa_scale,
+           rank_value, target_major_text, intake_term, budget_currency, budget_min, budget_max, budget_note
+    FROM student_profile
+    WHERE user_id IN
+    <foreach collection="userIds" item="userId" open="(" separator="," close=")">
+      #{userId}
+    </foreach>
+  </select>
+
   <insert id="insertEmpty">
     INSERT INTO student_profile(user_id)
     VALUES(#{userId})

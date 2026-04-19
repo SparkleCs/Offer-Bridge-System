@@ -49,6 +49,7 @@ public class ForumDtos {
   public static class PostItem {
     private String postId;
     private Long authorUserId;
+    private String authorDisplayName;
     private String channel;
     private String title;
     private String contentHtml;
@@ -68,6 +69,8 @@ public class ForumDtos {
     public void setPostId(String postId) { this.postId = postId; }
     public Long getAuthorUserId() { return authorUserId; }
     public void setAuthorUserId(Long authorUserId) { this.authorUserId = authorUserId; }
+    public String getAuthorDisplayName() { return authorDisplayName; }
+    public void setAuthorDisplayName(String authorDisplayName) { this.authorDisplayName = authorDisplayName; }
     public String getChannel() { return channel; }
     public void setChannel(String channel) { this.channel = channel; }
     public String getTitle() { return title; }

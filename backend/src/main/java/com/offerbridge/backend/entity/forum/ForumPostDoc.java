@@ -12,7 +12,8 @@ import java.util.List;
 
 @Document(collection = "forum_posts")
 @CompoundIndexes({
-  @CompoundIndex(name = "idx_channel_status_created", def = "{\"channel\":1,\"status\":1,\"createdAt\":-1}")
+  @CompoundIndex(name = "idx_channel_status_created", def = "{\"channel\":1,\"status\":1,\"createdAt\":-1}"),
+  @CompoundIndex(name = "idx_author_channel_created", def = "{\"authorUserId\":1,\"channel\":1,\"createdAt\":-1}")
 })
 public class ForumPostDoc {
   @Id
@@ -26,6 +27,7 @@ public class ForumPostDoc {
   private String contentHtml;
   @TextIndexed(weight = 2)
   private String contentText;
+  private String searchText;
   private List<String> tags;
   @Indexed
   private String status;
@@ -49,6 +51,8 @@ public class ForumPostDoc {
   public void setContentHtml(String contentHtml) { this.contentHtml = contentHtml; }
   public String getContentText() { return contentText; }
   public void setContentText(String contentText) { this.contentText = contentText; }
+  public String getSearchText() { return searchText; }
+  public void setSearchText(String searchText) { this.searchText = searchText; }
   public List<String> getTags() { return tags; }
   public void setTags(List<String> tags) { this.tags = tags; }
   public String getStatus() { return status; }

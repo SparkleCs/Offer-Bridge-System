@@ -1,5 +1,5 @@
 <template>
-  <section class="page-card fade-up universities-page">
+  <section ref="pageTopRef" class="page-card fade-up universities-page">
     <div class="page-head">
       <p class="crumb">首页 / 院校</p>
       <h2 class="section-title">院校</h2>
@@ -69,15 +69,16 @@
       </div>
 
       <div class="filter-actions">
-        <el-input v-model="filters.keyword" placeholder="学校关键词（可选）" clearable />
+        <el-input v-model="filters.keyword" placeholder="学校/国家/城市关键词（可选）" clearable />
         <el-button type="primary" :loading="loading" @click="search">筛选</el-button>
         <el-button :loading="loading" @click="resetFilters">清空条件</el-button>
       </div>
     </div>
 
     <div class="result-list" v-loading="loading">
-      <el-empty v-if="schools.length === 0 && !loading" description="没有符合条件的院校" />
-      <article v-for="school in schools" :key="school.id" class="school-card">
+      <el-empty v-if="totalSchools === 0 && !loading" description="没有符合条件的院校" />
+      <transition-group name="school-fade" tag="div" class="school-list-inner">
+        <article v-for="school in pagedSchools" :key="school.id" class="school-card">
         <div class="school-main">
           <div class="school-left">
             <div class="school-logo">{{ school.schoolNameEn.slice(0, 3).toUpperCase() }}</div>
@@ -121,13 +122,25 @@
           </div>
           <el-empty v-else description="该校暂无项目数据" :image-size="64" />
         </div>
-      </article>
+        </article>
+      </transition-group>
+      <div v-if="totalSchools > pageSize" class="pager-wrap">
+        <el-pagination
+          class="school-pagination"
+          background
+          layout="prev, pager, next"
+          :current-page="currentPage"
+          :page-size="pageSize"
+          :total="totalSchools"
+          @current-change="handlePageChange"
+        />
+      </div>
     </div>
   </section>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '../services/http'
 import { addApplication, getUniversityMeta, listPrograms, listSchools } from '../services/university'
@@ -155,12 +168,20 @@ const rankPreset = ref<RankPreset>('ALL')
 const loading = ref(false)
 const addingProgramId = ref<number | null>(null)
 const schools = ref<SchoolListItem[]>([])
+const currentPage = ref(1)
+const pageSize = 10
+const pageTopRef = ref<HTMLElement | null>(null)
 const programsBySchool = ref<Map<number, ProgramListItem[]>>(new Map())
 const expandedSchoolIds = ref<Set<number>>(new Set())
 
 const directionOptions = computed<FilterOption[]>(() => {
   if (!filters.subjectCategoryCode) return meta.directions
   return meta.directions.filter((item) => item.parentCode === filters.subjectCategoryCode)
+})
+const totalSchools = computed(() => schools.value.length)
+const pagedSchools = computed(() => {
+  const start = (currentPage.value - 1) * pageSize
+  return schools.value.slice(start, start + pageSize)
 })
 
 function readError(error: unknown) {
@@ -226,6 +247,7 @@ function resetFilters() {
   filters.rankMax = undefined
   filters.keyword = ''
   rankPreset.value = 'ALL'
+  currentPage.value = 1
   expandedSchoolIds.value = new Set()
   search().catch(() => {
     // ignored
@@ -254,6 +276,8 @@ async function search() {
       keyword: filters.keyword || undefined
     })
     schools.value = schoolList
+    currentPage.value = 1
+    expandedSchoolIds.value = new Set()
 
     const programs = await listPrograms({
       countryCode: filters.countryCode || undefined,
@@ -269,6 +293,17 @@ async function search() {
   } finally {
     loading.value = false
   }
+}
+
+function handlePageChange(page: number) {
+  currentPage.value = page
+  expandedSchoolIds.value = new Set()
+  nextTick(() => {
+    const element = pageTopRef.value
+    if (!element) return
+    const top = element.getBoundingClientRect().top + window.scrollY - 84
+    window.scrollTo({ top: Math.max(top, 0), behavior: 'smooth' })
+  })
 }
 
 function toggleExpand(schoolId: number) {
@@ -398,6 +433,62 @@ onMounted(async () => {
 .result-list {
   display: grid;
   gap: 14px;
+}
+
+.school-list-inner {
+  display: grid;
+  gap: 14px;
+}
+
+.pager-wrap {
+  margin-top: 6px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.school-pagination :deep(.btn-prev),
+.school-pagination :deep(.btn-next),
+.school-pagination :deep(.el-pager li) {
+  border: 1px solid #d8e5f4;
+  border-radius: 10px;
+  min-width: 34px;
+  height: 34px;
+  margin: 0 4px;
+  color: #355073;
+  background: linear-gradient(180deg, #ffffff, #f4f8ff);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, color 0.22s ease, border-color 0.22s ease;
+}
+
+.school-pagination :deep(.btn-prev:hover),
+.school-pagination :deep(.btn-next:hover),
+.school-pagination :deep(.el-pager li:hover) {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 16px rgba(41, 86, 146, 0.18);
+  border-color: #8cb4e4;
+  color: #0f4c81;
+}
+
+.school-pagination :deep(.el-pager li.is-active) {
+  background: linear-gradient(120deg, #0f4c81, #2f6aa1);
+  color: #fff;
+  border-color: #0f4c81;
+  box-shadow: 0 10px 18px rgba(15, 76, 129, 0.24);
+  transform: translateY(-1px);
+}
+
+.school-fade-enter-active,
+.school-fade-leave-active {
+  transition: all 0.28s ease;
+}
+
+.school-fade-enter-from {
+  opacity: 0;
+  transform: translateY(8px) scale(0.995);
+}
+
+.school-fade-leave-to {
+  opacity: 0;
+  transform: translateY(-8px) scale(0.995);
 }
 
 .school-card {

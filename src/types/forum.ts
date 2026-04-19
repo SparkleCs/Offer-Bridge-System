@@ -1,5 +1,7 @@
 export type ForumChannel = 'EXPERIENCE' | 'OFFER_WALL'
 export type ForumNotificationType = 'LIKE' | 'COMMENT' | 'FAVORITE'
+export type ForumMode = 'COMMUNITY' | 'MINE'
+export type ForumReaction = 'LIKED' | 'FAVORITED'
 
 export interface CreatePostPayload {
   channel: ForumChannel
@@ -13,15 +15,25 @@ export interface CreateCommentPayload {
 }
 
 export interface ForumSearchParams {
+  mode?: ForumMode
   channel?: ForumChannel
+  reaction?: ForumReaction
   keyword?: string
   page?: number
   pageSize?: number
 }
 
+export interface UpdatePostPayload {
+  channel: ForumChannel
+  title: string
+  contentHtml: string
+  tags: string[]
+}
+
 export interface ForumPost {
   postId: string
   authorUserId: number
+  authorDisplayName: string
   channel: ForumChannel
   title: string
   contentHtml: string | null

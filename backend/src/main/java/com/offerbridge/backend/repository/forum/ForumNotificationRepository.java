@@ -9,4 +9,5 @@ import java.util.List;
 public interface ForumNotificationRepository extends MongoRepository<ForumNotificationDoc, String> {
   long countByReceiverUserIdAndRead(Long receiverUserId, boolean read);
   List<ForumNotificationDoc> findByReceiverUserId(Long receiverUserId, Pageable pageable);
+  long deleteByPostId(String postId);
 }

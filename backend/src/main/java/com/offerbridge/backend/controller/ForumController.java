@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,14 +32,28 @@ public class ForumController {
     return ApiResponse.ok(forumService.createPost(AuthContext.getUserId(), request));
   }
 
+  @PutMapping("/posts/{postId}")
+  public ApiResponse<ForumDtos.PostItem> updatePost(@PathVariable("postId") String postId,
+                                                    @Valid @RequestBody ForumDtos.CreatePostRequest request) {
+    return ApiResponse.ok(forumService.updatePost(AuthContext.getUserId(), postId, request));
+  }
+
+  @DeleteMapping("/posts/{postId}")
+  public ApiResponse<Void> deletePost(@PathVariable("postId") String postId) {
+    forumService.deletePost(AuthContext.getUserId(), postId);
+    return ApiResponse.ok();
+  }
+
   @GetMapping("/posts")
   public ApiResponse<ForumDtos.PostListView> listPosts(
+    @RequestParam(value = "mode", required = false) String mode,
     @RequestParam(value = "channel", required = false) String channel,
+    @RequestParam(value = "reaction", required = false) String reaction,
     @RequestParam(value = "keyword", required = false) String keyword,
     @RequestParam(value = "page", required = false) Integer page,
     @RequestParam(value = "pageSize", required = false) Integer pageSize
   ) {
-    return ApiResponse.ok(forumService.listPosts(AuthContext.getUserId(), channel, keyword, page, pageSize));
+    return ApiResponse.ok(forumService.listPosts(AuthContext.getUserId(), mode, channel, reaction, keyword, page, pageSize));
   }
 
   @GetMapping("/posts/{postId}")

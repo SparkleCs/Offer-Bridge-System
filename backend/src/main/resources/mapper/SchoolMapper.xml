@@ -57,6 +57,11 @@
         AND (
           s.school_name_cn LIKE CONCAT('%', #{keyword}, '%')
           OR s.school_name_en LIKE CONCAT('%', #{keyword}, '%')
+          OR s.country_name LIKE CONCAT('%', #{keyword}, '%')
+          OR s.country_code LIKE CONCAT('%', #{keyword}, '%')
+          OR s.city_name LIKE CONCAT('%', #{keyword}, '%')
+          OR s.advantage_subjects LIKE CONCAT('%', #{keyword}, '%')
+          OR s.school_summary LIKE CONCAT('%', #{keyword}, '%')
         )
       </if>
     </where>

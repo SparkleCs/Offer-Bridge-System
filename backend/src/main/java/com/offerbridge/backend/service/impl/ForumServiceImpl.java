@@ -1,6 +1,7 @@
 package com.offerbridge.backend.service.impl;
 
 import com.offerbridge.backend.dto.ForumDtos;
+import com.offerbridge.backend.entity.StudentProfile;
 import com.offerbridge.backend.entity.UserAccount;
 import com.offerbridge.backend.entity.forum.ForumCommentDoc;
 import com.offerbridge.backend.entity.forum.ForumNotificationDoc;
@@ -8,46 +9,58 @@ import com.offerbridge.backend.entity.forum.ForumPostDoc;
 import com.offerbridge.backend.entity.forum.ForumReactionDoc;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.UserAccountMapper;
+import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.repository.forum.ForumCommentRepository;
 import com.offerbridge.backend.repository.forum.ForumNotificationRepository;
 import com.offerbridge.backend.repository.forum.ForumPostRepository;
 import com.offerbridge.backend.repository.forum.ForumReactionRepository;
 import com.offerbridge.backend.service.ForumService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.data.mongodb.core.query.TextCriteria;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 public class ForumServiceImpl implements ForumService {
+  private static final Logger log = LoggerFactory.getLogger(ForumServiceImpl.class);
   private static final String ROLE_STUDENT = "STUDENT";
   private static final String STATUS_PUBLISHED = "PUBLISHED";
   private static final String CHANNEL_EXPERIENCE = "EXPERIENCE";
   private static final String CHANNEL_OFFER_WALL = "OFFER_WALL";
   private static final String ACTION_LIKE = "LIKE";
   private static final String ACTION_FAVORITE = "FAVORITE";
+  private static final String MODE_COMMUNITY = "COMMUNITY";
+  private static final String MODE_MINE = "MINE";
+  private static final String REACTION_LIKED = "LIKED";
+  private static final String REACTION_FAVORITED = "FAVORITED";
 
   private final ForumPostRepository forumPostRepository;
   private final ForumCommentRepository forumCommentRepository;
   private final ForumReactionRepository forumReactionRepository;
   private final ForumNotificationRepository forumNotificationRepository;
   private final UserAccountMapper userAccountMapper;
+  private final StudentProfileMapper studentProfileMapper;
   private final MongoTemplate mongoTemplate;
 
   public ForumServiceImpl(ForumPostRepository forumPostRepository,
@@ -55,12 +68,14 @@ public class ForumServiceImpl implements ForumService {
                           ForumReactionRepository forumReactionRepository,
                           ForumNotificationRepository forumNotificationRepository,
                           UserAccountMapper userAccountMapper,
+                          StudentProfileMapper studentProfileMapper,
                           MongoTemplate mongoTemplate) {
     this.forumPostRepository = forumPostRepository;
     this.forumCommentRepository = forumCommentRepository;
     this.forumReactionRepository = forumReactionRepository;
     this.forumNotificationRepository = forumNotificationRepository;
     this.userAccountMapper = userAccountMapper;
+    this.studentProfileMapper = studentProfileMapper;
     this.mongoTemplate = mongoTemplate;
   }
 
@@ -82,6 +97,7 @@ public class ForumServiceImpl implements ForumService {
     post.setContentHtml(contentHtml);
     post.setContentText(contentText);
     post.setTags(normalizeTags(request.getTags(), channel));
+    post.setSearchText(buildSearchText(title, contentText, post.getTags()));
     post.setStatus(STATUS_PUBLISHED);
     post.setLikeCount(0);
     post.setCommentCount(0);
@@ -92,16 +108,69 @@ public class ForumServiceImpl implements ForumService {
     post.setUpdatedAt(now);
 
     ForumPostDoc saved = forumPostRepository.save(post);
-    return toPostItem(saved, false, false, true);
+    return toPostItem(saved, false, false, true, buildDisplayNameByAuthorId(List.of(saved.getAuthorUserId())));
   }
 
   @Override
-  public ForumDtos.PostListView listPosts(Long userId, String channel, String keyword, Integer page, Integer pageSize) {
+  public ForumDtos.PostItem updatePost(Long userId, String postId, ForumDtos.CreatePostRequest request) {
+    requireStudentRole(userId);
+    ForumPostDoc post = requirePost(postId);
+    requirePostOwner(userId, post);
+
+    String channel = normalizeChannel(request.getChannel());
+    String title = normalizeRequiredText(request.getTitle(), 120, "标题不能为空");
+    String contentHtml = normalizeRequiredText(request.getContentHtml(), 20000, "内容不能为空");
+    String contentText = stripHtml(contentHtml);
+    if (!StringUtils.hasText(contentText)) {
+      throw new BizException("BIZ_BAD_REQUEST", "内容不能为空");
+    }
+
+    post.setChannel(channel);
+    post.setTitle(title);
+    post.setContentHtml(contentHtml);
+    post.setContentText(contentText);
+    post.setTags(normalizeTags(request.getTags(), channel));
+    post.setSearchText(buildSearchText(title, contentText, post.getTags()));
+    post.setUpdatedAt(Instant.now());
+    ForumPostDoc saved = forumPostRepository.save(post);
+
+    boolean liked = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_LIKE).isPresent();
+    boolean favorited = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_FAVORITE).isPresent();
+    return toPostItem(saved, liked, favorited, true, buildDisplayNameByAuthorId(List.of(saved.getAuthorUserId())));
+  }
+
+  @Override
+  @Transactional
+  public void deletePost(Long userId, String postId) {
+    requireStudentRole(userId);
+    ForumPostDoc post = requirePost(postId);
+    requirePostOwner(userId, post);
+
+    forumCommentRepository.deleteByPostId(postId);
+    forumReactionRepository.deleteByPostId(postId);
+    forumNotificationRepository.deleteByPostId(postId);
+    forumPostRepository.deleteById(postId);
+  }
+
+  @Override
+  public ForumDtos.PostListView listPosts(Long userId, String mode, String channel, String reaction, String keyword, Integer page, Integer pageSize) {
     int safePage = normalizePage(page);
     int safePageSize = normalizePageSize(pageSize);
+    String normalizedKeyword = normalizeKeyword(keyword);
+    String normalizedMode = normalizeMode(mode);
+    String normalizedReaction = MODE_MINE.equals(normalizedMode) ? normalizeReaction(reaction) : null;
 
-    Query query = buildPostListQuery(channel, keyword);
+    Query query = buildPostListQuery(userId, normalizedMode, channel, normalizedReaction, normalizedKeyword);
     long total = mongoTemplate.count(query, ForumPostDoc.class);
+    if (total == 0
+      && MODE_COMMUNITY.equals(normalizedMode)
+      && StringUtils.hasText(channel)
+      && normalizedKeyword != null) {
+      // If keyword search under a fixed channel returns empty, fallback to cross-channel search.
+      // This avoids "false empty" when users search globally but forget to switch channel.
+      query = buildPostListQuery(userId, normalizedMode, null, normalizedReaction, normalizedKeyword);
+      total = mongoTemplate.count(query, ForumPostDoc.class);
+    }
 
     query.with(Sort.by(Sort.Direction.DESC, "createdAt"));
     query.skip((long) (safePage - 1) * safePageSize).limit(safePageSize);
@@ -122,9 +191,13 @@ public class ForumServiceImpl implements ForumService {
         .collect(Collectors.toSet());
     }
 
+    Map<Long, String> displayNameMap = buildDisplayNameByAuthorId(
+      docs.stream().map(ForumPostDoc::getAuthorUserId).filter(Objects::nonNull).distinct().toList()
+    );
+
     List<ForumDtos.PostItem> items = new ArrayList<>();
     for (ForumPostDoc doc : docs) {
-      items.add(toPostItem(doc, likedPostIds.contains(doc.getId()), favoritedPostIds.contains(doc.getId()), false));
+      items.add(toPostItem(doc, likedPostIds.contains(doc.getId()), favoritedPostIds.contains(doc.getId()), false, displayNameMap));
     }
 
     ForumDtos.PostListView view = new ForumDtos.PostListView();
@@ -144,7 +217,7 @@ public class ForumServiceImpl implements ForumService {
       liked = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_LIKE).isPresent();
       favorited = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_FAVORITE).isPresent();
     }
-    return toPostItem(post, liked, favorited, true);
+    return toPostItem(post, liked, favorited, true, buildDisplayNameByAuthorId(List.of(post.getAuthorUserId())));
   }
 
   @Override
@@ -299,7 +372,7 @@ public class ForumServiceImpl implements ForumService {
     return result;
   }
 
-  private Query buildPostListQuery(String channel, String keyword) {
+  private Query buildPostListQuery(Long userId, String mode, String channel, String reaction, String keyword) {
     Query query = new Query();
     query.addCriteria(Criteria.where("status").is(STATUS_PUBLISHED));
 
@@ -307,19 +380,86 @@ public class ForumServiceImpl implements ForumService {
       query.addCriteria(Criteria.where("channel").is(normalizeChannel(channel)));
     }
 
-    if (StringUtils.hasText(keyword)) {
-      query.addCriteria(TextCriteria.forDefaultLanguage().matching(keyword.trim()));
+    if (MODE_MINE.equals(mode) && !StringUtils.hasText(reaction)) {
+      query.addCriteria(Criteria.where("authorUserId").is(userId));
+    }
+
+    if (MODE_MINE.equals(mode) && StringUtils.hasText(reaction)) {
+      List<String> postIds = findReactionPostIds(userId, reaction);
+      if (postIds.isEmpty()) {
+        query.addCriteria(Criteria.where("_id").exists(false));
+      } else {
+        query.addCriteria(Criteria.where("_id").in(postIds));
+      }
+    }
+
+    if (keyword != null) {
+      query.addCriteria(buildKeywordCriteria(keyword));
     }
 
     return query;
   }
 
-  private ForumPostDoc requirePublishedPost(String postId) {
+  private List<String> findReactionPostIds(Long userId, String reaction) {
+    String actionType = REACTION_LIKED.equals(reaction) ? ACTION_LIKE : ACTION_FAVORITE;
+    List<ForumReactionDoc> reactions = forumReactionRepository.findByUserIdAndActionType(userId, actionType, Sort.by(Sort.Direction.DESC, "createdAt"));
+    return reactions.stream()
+      .map(ForumReactionDoc::getPostId)
+      .filter(StringUtils::hasText)
+      .distinct()
+      .toList();
+  }
+
+  private Criteria buildKeywordCriteria(String keyword) {
+    // Split by whitespace and punctuation to tolerate inputs like "墨尔本 26fall" or "#墨尔本".
+    String[] parts = keyword.split("[\\s,，。.!！?？;；:：/\\\\|\\-+_]+");
+    List<String> tokens = new ArrayList<>();
+    for (String part : parts) {
+      if (!StringUtils.hasText(part)) continue;
+      tokens.add(part.trim());
+    }
+    if (tokens.isEmpty()) {
+      tokens = List.of(keyword);
+    }
+
+    List<Criteria> andParts = new ArrayList<>();
+    for (String token : tokens) {
+      String escaped = Pattern.quote(token);
+      andParts.add(new Criteria().orOperator(
+        Criteria.where("searchText").regex(escaped, "i"),
+        Criteria.where("title").regex(escaped, "i"),
+        Criteria.where("contentText").regex(escaped, "i"),
+        Criteria.where("contentHtml").regex(escaped, "i"),
+        Criteria.where("tags").regex(escaped, "i")
+      ));
+    }
+
+    if (andParts.size() == 1) {
+      return andParts.get(0);
+    }
+    return new Criteria().andOperator(andParts.toArray(new Criteria[0]));
+  }
+
+  private ForumPostDoc requirePost(String postId) {
     ForumPostDoc post = forumPostRepository.findById(postId).orElse(null);
+    if (post == null) {
+      throw new BizException("BIZ_NOT_FOUND", "帖子不存在或已删除");
+    }
+    return post;
+  }
+
+  private ForumPostDoc requirePublishedPost(String postId) {
+    ForumPostDoc post = requirePost(postId);
     if (post == null || !STATUS_PUBLISHED.equals(post.getStatus())) {
       throw new BizException("BIZ_NOT_FOUND", "帖子不存在或已删除");
     }
     return post;
+  }
+
+  private void requirePostOwner(Long userId, ForumPostDoc post) {
+    if (post.getAuthorUserId() == null || !post.getAuthorUserId().equals(userId)) {
+      throw new BizException("BIZ_FORBIDDEN", "仅帖子作者可执行此操作");
+    }
   }
 
   private void increasePostCounter(String postId, String field, int delta) {
@@ -362,10 +502,15 @@ public class ForumServiceImpl implements ForumService {
     return view;
   }
 
-  private ForumDtos.PostItem toPostItem(ForumPostDoc doc, boolean liked, boolean favorited, boolean includeHtml) {
+  private ForumDtos.PostItem toPostItem(ForumPostDoc doc,
+                                        boolean liked,
+                                        boolean favorited,
+                                        boolean includeHtml,
+                                        Map<Long, String> displayNameMap) {
     ForumDtos.PostItem item = new ForumDtos.PostItem();
     item.setPostId(doc.getId());
     item.setAuthorUserId(doc.getAuthorUserId());
+    item.setAuthorDisplayName(displayNameMap.getOrDefault(doc.getAuthorUserId(), "某同学"));
     item.setChannel(doc.getChannel());
     item.setTitle(doc.getTitle());
     item.setContentHtml(includeHtml ? doc.getContentHtml() : null);
@@ -437,6 +582,20 @@ public class ForumServiceImpl implements ForumService {
     throw new BizException("BIZ_BAD_REQUEST", "channel 参数不合法");
   }
 
+  private String normalizeMode(String mode) {
+    if (!StringUtils.hasText(mode)) return MODE_COMMUNITY;
+    String value = mode.trim().toUpperCase(Locale.ROOT);
+    if (MODE_COMMUNITY.equals(value) || MODE_MINE.equals(value)) return value;
+    throw new BizException("BIZ_BAD_REQUEST", "mode 参数不合法");
+  }
+
+  private String normalizeReaction(String reaction) {
+    if (!StringUtils.hasText(reaction)) return null;
+    String value = reaction.trim().toUpperCase(Locale.ROOT);
+    if (REACTION_LIKED.equals(value) || REACTION_FAVORITED.equals(value)) return value;
+    throw new BizException("BIZ_BAD_REQUEST", "reaction 参数不合法");
+  }
+
   private List<String> normalizeTags(List<String> inputTags, String channel) {
     List<String> source = inputTags == null ? List.of() : inputTags;
     Set<String> dedup = new HashSet<>();
@@ -485,6 +644,62 @@ public class ForumServiceImpl implements ForumService {
       value = value.substring(0, maxLen);
     }
     return value;
+  }
+
+  private String normalizeKeyword(String keyword) {
+    if (!StringUtils.hasText(keyword)) return null;
+    String value = keyword.trim();
+    if (value.length() > 50) {
+      value = value.substring(0, 50);
+    }
+    return value;
+  }
+
+  private String buildSearchText(String title, String contentText, List<String> tags) {
+    StringBuilder builder = new StringBuilder();
+    if (StringUtils.hasText(title)) builder.append(title.trim()).append(' ');
+    if (StringUtils.hasText(contentText)) builder.append(contentText.trim()).append(' ');
+    if (tags != null && !tags.isEmpty()) {
+      for (String tag : tags) {
+        if (StringUtils.hasText(tag)) {
+          builder.append(tag.trim()).append(' ');
+        }
+      }
+    }
+    String value = builder.toString().replaceAll("\\s+", " ").trim();
+    if (value.length() > 1000) {
+      return value.substring(0, 1000);
+    }
+    return value;
+  }
+
+  private Map<Long, String> buildDisplayNameByAuthorId(List<Long> userIds) {
+    if (userIds == null || userIds.isEmpty()) return Map.of();
+    List<Long> ids = userIds.stream().filter(Objects::nonNull).distinct().toList();
+    if (ids.isEmpty()) return Map.of();
+
+    Map<Long, String> result = new HashMap<>();
+    List<StudentProfile> profiles = studentProfileMapper.listByUserIds(ids);
+    Set<Long> foundUserIds = new HashSet<>();
+    for (StudentProfile profile : profiles) {
+      if (profile == null || profile.getUserId() == null) continue;
+      foundUserIds.add(profile.getUserId());
+      String name = profile.getName();
+      String display = "某同学";
+      if (StringUtils.hasText(name)) {
+        String first = name.trim().substring(0, 1);
+        display = first + "同学";
+      }
+      result.put(profile.getUserId(), display);
+    }
+    List<Long> missingUserIds = ids.stream().filter(id -> !foundUserIds.contains(id)).toList();
+    if (!missingUserIds.isEmpty()) {
+      log.debug("forum profile missing for userIds={}", missingUserIds);
+    }
+    for (Long id : ids) {
+      result.putIfAbsent(id, "某同学");
+    }
+    return result;
   }
 
   private String stripHtml(String html) {

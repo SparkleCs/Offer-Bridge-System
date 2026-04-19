@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface ForumCommentRepository extends MongoRepository<ForumCommentDoc, String> {
   List<ForumCommentDoc> findByPostIdAndStatus(String postId, String status, Sort sort);
+  long deleteByPostId(String postId);
 }

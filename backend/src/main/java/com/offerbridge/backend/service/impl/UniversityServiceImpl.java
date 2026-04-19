@@ -104,7 +104,14 @@ public class UniversityServiceImpl implements UniversityService {
                                                          Integer rankMin,
                                                          Integer rankMax,
                                                          String keyword) {
-    return schoolMapper.listSchools(countryCode, subjectCategoryCode, directionCode, rankMin, rankMax, keyword)
+    return schoolMapper.listSchools(
+        countryCode,
+        subjectCategoryCode,
+        directionCode,
+        rankMin,
+        rankMax,
+        normalizeKeyword(keyword)
+      )
       .stream()
       .map(this::toSchoolListItem)
       .toList();
@@ -146,7 +153,13 @@ public class UniversityServiceImpl implements UniversityService {
                                                            String subjectCategoryCode,
                                                            String directionCode,
                                                            String keyword) {
-    return programMapper.listPrograms(schoolId, countryCode, subjectCategoryCode, directionCode, keyword)
+    return programMapper.listPrograms(
+        schoolId,
+        countryCode,
+        subjectCategoryCode,
+        directionCode,
+        normalizeKeyword(keyword)
+      )
       .stream()
       .map(this::toProgramListItem)
       .toList();
@@ -388,5 +401,11 @@ public class UniversityServiceImpl implements UniversityService {
   private boolean containsIgnoreCase(String src, String part) {
     if (src == null || part == null) return false;
     return src.toLowerCase().contains(part.toLowerCase());
+  }
+
+  private String normalizeKeyword(String keyword) {
+    if (keyword == null) return null;
+    String value = keyword.trim();
+    return value.isEmpty() ? null : value;
   }
 }

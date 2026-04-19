@@ -11,7 +11,8 @@ import type {
   ForumPost,
   ForumPostListView,
   ForumSearchParams,
-  ForumShareView
+  ForumShareView,
+  UpdatePostPayload
 } from '../types/forum'
 
 export function createForumPost(payload: CreatePostPayload) {
@@ -27,7 +28,9 @@ export function createForumPost(payload: CreatePostPayload) {
 
 export function listForumPosts(params: ForumSearchParams = {}) {
   const search = new URLSearchParams()
+  if (params.mode) search.append('mode', params.mode)
   if (params.channel) search.append('channel', params.channel)
+  if (params.reaction) search.append('reaction', params.reaction)
   if (params.keyword) search.append('keyword', params.keyword)
   if (params.page) search.append('page', String(params.page))
   if (params.pageSize) search.append('pageSize', String(params.pageSize))
@@ -38,6 +41,17 @@ export function listForumPosts(params: ForumSearchParams = {}) {
 
 export function getForumPostDetail(postId: string) {
   return apiRequest<ForumPost>(`/api/v1/forum/posts/${postId}`, { method: 'GET' }, true)
+}
+
+export function updateForumPost(postId: string, payload: UpdatePostPayload) {
+  return apiRequest<ForumPost>(`/api/v1/forum/posts/${postId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function deleteForumPost(postId: string) {
+  return apiRequest<void>(`/api/v1/forum/posts/${postId}`, { method: 'DELETE' }, true)
 }
 
 export function likeForumPost(postId: string) {

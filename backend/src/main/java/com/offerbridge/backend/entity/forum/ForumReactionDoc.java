@@ -10,7 +10,8 @@ import java.time.Instant;
 @Document(collection = "forum_reactions")
 @CompoundIndexes({
   @CompoundIndex(name = "uniq_user_post_action", def = "{\"userId\":1,\"postId\":1,\"actionType\":1}", unique = true),
-  @CompoundIndex(name = "idx_post_action", def = "{\"postId\":1,\"actionType\":1}")
+  @CompoundIndex(name = "idx_post_action", def = "{\"postId\":1,\"actionType\":1}"),
+  @CompoundIndex(name = "idx_user_action_post", def = "{\"userId\":1,\"actionType\":1,\"postId\":1}")
 })
 public class ForumReactionDoc {
   @Id
