@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AdminReviewMapper">
+  <select id="listOrgReviews" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewListItem">
+    SELECT
+      o.admin_user_id AS userId,
+      'ORG' AS subjectType,
+      o.org_name AS subjectName,
+      ua.phone AS phone,
+      o.org_name AS orgName,
+      COALESCE(vr.status, o.verification_status, 'UNVERIFIED') AS status,
+      vr.reject_reason AS rejectReason,
+      vr.submitted_at AS submittedAt
+    FROM agency_org o
+    JOIN user_account ua ON ua.id = o.admin_user_id
+    LEFT JOIN verification_record vr ON vr.user_id = o.admin_user_id AND vr.verify_type = 'AGENT_ORG'
+    ORDER BY vr.submitted_at DESC, o.id DESC
+  </select>
+
+  <select id="listMemberReviews" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewListItem">
+    SELECT
+      m.user_id AS userId,
+      'MEMBER' AS subjectType,
+      m.display_name AS subjectName,
+      ua.phone AS phone,
+      o.org_name AS orgName,
+      COALESCE(vr.status, 'UNVERIFIED') AS status,
+      vr.reject_reason AS rejectReason,
+      vr.submitted_at AS submittedAt
+    FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
+    LEFT JOIN agency_org o ON o.id = m.org_id
+    LEFT JOIN verification_record vr ON vr.user_id = m.user_id AND vr.verify_type = 'AGENT_MEMBER_CERT'
+    WHERE m.status = 'ACTIVE'
+    ORDER BY vr.submitted_at DESC, m.id DESC
+  </select>
+
+  <select id="listStudentReviews" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewListItem">
+    SELECT
+      svm.user_id AS userId,
+      'STUDENT' AS subjectType,
+      svm.real_name AS subjectName,
+      ua.phone AS phone,
+      NULL AS orgName,
+      CASE
+        WHEN vrn.status = 'APPROVED' AND vre.status = 'APPROVED' THEN 'APPROVED'
+        WHEN vrn.status = 'REJECTED' OR vre.status = 'REJECTED' THEN 'REJECTED'
+        WHEN vrn.status = 'PENDING' OR vre.status = 'PENDING' THEN 'PENDING'
+        ELSE 'UNVERIFIED'
+      END AS status,
+      COALESCE(vrn.reject_reason, vre.reject_reason) AS rejectReason,
+      COALESCE(vrn.submitted_at, vre.submitted_at) AS submittedAt
+    FROM student_verification_material svm
+    JOIN user_account ua ON ua.id = svm.user_id
+    LEFT JOIN verification_record vrn ON vrn.user_id = svm.user_id AND vrn.verify_type = 'REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = svm.user_id AND vre.verify_type = 'EDUCATION'
+    ORDER BY COALESCE(vrn.submitted_at, vre.submitted_at) DESC, svm.id DESC
+  </select>
+
+  <select id="findOrgReviewDetail" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewDetailView">
+    SELECT
+      o.admin_user_id AS userId,
+      'ORG' AS subjectType,
+      o.org_name AS subjectName,
+      ua.phone AS phone,
+      o.org_name AS orgName,
+      COALESCE(vr.status, o.verification_status, 'UNVERIFIED') AS status,
+      vr.reject_reason AS rejectReason,
+      vr.payload_json AS payloadJson,
+      vr.submitted_at AS submittedAt
+    FROM agency_org o
+    JOIN user_account ua ON ua.id = o.admin_user_id
+    LEFT JOIN verification_record vr ON vr.user_id = o.admin_user_id AND vr.verify_type = 'AGENT_ORG'
+    WHERE o.admin_user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <select id="findMemberReviewDetail" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewDetailView">
+    SELECT
+      m.user_id AS userId,
+      'MEMBER' AS subjectType,
+      m.display_name AS subjectName,
+      ua.phone AS phone,
+      o.org_name AS orgName,
+      COALESCE(vr.status, 'UNVERIFIED') AS status,
+      vr.reject_reason AS rejectReason,
+      vr.payload_json AS payloadJson,
+      vr.submitted_at AS submittedAt
+    FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
+    LEFT JOIN agency_org o ON o.id = m.org_id
+    LEFT JOIN verification_record vr ON vr.user_id = m.user_id AND vr.verify_type = 'AGENT_MEMBER_CERT'
+    WHERE m.user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <select id="findStudentReviewDetail" resultType="com.offerbridge.backend.dto.AdminDtos$ReviewDetailView">
+    SELECT
+      svm.user_id AS userId,
+      'STUDENT' AS subjectType,
+      svm.real_name AS subjectName,
+      ua.phone AS phone,
+      NULL AS orgName,
+      CASE
+        WHEN vrn.status = 'APPROVED' AND vre.status = 'APPROVED' THEN 'APPROVED'
+        WHEN vrn.status = 'REJECTED' OR vre.status = 'REJECTED' THEN 'REJECTED'
+        WHEN vrn.status = 'PENDING' OR vre.status = 'PENDING' THEN 'PENDING'
+        ELSE 'UNVERIFIED'
+      END AS status,
+      COALESCE(vrn.reject_reason, vre.reject_reason) AS rejectReason,
+      COALESCE(vrn.payload_json, vre.payload_json) AS payloadJson,
+      COALESCE(vrn.submitted_at, vre.submitted_at) AS submittedAt
+    FROM student_verification_material svm
+    JOIN user_account ua ON ua.id = svm.user_id
+    LEFT JOIN verification_record vrn ON vrn.user_id = svm.user_id AND vrn.verify_type = 'REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = svm.user_id AND vre.verify_type = 'EDUCATION'
+    WHERE svm.user_id = #{userId}
+    LIMIT 1
+  </select>
+</mapper>
+

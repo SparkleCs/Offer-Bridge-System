@@ -18,6 +18,7 @@
       </aside>
 
       <section class="auth-panel">
+        <button class="admin-entry" type="button" @click="goAdminAuth">平台管理员入口</button>
         <h2 class="title" style="font-size:28px;">验证码登录/注册</h2>
         <p class="desc">首次验证通过即注册</p>
 
@@ -103,6 +104,10 @@ function clearTimer() {
     window.clearInterval(timer.value)
     timer.value = null
   }
+}
+
+function goAdminAuth() {
+  router.push('/admin-auth')
 }
 
 async function sendCode() {
@@ -283,8 +288,28 @@ onBeforeUnmount(() => {
 }
 
 .auth-panel {
+  position: relative;
   background: rgba(255, 255, 255, 0.94);
   padding: 52px 48px;
+}
+
+.admin-entry {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  border: none;
+  background: transparent;
+  color: #7390ad;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  transition: color 0.18s ease, background-color 0.18s ease;
+}
+
+.admin-entry:hover {
+  color: #436c97;
+  background: rgba(115, 144, 173, 0.12);
 }
 
 .title {

@@ -17,7 +17,7 @@ const access = ref<MemberWorkbenchAccess | null>(null)
 
 const blockedReason = computed(() => {
   if (!access.value) return '正在检查权限...'
-  if (access.value.orgVerificationStatus !== 'APPROVED') return '机构未认证通过，暂不可发布套餐。'
+  if (access.value.blockedReason) return access.value.blockedReason
   if (!access.value.canPublishPackage) return '你当前没有发布套餐权限，请联系管理员。'
   return ''
 })

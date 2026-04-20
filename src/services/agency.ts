@@ -14,6 +14,8 @@ import type {
   MemberProfilePayload,
   MemberRolesPayload,
   MemberSelfProfile,
+  MemberVerificationStatus,
+  MemberVerificationSubmitPayload,
   MemberWorkbenchAccess,
   OrgMemberCreatePayload,
   OrgMemberItem,
@@ -170,6 +172,17 @@ export function submitMyProfileForAudit() {
   return apiRequest<void>('/api/v1/agency/members/me/profile/submit', { method: 'PUT' }, true)
 }
 
+export function submitMyMemberVerification(payload: MemberVerificationSubmitPayload) {
+  return apiRequest<void>('/api/v1/agency/members/me/verification/submit', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function getMyMemberVerificationStatus() {
+  return apiRequest<MemberVerificationStatus>('/api/v1/agency/members/me/verification/status', { method: 'GET' }, true)
+}
+
 export function updateMyAgencyRoles(payload: MemberRolesPayload) {
   return apiRequest<void>('/api/v1/agency/members/me/roles', {
     method: 'PUT',
@@ -228,10 +241,10 @@ export function getDiscoveryTeamDetail(teamId: number) {
   return apiRequest<DiscoveryTeamDetail>(`/api/v1/agency/discovery/teams/${teamId}`, { method: 'GET' }, false)
 }
 
-export async function uploadFile(file: File) {
+export async function uploadFile(file: File, bucket: 'org-verification' | 'member-verification' | 'student-verification' | 'avatar' | 'general' = 'general') {
   const form = new FormData()
   form.append('file', file)
-  return apiRequest<{ url: string }>('/api/v1/files/upload', {
+  return apiRequest<{ url: string }>(`/api/v1/files/upload?bucket=${encodeURIComponent(bucket)}`, {
     method: 'POST',
     body: form
   }, true)

@@ -36,7 +36,7 @@ const mockChats = [
 
 const blockedReason = computed(() => {
   if (!access.value) return '正在检查权限...'
-  if (access.value.orgVerificationStatus !== 'APPROVED') return '当前机构尚未通过认证，暂不可使用沟通功能。'
+  if (access.value.blockedReason) return access.value.blockedReason
   if (!access.value.canChatStudent) return '你当前没有沟通学生权限，请联系机构管理员开通。'
   return ''
 })

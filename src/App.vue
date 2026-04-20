@@ -63,12 +63,13 @@ const year = new Date().getFullYear()
 const currentRole = computed(() => authStore.authMeta?.role || '')
 const showAgencyCenter = computed(() => currentRole.value === 'AGENT_ORG')
 const showWorkbench = computed(() => currentRole.value === 'AGENT_MEMBER')
-const isBackofficeRoute = computed(() => route.path.startsWith('/org-admin') || route.path.startsWith('/agent-workbench'))
+const isBackofficeRoute = computed(() => route.path.startsWith('/org-admin') || route.path.startsWith('/agent-workbench') || route.path.startsWith('/admin'))
 const displayName = computed(() => {
   if (authStore.profile?.name) return authStore.profile.name
   const role = currentRole.value
   if (role === 'AGENT_ORG') return '机构管理员'
   if (role === 'AGENT_MEMBER') return '机构成员'
+  if (role === 'ADMIN') return '平台管理员'
   return '学生用户'
 })
 const userInitial = computed(() => displayName.value.slice(0, 1) || 'U')

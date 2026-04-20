@@ -4,6 +4,7 @@ import com.offerbridge.backend.dto.AgencyDtos;
 import com.offerbridge.backend.entity.AgencyInvitation;
 import com.offerbridge.backend.entity.AgencyMemberMetrics;
 import com.offerbridge.backend.entity.AgencyMemberProfile;
+import com.offerbridge.backend.entity.AgencyMemberVerificationMaterial;
 import com.offerbridge.backend.entity.AgencyOrg;
 import com.offerbridge.backend.entity.AgencyTeam;
 import com.offerbridge.backend.entity.UserAccount;
@@ -13,6 +14,7 @@ import com.offerbridge.backend.mapper.AgencyInvitationMapper;
 import com.offerbridge.backend.mapper.AgencyMemberMetricsMapper;
 import com.offerbridge.backend.mapper.AgencyMemberPermissionRelMapper;
 import com.offerbridge.backend.mapper.AgencyMemberProfileMapper;
+import com.offerbridge.backend.mapper.AgencyMemberVerificationMaterialMapper;
 import com.offerbridge.backend.mapper.AgencyMemberRoleRelMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
@@ -39,6 +41,7 @@ public class AgencyServiceImpl implements AgencyService {
   private final AgencyTeamMapper agencyTeamMapper;
   private final AgencyInvitationMapper agencyInvitationMapper;
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
+  private final AgencyMemberVerificationMaterialMapper agencyMemberVerificationMaterialMapper;
   private final AgencyTeamMemberRelMapper agencyTeamMemberRelMapper;
   private final AgencyMemberRoleRelMapper agencyMemberRoleRelMapper;
   private final AgencyMemberMetricsMapper agencyMemberMetricsMapper;
@@ -51,6 +54,7 @@ public class AgencyServiceImpl implements AgencyService {
                            AgencyTeamMapper agencyTeamMapper,
                            AgencyInvitationMapper agencyInvitationMapper,
                            AgencyMemberProfileMapper agencyMemberProfileMapper,
+                           AgencyMemberVerificationMaterialMapper agencyMemberVerificationMaterialMapper,
                            AgencyTeamMemberRelMapper agencyTeamMemberRelMapper,
                            AgencyMemberRoleRelMapper agencyMemberRoleRelMapper,
                            AgencyMemberMetricsMapper agencyMemberMetricsMapper,
@@ -62,6 +66,7 @@ public class AgencyServiceImpl implements AgencyService {
     this.agencyTeamMapper = agencyTeamMapper;
     this.agencyInvitationMapper = agencyInvitationMapper;
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
+    this.agencyMemberVerificationMaterialMapper = agencyMemberVerificationMaterialMapper;
     this.agencyTeamMemberRelMapper = agencyTeamMemberRelMapper;
     this.agencyMemberRoleRelMapper = agencyMemberRoleRelMapper;
     this.agencyMemberMetricsMapper = agencyMemberMetricsMapper;
@@ -130,6 +135,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Override
   public AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem> listOrgMembers(Long userId, int page, int pageSize, String keyword, String status) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     List<AgencyDtos.MemberAdminItem> members = agencyMemberProfileMapper.listByOrgId(org.getId());
     List<AgencyDtos.MemberAdminItem> filtered = new ArrayList<>();
     for (AgencyDtos.MemberAdminItem item : members) {
@@ -157,9 +163,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public AgencyDtos.MemberAdminItem createOrgMember(Long userId, AgencyDtos.MemberCreateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
-    if (!"APPROVED".equals(org.getVerificationStatus())) {
-      throw new BizException("BIZ_FORBIDDEN", "机构认证未通过，暂不可新增员工");
-    }
+    requireOrgApproved(org);
 
     UserAccount user = userAccountMapper.findByPhone(request.getPhone());
     if (user == null) {
@@ -218,6 +222,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public void updateOrgMember(Long userId, Long memberId, AgencyDtos.MemberProfileUpdateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
     member.setDisplayName(request.getDisplayName().trim());
     member.setJobTitle(request.getJobTitle().trim());
@@ -237,6 +242,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public void updateOrgMemberRoles(Long userId, Long memberId, AgencyDtos.MemberRolesUpdateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     requireOrgMember(org.getId(), memberId);
     validateRoles(request.getRoles());
     replaceMemberRoles(memberId, request.getRoles());
@@ -246,6 +252,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public void updateOrgMemberStatus(Long userId, Long memberId, AgencyDtos.MemberStatusUpdateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
     userAccountMapper.updateStatus(member.getUserId(), request.getStatus().trim());
   }
@@ -254,6 +261,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public void softDeleteOrgMember(Long userId, Long memberId) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
     agencyMemberProfileMapper.updateStatusById(member.getId(), "DELETED");
     userAccountMapper.updateStatus(member.getUserId(), "DISABLED");
@@ -263,6 +271,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public void updateOrgMemberPermissions(Long userId, Long memberId, AgencyDtos.MemberPermissionsUpdateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     requireOrgMember(org.getId(), memberId);
     replaceMemberPermissions(memberId, request.getPermissions());
     ensureDefaultPermissions(memberId);
@@ -278,11 +287,24 @@ public class AgencyServiceImpl implements AgencyService {
     AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
     List<String> permissions = agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(member.getId());
     LinkedHashSet<String> permissionSet = new LinkedHashSet<>(permissions);
+    VerificationRecord cert = verificationRecordMapper.findOne(userId, "AGENT_MEMBER_CERT");
+    String certStatus = cert == null ? "UNVERIFIED" : cert.getStatus();
+    boolean orgApproved = org != null && "APPROVED".equals(org.getVerificationStatus());
+    boolean memberApproved = "APPROVED".equals(certStatus);
     AgencyDtos.MemberWorkbenchAccessView view = new AgencyDtos.MemberWorkbenchAccessView();
     view.setOrgVerificationStatus(org == null ? "PENDING" : org.getVerificationStatus());
+    view.setMemberVerificationStatus(certStatus);
     view.setPermissions(permissions);
-    view.setCanChatStudent("APPROVED".equals(view.getOrgVerificationStatus()) && permissionSet.contains("CAN_CHAT_STUDENT"));
-    view.setCanPublishPackage("APPROVED".equals(view.getOrgVerificationStatus()) && permissionSet.contains("CAN_PUBLISH_PACKAGE"));
+    view.setCanChatStudent(orgApproved && memberApproved && permissionSet.contains("CAN_CHAT_STUDENT"));
+    view.setCanPublishPackage(orgApproved && memberApproved && permissionSet.contains("CAN_PUBLISH_PACKAGE"));
+    view.setCanDoCoreActions(orgApproved && memberApproved);
+    if (!orgApproved) {
+      view.setBlockedReason("当前机构尚未通过认证");
+    } else if (!memberApproved) {
+      view.setBlockedReason("员工认证未通过，暂不可执行核心操作");
+    } else {
+      view.setBlockedReason("");
+    }
     return view;
   }
 
@@ -290,6 +312,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public AgencyDtos.TeamView createTeam(Long userId, AgencyDtos.TeamCreateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     AgencyTeam team = new AgencyTeam();
     team.setOrgId(org.getId());
     team.setTeamName(request.getTeamName().trim());
@@ -312,6 +335,7 @@ public class AgencyServiceImpl implements AgencyService {
   @Transactional
   public AgencyDtos.InvitationView createInvitation(Long userId, AgencyDtos.InvitationCreateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgApproved(org);
     AgencyTeam team = agencyTeamMapper.findById(request.getTeamId());
     if (team == null || !org.getId().equals(team.getOrgId())) {
       throw new BizException("BIZ_BAD_REQUEST", "团队不存在或不属于当前机构");
@@ -418,6 +442,18 @@ public class AgencyServiceImpl implements AgencyService {
   }
 
   @Override
+  public AgencyDtos.MemberVerificationStatusView getMyVerificationStatus(Long userId) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    VerificationRecord cert = verificationRecordMapper.findOne(userId, "AGENT_MEMBER_CERT");
+    AgencyDtos.MemberVerificationStatusView view = new AgencyDtos.MemberVerificationStatusView();
+    view.setStatus(cert == null ? "UNVERIFIED" : cert.getStatus());
+    view.setRejectReason(cert == null ? null : cert.getRejectReason());
+    view.setPayloadJson(cert == null ? null : cert.getPayloadJson());
+    view.setSubmittedAt(cert == null || cert.getSubmittedAt() == null ? null : cert.getSubmittedAt().toString());
+    return view;
+  }
+
+  @Override
   @Transactional
   public void updateMyProfile(Long userId, AgencyDtos.MemberProfileUpdateRequest request) {
     requireRole(requireUser(userId), "AGENT_MEMBER");
@@ -450,6 +486,43 @@ public class AgencyServiceImpl implements AgencyService {
       throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
     }
     agencyMemberProfileMapper.updateAvatarByUserId(userId, request.getAvatarUrl().trim());
+  }
+
+  @Override
+  @Transactional
+  public void submitMyVerification(Long userId, AgencyDtos.MemberVerificationSubmitRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+
+    AgencyMemberVerificationMaterial material = new AgencyMemberVerificationMaterial();
+    material.setUserId(userId);
+    material.setIdCardImageUrl(request.getIdCardImageUrl().trim());
+    material.setEmploymentProofImageUrl(request.getEmploymentProofImageUrl().trim());
+    material.setEducationProofImageUrl(request.getEducationProofImageUrl().trim());
+    agencyMemberVerificationMaterialMapper.upsert(material);
+
+    String payloadJson;
+    try {
+      java.util.Map<String, String> payload = new java.util.LinkedHashMap<>();
+      payload.put("idCardImageUrl", request.getIdCardImageUrl().trim());
+      payload.put("employmentProofImageUrl", request.getEmploymentProofImageUrl().trim());
+      payload.put("educationProofImageUrl", request.getEducationProofImageUrl().trim());
+      payloadJson = objectMapper.writeValueAsString(payload);
+    } catch (Exception ex) {
+      throw new BizException("BIZ_INTERNAL_ERROR", "系统异常");
+    }
+
+    VerificationRecord cert = new VerificationRecord();
+    cert.setUserId(userId);
+    cert.setVerifyType("AGENT_MEMBER_CERT");
+    cert.setStatus("PENDING");
+    cert.setPayloadJson(payloadJson);
+    cert.setSubmittedAt(LocalDateTime.now());
+    verificationRecordMapper.upsert(cert);
+    agencyMemberProfileMapper.updateProfileAuditStatusByUserId(userId, "PENDING");
   }
 
   @Override
@@ -699,6 +772,12 @@ public class AgencyServiceImpl implements AgencyService {
       throw new BizException("BIZ_NOT_FOUND", "机构档案不存在，请先创建机构信息");
     }
     return org;
+  }
+
+  private void requireOrgApproved(AgencyOrg org) {
+    if (!"APPROVED".equals(org.getVerificationStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "机构认证未通过，暂不可执行该操作");
+    }
   }
 
   private AgencyOrg resolveOrgForUser(Long userId) {

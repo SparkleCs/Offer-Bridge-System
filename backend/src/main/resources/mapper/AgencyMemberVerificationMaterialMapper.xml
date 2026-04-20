@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyMemberVerificationMaterialMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AgencyMemberVerificationMaterial">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="id_card_image_url" property="idCardImageUrl"/>
+    <result column="employment_proof_image_url" property="employmentProofImageUrl"/>
+    <result column="education_proof_image_url" property="educationProofImageUrl"/>
+  </resultMap>
+
+  <select id="findByUserId" resultMap="BaseMap">
+    SELECT id, user_id, id_card_image_url, employment_proof_image_url, education_proof_image_url
+    FROM agency_member_verification_material
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO agency_member_verification_material(
+      user_id, id_card_image_url, employment_proof_image_url, education_proof_image_url
+    ) VALUES(
+      #{userId}, #{idCardImageUrl}, #{employmentProofImageUrl}, #{educationProofImageUrl}
+    )
+    ON DUPLICATE KEY UPDATE
+      id_card_image_url = VALUES(id_card_image_url),
+      employment_proof_image_url = VALUES(employment_proof_image_url),
+      education_proof_image_url = VALUES(education_proof_image_url)
+  </insert>
+</mapper>
+

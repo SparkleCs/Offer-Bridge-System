@@ -25,8 +25,10 @@ public interface AgencyService {
   AgencyDtos.InvitationView createInvitation(Long userId, AgencyDtos.InvitationCreateRequest request);
   void acceptInvitation(Long userId, String token);
   AgencyDtos.MemberSelfProfileView getMyProfile(Long userId);
+  AgencyDtos.MemberVerificationStatusView getMyVerificationStatus(Long userId);
   void updateMyProfile(Long userId, AgencyDtos.MemberProfileUpdateRequest request);
   void updateMyAvatar(Long userId, AgencyDtos.MemberAvatarUpdateRequest request);
+  void submitMyVerification(Long userId, AgencyDtos.MemberVerificationSubmitRequest request);
   void submitMyProfileForAudit(Long userId);
   void updateMyRoles(Long userId, AgencyDtos.MemberRolesUpdateRequest request);
   void updateMyMetrics(Long userId, AgencyDtos.MemberMetricsUpdateRequest request);

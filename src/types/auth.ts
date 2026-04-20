@@ -19,7 +19,7 @@ export interface AuthResult {
 
 export interface SendSmsPayload {
   phone: string
-  scene: 'LOGIN_REGISTER'
+  scene: 'LOGIN_REGISTER' | 'ADMIN_LOGIN'
 }
 
 export interface SendSmsResult {
@@ -30,6 +30,11 @@ export interface SmsLoginPayload {
   phone: string
   code: string
   role: 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
+}
+
+export interface AdminSmsLoginPayload {
+  phone: string
+  code: string
 }
 
 export interface RefreshPayload {

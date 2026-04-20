@@ -360,6 +360,7 @@ import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../services/http'
+import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 import {
   getStudentCompetition,
   getStudentExchangeExperience,
@@ -965,14 +966,18 @@ async function saveWork() {
 }
 
 async function handleIdCardUpload(options: UploadRequestOptions) {
+  const file = options.file as File
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   uploadingIdCard.value = true
   try {
-    const result = await uploadStudentFile(options.file)
+    const result = await uploadStudentFile(file)
     verifyForm.idCardImageUrl = result.url
     ElMessage.success('身份证图片上传成功')
     options.onSuccess?.(result as never)
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '上传失败')
+    ElMessage.error(getUploadErrorMessage(error))
     options.onError?.(error as never)
   } finally {
     uploadingIdCard.value = false
@@ -980,14 +985,18 @@ async function handleIdCardUpload(options: UploadRequestOptions) {
 }
 
 async function handleStudentCardUpload(options: UploadRequestOptions) {
+  const file = options.file as File
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   uploadingStudentCard.value = true
   try {
-    const result = await uploadStudentFile(options.file)
+    const result = await uploadStudentFile(file)
     verifyForm.studentCardImageUrl = result.url
     ElMessage.success('学生证图片上传成功')
     options.onSuccess?.(result as never)
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '上传失败')
+    ElMessage.error(getUploadErrorMessage(error))
     options.onError?.(error as never)
   } finally {
     uploadingStudentCard.value = false

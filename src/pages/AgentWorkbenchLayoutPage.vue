@@ -56,9 +56,9 @@ import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { ChatDotRound, DataAnalysis, Grid, Search, Star, UserFilled } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { ApiError } from '../services/http'
 import { getMyAgencyProfile, updateMyAvatar, uploadFile } from '../services/agency'
 import type { MemberSelfProfile } from '../types/agency'
+import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 
 const route = useRoute()
 const router = useRouter()
@@ -85,9 +85,13 @@ async function loadProfile() {
 }
 
 async function onUploadAvatar(options: UploadRequestOptions) {
+  const file = options.file as File
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   uploadingAvatar.value = true
   try {
-    const uploaded = await uploadFile(options.file as File)
+    const uploaded = await uploadFile(file, 'avatar')
     await updateMyAvatar({ avatarUrl: uploaded.url })
     if (myProfile.value) {
       myProfile.value = { ...myProfile.value, avatarUrl: uploaded.url }
@@ -96,7 +100,7 @@ async function onUploadAvatar(options: UploadRequestOptions) {
     }
     ElMessage.success('头像已更新')
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '头像上传失败')
+    ElMessage.error(getUploadErrorMessage(error, '头像上传失败'))
   } finally {
     uploadingAvatar.value = false
   }

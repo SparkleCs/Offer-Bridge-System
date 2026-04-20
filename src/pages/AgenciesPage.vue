@@ -157,6 +157,7 @@ import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
+import { getStudentVerificationStatus } from '../services/student'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
 
 const router = useRouter()
@@ -251,7 +252,19 @@ function clearFilters() {
   loadTeams()
 }
 
-function goMessage(team: { teamId: number; teamName: string }) {
+async function goMessage(team: { teamId: number; teamName: string }) {
+  try {
+    const verify = await getStudentVerificationStatus()
+    if (!verify.verificationCompleted) {
+      ElMessage.warning('请先完成学生认证，认证通过后才能主动沟通中介')
+      router.push('/me')
+      return
+    }
+  } catch {
+    ElMessage.warning('请先登录并完成学生认证')
+    router.push('/auth')
+    return
+  }
   router.push({ path: '/messages', query: { teamId: String(team.teamId), teamName: team.teamName } })
 }
 

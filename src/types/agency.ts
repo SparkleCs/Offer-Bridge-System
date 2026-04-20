@@ -126,6 +126,19 @@ export interface MemberAvatarUpdatePayload {
   avatarUrl: string
 }
 
+export interface MemberVerificationSubmitPayload {
+  idCardImageUrl: string
+  employmentProofImageUrl: string
+  educationProofImageUrl: string
+}
+
+export interface MemberVerificationStatus {
+  status: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED' | string
+  rejectReason?: string | null
+  payloadJson?: string | null
+  submittedAt?: string | null
+}
+
 export interface OrgMemberItem {
   memberId: number
   userId: number
@@ -168,9 +181,12 @@ export interface PagedResult<T> {
 
 export interface MemberWorkbenchAccess {
   orgVerificationStatus: OrgVerificationStatus
+  memberVerificationStatus: 'UNVERIFIED' | 'PENDING' | 'APPROVED' | 'REJECTED' | string
   permissions: AgentPermissionCode[]
   canChatStudent: boolean
   canPublishPackage: boolean
+  canDoCoreActions: boolean
+  blockedReason?: string
 }
 
 export interface DiscoveryMemberItem {

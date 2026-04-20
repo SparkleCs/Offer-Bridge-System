@@ -68,6 +68,7 @@ import type { UploadRequestOptions } from 'element-plus'
 import { ApiError } from '../services/http'
 import { getOrgVerification, submitOrgVerification, uploadFile } from '../services/agency'
 import type { OrgVerificationPayload, OrgVerificationStatus } from '../types/agency'
+import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 
 const saving = ref(false)
 const verificationStatus = ref<OrgVerificationStatus>('PENDING')
@@ -100,16 +101,22 @@ const statusType = computed(() => {
 })
 
 async function uploadInto(field: keyof OrgVerificationPayload, file: File) {
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   try {
     const res = await uploadFile(file)
     ;(form[field] as unknown as string) = res.url
     ElMessage.success('上传成功')
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '上传失败')
+    ElMessage.error(getUploadErrorMessage(error))
   }
 }
 
 async function uploadAppendOfficeImage(file: File) {
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   try {
     const res = await uploadFile(file)
     form.officeEnvironmentImageUrls = form.officeEnvironmentImageUrls
@@ -117,7 +124,7 @@ async function uploadAppendOfficeImage(file: File) {
       : res.url
     ElMessage.success('上传成功')
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : '上传失败')
+    ElMessage.error(getUploadErrorMessage(error))
   }
 }
 

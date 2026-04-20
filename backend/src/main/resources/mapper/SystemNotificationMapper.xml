@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.SystemNotificationMapper">
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO system_notification(
+      user_id, type, title, content, status, related_type, related_id, created_at
+    ) VALUES(
+      #{userId}, #{type}, #{title}, #{content}, #{status}, #{relatedType}, #{relatedId}, NOW()
+    )
+  </insert>
+
+  <select id="listByUserId" resultType="com.offerbridge.backend.dto.MessageDtos$SystemNotificationItem">
+    SELECT id, user_id AS userId, type, title, content, status, related_type AS relatedType, related_id AS relatedId,
+           created_at AS createdAt, read_at AS readAt
+    FROM system_notification
+    WHERE user_id = #{userId}
+    ORDER BY created_at DESC, id DESC
+  </select>
+
+  <select id="listAll" resultType="com.offerbridge.backend.dto.MessageDtos$SystemNotificationItem">
+    SELECT id, user_id AS userId, type, title, content, status, related_type AS relatedType, related_id AS relatedId,
+           created_at AS createdAt, read_at AS readAt
+    FROM system_notification
+    ORDER BY created_at DESC, id DESC
+  </select>
+
+  <select id="countUnreadByUserId" resultType="long">
+    SELECT COUNT(*)
+    FROM system_notification
+    WHERE user_id = #{userId} AND status = 'UNREAD'
+  </select>
+
+  <update id="markAllRead">
+    UPDATE system_notification
+    SET status = 'READ', read_at = NOW()
+    WHERE user_id = #{userId} AND status = 'UNREAD'
+  </update>
+
+  <update id="markReadByIds">
+    UPDATE system_notification
+    SET status = 'READ', read_at = NOW()
+    WHERE user_id = #{userId}
+      AND status = 'UNREAD'
+      AND id IN
+      <foreach collection="ids" item="id" open="(" close=")" separator=",">
+        #{id}
+      </foreach>
+  </update>
+</mapper>
+

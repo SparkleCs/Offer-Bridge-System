@@ -117,7 +117,7 @@ export function uploadStudentFile(file: File) {
   const formData = new FormData()
   formData.append('file', file)
   return apiRequest<{ url: string }>(
-    '/api/v1/files/upload',
+    '/api/v1/files/upload?bucket=student-verification',
     {
       method: 'POST',
       body: formData

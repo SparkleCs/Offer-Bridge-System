@@ -32,6 +32,18 @@ public class AuthDtos {
     public void setRole(String role) { this.role = role; }
   }
 
+  public static class AdminSmsLoginRequest {
+    @Pattern(regexp = "^1\\d{10}$")
+    private String phone;
+    @Pattern(regexp = "^\\d{4,6}$")
+    private String code;
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getCode() { return code; }
+    public void setCode(String code) { this.code = code; }
+  }
+
   public static class RefreshRequest {
     @NotBlank
     private String refreshToken;

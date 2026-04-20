@@ -4,10 +4,23 @@ import { useAuthStore } from '../stores/auth'
 const routes = [
   { path: '/', name: 'home', component: () => import('../pages/HomePage.vue') },
   { path: '/auth', name: 'auth', component: () => import('../pages/AuthPage.vue') },
+  { path: '/admin-auth', name: 'admin-auth', component: () => import('../pages/AdminAuthPage.vue') },
   { path: '/verification', name: 'verification', component: () => import('../pages/VerificationPage.vue'), meta: { requiresAuth: true } },
   { path: '/login', redirect: '/auth' },
   { path: '/register', redirect: '/auth' },
   { path: '/agencies', name: 'agencies', component: () => import('../pages/AgenciesPage.vue') },
+  {
+    path: '/admin',
+    component: () => import('../pages/AdminLayoutPage.vue'),
+    meta: { requiresAuth: true, allowedRoles: ['ADMIN'] },
+    children: [
+      { path: '', redirect: '/admin/org-reviews' },
+      { path: 'org-reviews', name: 'admin-org-reviews', component: () => import('../pages/AdminOrgReviewsPage.vue') },
+      { path: 'member-reviews', name: 'admin-member-reviews', component: () => import('../pages/AdminMemberReviewsPage.vue') },
+      { path: 'student-reviews', name: 'admin-student-reviews', component: () => import('../pages/AdminStudentReviewsPage.vue') },
+      { path: 'notifications', name: 'admin-notifications', component: () => import('../pages/AdminNotificationsPage.vue') }
+    ]
+  },
   {
     path: '/org-admin',
     component: () => import('../pages/OrgAdminLayoutPage.vue'),
@@ -71,12 +84,19 @@ router.beforeEach((to) => {
 
   if (role === 'AGENT_ORG') {
     if (to.path === '/auth') return '/org-admin/verification'
+    if (to.path === '/admin-auth') return '/org-admin/verification'
     if (!to.path.startsWith('/org-admin')) return '/org-admin/verification'
     return true
   }
   if (role === 'AGENT_MEMBER') {
     if (to.path === '/auth') return '/agent-workbench/communication'
+    if (to.path === '/admin-auth') return '/agent-workbench/communication'
     if (!to.path.startsWith('/agent-workbench')) return '/agent-workbench/communication'
+    return true
+  }
+  if (role === 'ADMIN') {
+    if (to.path === '/auth') return '/admin/org-reviews'
+    if (!to.path.startsWith('/admin')) return '/admin/org-reviews'
     return true
   }
 

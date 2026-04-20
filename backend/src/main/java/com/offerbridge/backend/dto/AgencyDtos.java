@@ -280,6 +280,35 @@ public class AgencyDtos {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
   }
 
+  public static class MemberVerificationSubmitRequest {
+    @NotBlank private String idCardImageUrl;
+    @NotBlank private String employmentProofImageUrl;
+    @NotBlank private String educationProofImageUrl;
+
+    public String getIdCardImageUrl() { return idCardImageUrl; }
+    public void setIdCardImageUrl(String idCardImageUrl) { this.idCardImageUrl = idCardImageUrl; }
+    public String getEmploymentProofImageUrl() { return employmentProofImageUrl; }
+    public void setEmploymentProofImageUrl(String employmentProofImageUrl) { this.employmentProofImageUrl = employmentProofImageUrl; }
+    public String getEducationProofImageUrl() { return educationProofImageUrl; }
+    public void setEducationProofImageUrl(String educationProofImageUrl) { this.educationProofImageUrl = educationProofImageUrl; }
+  }
+
+  public static class MemberVerificationStatusView {
+    private String status;
+    private String rejectReason;
+    private String payloadJson;
+    private String submittedAt;
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+    public String getRejectReason() { return rejectReason; }
+    public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
+    public String getPayloadJson() { return payloadJson; }
+    public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
+    public String getSubmittedAt() { return submittedAt; }
+    public void setSubmittedAt(String submittedAt) { this.submittedAt = submittedAt; }
+  }
+
   public static class RoleItem {
     @NotBlank private String roleCode;
     @NotNull private Boolean isPrimary;
@@ -680,17 +709,26 @@ public class AgencyDtos {
 
   public static class MemberWorkbenchAccessView {
     private String orgVerificationStatus;
+    private String memberVerificationStatus;
     private List<String> permissions;
     private boolean canChatStudent;
     private boolean canPublishPackage;
+    private boolean canDoCoreActions;
+    private String blockedReason;
 
     public String getOrgVerificationStatus() { return orgVerificationStatus; }
     public void setOrgVerificationStatus(String orgVerificationStatus) { this.orgVerificationStatus = orgVerificationStatus; }
+    public String getMemberVerificationStatus() { return memberVerificationStatus; }
+    public void setMemberVerificationStatus(String memberVerificationStatus) { this.memberVerificationStatus = memberVerificationStatus; }
     public List<String> getPermissions() { return permissions; }
     public void setPermissions(List<String> permissions) { this.permissions = permissions; }
     public boolean isCanChatStudent() { return canChatStudent; }
     public void setCanChatStudent(boolean canChatStudent) { this.canChatStudent = canChatStudent; }
     public boolean isCanPublishPackage() { return canPublishPackage; }
     public void setCanPublishPackage(boolean canPublishPackage) { this.canPublishPackage = canPublishPackage; }
+    public boolean isCanDoCoreActions() { return canDoCoreActions; }
+    public void setCanDoCoreActions(boolean canDoCoreActions) { this.canDoCoreActions = canDoCoreActions; }
+    public String getBlockedReason() { return blockedReason; }
+    public void setBlockedReason(String blockedReason) { this.blockedReason = blockedReason; }
   }
 }

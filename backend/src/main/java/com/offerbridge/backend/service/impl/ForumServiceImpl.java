@@ -3,6 +3,7 @@ package com.offerbridge.backend.service.impl;
 import com.offerbridge.backend.dto.ForumDtos;
 import com.offerbridge.backend.entity.StudentProfile;
 import com.offerbridge.backend.entity.UserAccount;
+import com.offerbridge.backend.entity.VerificationRecord;
 import com.offerbridge.backend.entity.forum.ForumCommentDoc;
 import com.offerbridge.backend.entity.forum.ForumNotificationDoc;
 import com.offerbridge.backend.entity.forum.ForumPostDoc;
@@ -10,6 +11,7 @@ import com.offerbridge.backend.entity.forum.ForumReactionDoc;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
+import com.offerbridge.backend.mapper.VerificationRecordMapper;
 import com.offerbridge.backend.repository.forum.ForumCommentRepository;
 import com.offerbridge.backend.repository.forum.ForumNotificationRepository;
 import com.offerbridge.backend.repository.forum.ForumPostRepository;
@@ -61,6 +63,7 @@ public class ForumServiceImpl implements ForumService {
   private final ForumNotificationRepository forumNotificationRepository;
   private final UserAccountMapper userAccountMapper;
   private final StudentProfileMapper studentProfileMapper;
+  private final VerificationRecordMapper verificationRecordMapper;
   private final MongoTemplate mongoTemplate;
 
   public ForumServiceImpl(ForumPostRepository forumPostRepository,
@@ -69,6 +72,7 @@ public class ForumServiceImpl implements ForumService {
                           ForumNotificationRepository forumNotificationRepository,
                           UserAccountMapper userAccountMapper,
                           StudentProfileMapper studentProfileMapper,
+                          VerificationRecordMapper verificationRecordMapper,
                           MongoTemplate mongoTemplate) {
     this.forumPostRepository = forumPostRepository;
     this.forumCommentRepository = forumCommentRepository;
@@ -76,12 +80,14 @@ public class ForumServiceImpl implements ForumService {
     this.forumNotificationRepository = forumNotificationRepository;
     this.userAccountMapper = userAccountMapper;
     this.studentProfileMapper = studentProfileMapper;
+    this.verificationRecordMapper = verificationRecordMapper;
     this.mongoTemplate = mongoTemplate;
   }
 
   @Override
   public ForumDtos.PostItem createPost(Long userId, ForumDtos.CreatePostRequest request) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     String channel = normalizeChannel(request.getChannel());
     String title = normalizeRequiredText(request.getTitle(), 120, "标题不能为空");
     String contentHtml = normalizeRequiredText(request.getContentHtml(), 20000, "内容不能为空");
@@ -114,6 +120,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.PostItem updatePost(Long userId, String postId, ForumDtos.CreatePostRequest request) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     ForumPostDoc post = requirePost(postId);
     requirePostOwner(userId, post);
 
@@ -143,6 +150,7 @@ public class ForumServiceImpl implements ForumService {
   @Transactional
   public void deletePost(Long userId, String postId) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     ForumPostDoc post = requirePost(postId);
     requirePostOwner(userId, post);
 
@@ -223,6 +231,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.InteractionStateView likePost(Long userId, String postId) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     ForumPostDoc post = requirePublishedPost(postId);
 
     boolean created = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_LIKE).isEmpty();
@@ -243,6 +252,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.InteractionStateView unlikePost(Long userId, String postId) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     requirePublishedPost(postId);
 
     forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_LIKE)
@@ -258,6 +268,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.InteractionStateView favoritePost(Long userId, String postId) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     ForumPostDoc post = requirePublishedPost(postId);
 
     boolean created = forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_FAVORITE).isEmpty();
@@ -278,6 +289,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.InteractionStateView unfavoritePost(Long userId, String postId) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     requirePublishedPost(postId);
 
     forumReactionRepository.findByUserIdAndPostIdAndActionType(userId, postId, ACTION_FAVORITE)
@@ -293,6 +305,7 @@ public class ForumServiceImpl implements ForumService {
   @Override
   public ForumDtos.CommentItem addComment(Long userId, String postId, ForumDtos.CreateCommentRequest request) {
     requireStudentRole(userId);
+    requireStudentVerified(userId);
     ForumPostDoc post = requirePublishedPost(postId);
     String content = normalizeRequiredText(request.getContent(), 5000, "评论内容不能为空");
 
@@ -321,6 +334,8 @@ public class ForumServiceImpl implements ForumService {
 
   @Override
   public ForumDtos.ShareView sharePost(Long userId, String postId, String origin) {
+    requireStudentRole(userId);
+    requireStudentVerified(userId);
     requirePublishedPost(postId);
     increasePostCounter(postId, "shareCount", 1);
     ForumPostDoc post = requirePublishedPost(postId);
@@ -555,6 +570,17 @@ public class ForumServiceImpl implements ForumService {
     UserAccount user = requireUser(userId);
     if (!ROLE_STUDENT.equals(user.getRole())) {
       throw new BizException("BIZ_FORBIDDEN", "仅学生用户可执行此操作");
+    }
+  }
+
+  private void requireStudentVerified(Long userId) {
+    VerificationRecord realName = verificationRecordMapper.findOne(userId, "REAL_NAME");
+    VerificationRecord education = verificationRecordMapper.findOne(userId, "EDUCATION");
+    boolean completed = realName != null && education != null
+      && "APPROVED".equals(realName.getStatus())
+      && "APPROVED".equals(education.getStatus());
+    if (!completed) {
+      throw new BizException("BIZ_FORBIDDEN", "当前账号尚未完成认证，暂不可执行该操作");
     }
   }
 

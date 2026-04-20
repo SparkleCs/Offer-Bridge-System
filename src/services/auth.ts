@@ -2,6 +2,7 @@ import { apiRequest } from './http'
 import type {
   AuthResult,
   RefreshPayload,
+  AdminSmsLoginPayload,
   SendSmsPayload,
   SendSmsResult,
   SmsLoginPayload
@@ -21,6 +22,28 @@ export function sendSmsCode(payload: SendSmsPayload) {
 export function smsLoginOrRegister(payload: SmsLoginPayload) {
   return apiRequest<AuthResult>(
     '/api/v1/auth/sms/login-or-register',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    },
+    false
+  )
+}
+
+export function adminSendSmsCode(phone: string) {
+  return apiRequest<SendSmsResult>(
+    '/api/v1/auth/admin/sms/send',
+    {
+      method: 'POST',
+      body: JSON.stringify({ phone, scene: 'ADMIN_LOGIN' })
+    },
+    false
+  )
+}
+
+export function adminSmsLogin(payload: AdminSmsLoginPayload) {
+  return apiRequest<AuthResult>(
+    '/api/v1/auth/admin/sms/login',
     {
       method: 'POST',
       body: JSON.stringify(payload)

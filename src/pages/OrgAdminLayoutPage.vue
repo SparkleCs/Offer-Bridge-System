@@ -48,9 +48,9 @@ import { ElMessage, type UploadRequestOptions } from 'element-plus'
 import { Checked, Key, OfficeBuilding, UserFilled } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
-import { ApiError } from '../services/http'
 import { getAgencyOrgProfile, updateAgencyOrgProfile, uploadFile } from '../services/agency'
 import type { AgencyOrgProfile } from '../types/agency'
+import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,18 +77,22 @@ async function loadOrgProfile() {
 }
 
 async function onUploadLogo(options: UploadRequestOptions) {
+  const file = options.file as File
+  if (!validateUploadFileSize(file)) {
+    return
+  }
   if (!orgProfile.value?.id) {
     ElMessage.warning('请先在公司信息页完善机构档案，再上传Logo')
     return
   }
   uploadingLogo.value = true
   try {
-    const uploaded = await uploadFile(options.file as File)
+    const uploaded = await uploadFile(file, 'avatar')
     const updated = await updateAgencyOrgProfile({ ...orgProfile.value, logoUrl: uploaded.url })
     orgProfile.value = updated
     ElMessage.success('Logo已更新')
   } catch (error) {
-    ElMessage.error(error instanceof ApiError ? error.message : 'Logo上传失败')
+    ElMessage.error(getUploadErrorMessage(error, 'Logo上传失败'))
   } finally {
     uploadingLogo.value = false
   }

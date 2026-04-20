@@ -34,6 +34,10 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class AuthServiceImpl implements AuthService {
   private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
+  private static final String SCENE_LOGIN_REGISTER = "LOGIN_REGISTER";
+  private static final String SCENE_ADMIN_LOGIN = "ADMIN_LOGIN";
+  private static final String LOGIN_METHOD_SMS_CODE = "SMS_CODE";
+  private static final String LOGIN_METHOD_PASSWORD = "PASSWORD";
   private final AppProperties appProperties;
   private final StringRedisTemplate redisTemplate;
   private final AuthSmsCodeMapper authSmsCodeMapper;
@@ -70,6 +74,7 @@ public class AuthServiceImpl implements AuthService {
   @Override
   public AuthDtos.SendSmsResult sendSmsCode(AuthDtos.SendSmsRequest request) {
     String scene = normalizeScene(request.getScene());
+    String dbScene = mapToDbScene(scene);
     String rateKey = "sms:rate:" + scene + ":" + request.getPhone();
     Boolean hasKey = redisTemplate.hasKey(rateKey);
     if (Boolean.TRUE.equals(hasKey)) {
@@ -78,7 +83,7 @@ public class AuthServiceImpl implements AuthService {
 
     String code = String.valueOf((int) ((Math.random() * 9 + 1) * 100000));
     LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(appProperties.getSms().getCodeTtlSeconds());
-    authSmsCodeMapper.insertCode(request.getPhone(), scene, sha256(code), expiresAt);
+    authSmsCodeMapper.insertCode(request.getPhone(), dbScene, sha256(code), expiresAt);
 
     redisTemplate.opsForValue().set(rateKey, "1", appProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
 
@@ -93,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
   @Override
   @Transactional
   public AuthDtos.AuthResult smsLoginOrRegister(AuthDtos.SmsLoginRequest request, HttpServletRequest httpRequest) {
-    verifyCode(request.getPhone(), "LOGIN_REGISTER", request.getCode());
+    verifyCode(request.getPhone(), mapToDbScene(SCENE_LOGIN_REGISTER), request.getCode());
     String requestRole = request.getRole();
 
     UserAccount user = userAccountMapper.findByPhone(request.getPhone());
@@ -115,7 +120,22 @@ public class AuthServiceImpl implements AuthService {
     }
 
     userAccountMapper.updateLastLoginAt(user.getId());
-    logLogin(user.getId(), user.getPhone(), "SMS_CODE", true, null, httpRequest);
+    logLogin(user.getId(), user.getPhone(), LOGIN_METHOD_SMS_CODE, true, null, httpRequest);
+    return buildAuthResult(user, httpRequest);
+  }
+
+  @Override
+  @Transactional
+  public AuthDtos.AuthResult adminSmsLogin(AuthDtos.AdminSmsLoginRequest request, HttpServletRequest httpRequest) {
+    verifyCode(request.getPhone(), mapToDbScene(SCENE_ADMIN_LOGIN), request.getCode());
+    UserAccount user = userAccountMapper.findByPhone(request.getPhone());
+    if (user == null || !"ADMIN".equals(user.getRole())) {
+      throw new BizException("BIZ_FORBIDDEN", "当前手机号不是管理员账号");
+    }
+    ensureSupportedAndActive(user);
+    userAccountMapper.updateLastLoginAt(user.getId());
+    // Keep db-compatible method value; admin identity can be distinguished by user role.
+    logLogin(user.getId(), user.getPhone(), LOGIN_METHOD_SMS_CODE, true, null, httpRequest);
     return buildAuthResult(user, httpRequest);
   }
 
@@ -194,7 +214,7 @@ public class AuthServiceImpl implements AuthService {
   }
 
   private void ensureSupportedAndActive(UserAccount user) {
-    if (!"STUDENT".equals(user.getRole()) && !"AGENT_ORG".equals(user.getRole()) && !"AGENT_MEMBER".equals(user.getRole())) {
+    if (!"STUDENT".equals(user.getRole()) && !"AGENT_ORG".equals(user.getRole()) && !"AGENT_MEMBER".equals(user.getRole()) && !"ADMIN".equals(user.getRole())) {
       throw new BizException("BIZ_FORBIDDEN", "当前账号角色不可用");
     }
     if (!"ACTIVE".equals(user.getStatus())) {
@@ -267,14 +287,26 @@ public class AuthServiceImpl implements AuthService {
   }
 
   private void logLogin(Long userId, String phone, String method, boolean success, String reason, HttpServletRequest req) {
+    if (!LOGIN_METHOD_SMS_CODE.equals(method) && !LOGIN_METHOD_PASSWORD.equals(method)) {
+      throw new BizException("BIZ_BAD_REQUEST", "登录方式不合法");
+    }
     loginAuditLogMapper.insertLog(userId, phone, method, success, reason, getIp(req), getUserAgent(req));
   }
 
   private String normalizeScene(String scene) {
-    if ("LOGIN_REGISTER".equals(scene)) {
+    if (SCENE_LOGIN_REGISTER.equals(scene) || SCENE_ADMIN_LOGIN.equals(scene)) {
       return scene;
     }
     throw new BizException("BIZ_BAD_REQUEST", "scene 参数不合法");
+  }
+
+  private String mapToDbScene(String scene) {
+    // Compatibility: some deployed schemas have strict scene constraints and do not include ADMIN_LOGIN.
+    // Use LOGIN_REGISTER as stored scene to keep admin SMS flow available before schema migration.
+    if (SCENE_ADMIN_LOGIN.equals(scene)) {
+      return SCENE_LOGIN_REGISTER;
+    }
+    return scene;
   }
 
   private String getIp(HttpServletRequest request) {

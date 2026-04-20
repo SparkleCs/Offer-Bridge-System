@@ -23,6 +23,8 @@ public class SecurityConfig implements WebMvcConfigurer {
       .excludePathPatterns(
         "/api/v1/auth/sms/send",
         "/api/v1/auth/sms/login-or-register",
+        "/api/v1/auth/admin/sms/send",
+        "/api/v1/auth/admin/sms/login",
         "/api/v1/auth/refresh",
         "/api/v1/agency/discovery/members",
         "/api/v1/agency/discovery/members/*",

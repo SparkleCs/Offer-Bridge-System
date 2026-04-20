@@ -1,0 +1,2 @@
+ALTER TABLE auth_sms_code
+  MODIFY COLUMN scene VARCHAR(32) NOT NULL;

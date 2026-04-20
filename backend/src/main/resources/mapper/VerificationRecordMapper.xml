@@ -29,4 +29,14 @@
       reviewed_by = NULL,
       reviewed_at = NULL
   </insert>
+
+  <update id="review">
+    UPDATE verification_record
+    SET status = #{status},
+        reject_reason = #{rejectReason},
+        reviewed_by = #{reviewedBy},
+        reviewed_at = NOW()
+    WHERE user_id = #{userId}
+      AND verify_type = #{verifyType}
+  </update>
 </mapper>

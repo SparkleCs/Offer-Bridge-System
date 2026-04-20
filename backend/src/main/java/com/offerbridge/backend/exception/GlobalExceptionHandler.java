@@ -11,6 +11,7 @@ import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.util.Arrays;
 import java.util.UUID;
@@ -46,6 +47,16 @@ public class GlobalExceptionHandler {
     return dev
       ? ApiResponse.error("BIZ_BAD_REQUEST", "请求参数不合法", traceId, ex.getMessage())
       : ApiResponse.error("BIZ_BAD_REQUEST", "请求参数不合法");
+  }
+
+  @ExceptionHandler(MaxUploadSizeExceededException.class)
+  public ApiResponse<Void> handleMaxUploadSize(MaxUploadSizeExceededException ex, HttpServletRequest request) {
+    String traceId = UUID.randomUUID().toString();
+    boolean dev = isDevProfile();
+    log.warn("[{}] MaxUploadSize path={} msg={}", traceId, request.getRequestURI(), ex.getMessage());
+    return dev
+      ? ApiResponse.error("BIZ_FILE_TOO_LARGE", "文件不能超过10MB", traceId, ex.getMessage())
+      : ApiResponse.error("BIZ_FILE_TOO_LARGE", "文件不能超过10MB");
   }
 
   @ExceptionHandler(Exception.class)

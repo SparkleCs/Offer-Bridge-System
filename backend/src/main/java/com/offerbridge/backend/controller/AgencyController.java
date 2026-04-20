@@ -137,6 +137,11 @@ public class AgencyController {
     return ApiResponse.ok(agencyService.getMyProfile(AuthContext.getUserId()));
   }
 
+  @GetMapping("/members/me/verification/status")
+  public ApiResponse<AgencyDtos.MemberVerificationStatusView> getMyVerificationStatus() {
+    return ApiResponse.ok(agencyService.getMyVerificationStatus(AuthContext.getUserId()));
+  }
+
   @PutMapping("/members/me/profile")
   public ApiResponse<Void> updateMyProfile(@Valid @RequestBody AgencyDtos.MemberProfileUpdateRequest request) {
     agencyService.updateMyProfile(AuthContext.getUserId(), request);
@@ -146,6 +151,12 @@ public class AgencyController {
   @PutMapping("/members/me/avatar")
   public ApiResponse<Void> updateMyAvatar(@Valid @RequestBody AgencyDtos.MemberAvatarUpdateRequest request) {
     agencyService.updateMyAvatar(AuthContext.getUserId(), request);
+    return ApiResponse.ok();
+  }
+
+  @PostMapping("/members/me/verification/submit")
+  public ApiResponse<Void> submitMyVerification(@Valid @RequestBody AgencyDtos.MemberVerificationSubmitRequest request) {
+    agencyService.submitMyVerification(AuthContext.getUserId(), request);
     return ApiResponse.ok();
   }
 

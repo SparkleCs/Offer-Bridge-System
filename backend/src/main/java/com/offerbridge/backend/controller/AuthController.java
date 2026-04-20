@@ -32,6 +32,18 @@ public class AuthController {
     return ApiResponse.ok(authService.smsLoginOrRegister(request, httpRequest));
   }
 
+  @PostMapping("/admin/sms/send")
+  public ApiResponse<AuthDtos.SendSmsResult> adminSendSms(@Valid @RequestBody AuthDtos.SendSmsRequest request) {
+    request.setScene("ADMIN_LOGIN");
+    return ApiResponse.ok(authService.sendSmsCode(request));
+  }
+
+  @PostMapping("/admin/sms/login")
+  public ApiResponse<AuthDtos.AuthResult> adminSmsLogin(@Valid @RequestBody AuthDtos.AdminSmsLoginRequest request,
+                                                        HttpServletRequest httpRequest) {
+    return ApiResponse.ok(authService.adminSmsLogin(request, httpRequest));
+  }
+
   @PostMapping("/refresh")
   public ApiResponse<AuthDtos.AuthResult> refresh(@Valid @RequestBody AuthDtos.RefreshRequest request,
                                                    HttpServletRequest httpRequest) {
