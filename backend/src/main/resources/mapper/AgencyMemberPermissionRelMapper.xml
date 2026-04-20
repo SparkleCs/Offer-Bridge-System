@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AgencyMemberPermissionRelMapper">
+  <delete id="deleteByMemberId">
+    DELETE FROM agency_member_permission_rel WHERE member_id = #{memberId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO agency_member_permission_rel(member_id, permission_code, permission_status)
+    VALUES(#{memberId}, #{permissionCode}, 'ACTIVE')
+  </insert>
+
+  <select id="listPermissionCodesByMemberId" resultType="string">
+    SELECT permission_code
+    FROM agency_member_permission_rel
+    WHERE member_id = #{memberId} AND permission_status = 'ACTIVE'
+    ORDER BY id ASC
+  </select>
+</mapper>

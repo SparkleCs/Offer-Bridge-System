@@ -25,8 +25,7 @@
           <el-form-item label="选择角色">
             <el-radio-group v-model="selectedRole" class="role-group" size="large">
               <el-radio-button label="STUDENT">学生</el-radio-button>
-              <el-radio-button label="AGENT_ORG">机构</el-radio-button>
-              <el-radio-button label="AGENT_MEMBER">机构成员</el-radio-button>
+              <el-radio-button label="AGENT">中介</el-radio-button>
             </el-radio-group>
           </el-form-item>
 
@@ -58,12 +57,12 @@
 
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElNotification } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../services/http'
 import { useAuthStore } from '../stores/auth'
 
-type LoginRole = 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
+type LoginRole = 'STUDENT' | 'AGENT'
 
 const roleContents: Record<LoginRole, { title: string; desc: string; features: Array<{ title: string; desc: string }> }> = {
   STUDENT: {
@@ -75,22 +74,13 @@ const roleContents: Record<LoginRole, { title: string; desc: string; features: A
       { title: '申请进度看得见', desc: '每个节点清晰可见，不再反复追问' }
     ]
   },
-  AGENT_ORG: {
+  AGENT: {
     title: '获客更高效',
     desc: '对接更精准，转化更轻松。',
     features: [
       { title: '优质用户更集中', desc: '优先触达需求明确的申请人群' },
       { title: '匹配结果更直观', desc: '快速判断与自身服务的契合程度' },
       { title: '沟通转化更顺畅', desc: '过程统一管理，减少信息流失' }
-    ]
-  },
-  AGENT_MEMBER: {
-    title: '协作更顺畅',
-    desc: '完善档案并认证后，可在前台展示专业能力。',
-    features: [
-      { title: '签约前可被看见', desc: '学生可在签约前查看你的简介、角色与擅长方向' },
-      { title: '指标透明可展示', desc: '案例数、成功率、评分、响应效率统一展示' },
-      { title: '团队协作更清晰', desc: '按角色接入机构团队，服务分工明确' }
     ]
   }
 }
@@ -122,7 +112,14 @@ async function sendCode() {
   }
 
   try {
-    await authStore.sendCode({ phone: phone.value, scene: 'LOGIN_REGISTER' })
+    const result = await authStore.sendCode({ phone: phone.value, scene: 'LOGIN_REGISTER' })
+    if (import.meta.env.DEV) {
+      console.info('[auth][sendCode]', {
+        phone: phone.value,
+        route: router.currentRoute.value.path,
+        hasMockCode: Boolean(result?.mockCode)
+      })
+    }
     clearTimer()
     countdown.value = 60
     timer.value = window.setInterval(() => {
@@ -131,7 +128,24 @@ async function sendCode() {
         clearTimer()
       }
     }, 1000)
-    ElMessage.success('验证码已发送')
+    if (import.meta.env.DEV && result?.mockCode) {
+      code.value = result.mockCode
+    }
+    if (result?.mockCode) {
+      ElNotification({
+        type: 'success',
+        title: '验证码',
+        message: `验证码：${result.mockCode}`,
+        duration: 2000
+      })
+    } else {
+      ElNotification({
+        type: 'success',
+        title: '提示',
+        message: '验证码已发送',
+        duration: 2000
+      })
+    }
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '发送失败')
   }
@@ -153,12 +167,26 @@ async function submitSms() {
 
   submitting.value = true
   try {
-    await authStore.loginBySms({
+    const payload = {
       phone: phone.value,
       code: code.value,
-      role: selectedRole.value
-    })
-    await router.push('/')
+      role: selectedRole.value === 'AGENT' ? 'AGENT_ORG' : 'STUDENT'
+    } as const
+    if (!payload.role) {
+      ElMessage.error('登录角色缺失，请刷新后重试')
+      return
+    }
+    if (import.meta.env.DEV) {
+      console.info('[auth][loginBySms][payload]', payload)
+    }
+    const result = await authStore.loginBySms(payload)
+    if (result.role === 'AGENT_ORG') {
+      await router.push('/org-admin/verification')
+    } else if (result.role === 'AGENT_MEMBER') {
+      await router.push('/agent-workbench/communication')
+    } else {
+      await router.push('/')
+    }
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '登录失败')
   } finally {

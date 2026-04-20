@@ -8,6 +8,16 @@ public interface AgencyService {
   AgencyDtos.OrgProfileView getOrgProfile(Long userId);
   AgencyDtos.OrgProfileView createOrgProfile(Long userId, AgencyDtos.OrgProfileUpsertRequest request);
   AgencyDtos.OrgProfileView updateOrgProfile(Long userId, AgencyDtos.OrgProfileUpsertRequest request);
+  AgencyDtos.OrgVerificationView getOrgVerification(Long userId);
+  AgencyDtos.OrgVerificationView submitOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request);
+  AgencyDtos.OrgVerificationView updateOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request);
+  List<AgencyDtos.MemberAdminItem> listOrgMembers(Long userId);
+  AgencyDtos.MemberAdminItem createOrgMember(Long userId, AgencyDtos.MemberCreateRequest request);
+  void updateOrgMember(Long userId, Long memberId, AgencyDtos.MemberProfileUpdateRequest request);
+  void updateOrgMemberRoles(Long userId, Long memberId, AgencyDtos.MemberRolesUpdateRequest request);
+  void updateOrgMemberStatus(Long userId, Long memberId, AgencyDtos.MemberStatusUpdateRequest request);
+  void updateOrgMemberPermissions(Long userId, Long memberId, AgencyDtos.MemberPermissionsUpdateRequest request);
+  AgencyDtos.MemberWorkbenchAccessView getMyWorkbenchAccess(Long userId);
   AgencyDtos.TeamView createTeam(Long userId, AgencyDtos.TeamCreateRequest request);
   List<AgencyDtos.TeamView> listTeams(Long userId);
   AgencyDtos.InvitationView createInvitation(Long userId, AgencyDtos.InvitationCreateRequest request);

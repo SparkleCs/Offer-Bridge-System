@@ -22,9 +22,8 @@ public class AuthController {
   }
 
   @PostMapping("/sms/send")
-  public ApiResponse<Void> sendSms(@Valid @RequestBody AuthDtos.SendSmsRequest request) {
-    authService.sendSmsCode(request);
-    return ApiResponse.ok();
+  public ApiResponse<AuthDtos.SendSmsResult> sendSms(@Valid @RequestBody AuthDtos.SendSmsRequest request) {
+    return ApiResponse.ok(authService.sendSmsCode(request));
   }
 
   @PostMapping("/sms/login-or-register")

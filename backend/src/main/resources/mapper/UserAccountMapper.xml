@@ -44,4 +44,10 @@
     SET role = #{role}
     WHERE id = #{id}
   </update>
+
+  <update id="updateStatus">
+    UPDATE user_account
+    SET status = #{status}
+    WHERE id = #{id}
+  </update>
 </mapper>

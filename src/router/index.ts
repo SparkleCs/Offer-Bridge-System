@@ -8,6 +8,32 @@ const routes = [
   { path: '/login', redirect: '/auth' },
   { path: '/register', redirect: '/auth' },
   { path: '/agencies', name: 'agencies', component: () => import('../pages/AgenciesPage.vue') },
+  {
+    path: '/org-admin',
+    component: () => import('../pages/OrgAdminLayoutPage.vue'),
+    meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG'] },
+    children: [
+      { path: '', redirect: '/org-admin/verification' },
+      { path: 'verification', name: 'org-admin-verification', component: () => import('../pages/OrgVerificationPage.vue') },
+      { path: 'members', name: 'org-admin-members', component: () => import('../pages/OrgMembersPage.vue') },
+      { path: 'permissions', name: 'org-admin-permissions', component: () => import('../pages/OrgPermissionsPage.vue') },
+      { path: 'company', name: 'org-admin-company', component: () => import('../pages/OrgCompanyPage.vue') }
+    ]
+  },
+  {
+    path: '/agent-workbench',
+    component: () => import('../pages/AgentWorkbenchLayoutPage.vue'),
+    meta: { requiresAuth: true, allowedRoles: ['AGENT_MEMBER'] },
+    children: [
+      { path: '', redirect: '/agent-workbench/communication' },
+      { path: 'team-products', name: 'agent-team-products', component: () => import('../pages/AgentTeamProductsPage.vue') },
+      { path: 'recommend', name: 'agent-recommend', component: () => import('../pages/AgentRecommendStudentsPage.vue') },
+      { path: 'search', name: 'agent-search', component: () => import('../pages/AgentSearchPage.vue') },
+      { path: 'communication', name: 'agent-communication', component: () => import('../pages/AgentCommunicationPage.vue') },
+      { path: 'profile', name: 'agent-profile', component: () => import('../pages/AgentProfilePage.vue') },
+      { path: 'data', name: 'agent-data', component: () => import('../pages/AgentDataPage.vue') }
+    ]
+  },
   { path: '/agency-center', name: 'agency-center', component: () => import('../pages/AgencyCenterPage.vue'), meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG', 'AGENT_MEMBER'] } },
   { path: '/messages', name: 'messages', component: () => import('../pages/MessagesPage.vue'), meta: { requiresAuth: true } },
   { path: '/me', name: 'me', component: () => import('../pages/MePage.vue'), meta: { requiresAuth: true } },

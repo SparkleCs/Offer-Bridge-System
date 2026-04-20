@@ -17,6 +17,8 @@ import com.offerbridge.backend.mapper.VerificationRecordMapper;
 import com.offerbridge.backend.security.JwtService;
 import com.offerbridge.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+  private static final Logger log = LoggerFactory.getLogger(AuthServiceImpl.class);
   private final AppProperties appProperties;
   private final StringRedisTemplate redisTemplate;
   private final AuthSmsCodeMapper authSmsCodeMapper;
@@ -65,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
   }
 
   @Override
-  public void sendSmsCode(AuthDtos.SendSmsRequest request) {
+  public AuthDtos.SendSmsResult sendSmsCode(AuthDtos.SendSmsRequest request) {
     String scene = normalizeScene(request.getScene());
     String rateKey = "sms:rate:" + scene + ":" + request.getPhone();
     Boolean hasKey = redisTemplate.hasKey(rateKey);
@@ -79,24 +82,32 @@ public class AuthServiceImpl implements AuthService {
 
     redisTemplate.opsForValue().set(rateKey, "1", appProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
 
+    AuthDtos.SendSmsResult result = new AuthDtos.SendSmsResult();
     if (appProperties.getSms().isMockEnabled()) {
       System.out.println("[MOCK_SMS] phone=" + request.getPhone() + ", scene=" + scene + ", code=" + code);
+      result.setMockCode(code);
     }
+    return result;
   }
 
   @Override
   @Transactional
   public AuthDtos.AuthResult smsLoginOrRegister(AuthDtos.SmsLoginRequest request, HttpServletRequest httpRequest) {
     verifyCode(request.getPhone(), "LOGIN_REGISTER", request.getCode());
-    String role = normalizeLoginRole(request.getRole());
+    String requestRole = request.getRole();
 
     UserAccount user = userAccountMapper.findByPhone(request.getPhone());
     if (user == null) {
-      insertUserCompat(request.getPhone(), role);
+      String registerRole = normalizeRegistrationRole(requestRole);
+      insertUserCompat(request.getPhone(), registerRole);
       user = userAccountMapper.findByPhone(request.getPhone());
     }
     ensureSupportedAndActive(user);
-    if (!role.equals(user.getRole())) {
+
+    String effectiveRole = resolveLoginRole(requestRole, user);
+    if (!isCompatibleLoginRole(effectiveRole, user.getRole())) {
+      log.warn("Login role mismatch phone={}, requestRole={}, effectiveRole={}, actualRole={}",
+        request.getPhone(), requestRole, effectiveRole, user.getRole());
       throw new BizException("BIZ_FORBIDDEN", "当前手机号已注册为其他角色");
     }
     if ("STUDENT".equals(user.getRole()) && studentProfileMapper.findByUserId(user.getId()) == null) {
@@ -200,11 +211,40 @@ public class AuthServiceImpl implements AuthService {
     return user;
   }
 
-  private String normalizeLoginRole(String role) {
+  private String normalizeRegistrationRole(String role) {
     if ("STUDENT".equals(role) || "AGENT_ORG".equals(role) || "AGENT_MEMBER".equals(role)) {
       return role;
     }
-    throw new BizException("BIZ_BAD_REQUEST", "role 参数不合法");
+    throw new BizException("BIZ_BAD_REQUEST", "缺少角色参数，无法注册新账号");
+  }
+
+  private String resolveLoginRole(String requestRole, UserAccount user) {
+    if (requestRole != null && !requestRole.isBlank()) {
+      if ("STUDENT".equals(requestRole) || "AGENT_ORG".equals(requestRole) || "AGENT_MEMBER".equals(requestRole)) {
+        return requestRole;
+      }
+      throw new BizException("BIZ_BAD_REQUEST", "role 参数不合法");
+    }
+    // Backward compatibility for old clients that may miss role in payload.
+    if ("STUDENT".equals(user.getRole())) {
+      return "STUDENT";
+    }
+    if ("AGENT_ORG".equals(user.getRole()) || "AGENT_MEMBER".equals(user.getRole())) {
+      return "AGENT_ORG";
+    }
+    throw new BizException("BIZ_FORBIDDEN", "当前账号角色不可用");
+  }
+
+  private boolean isCompatibleLoginRole(String requestRole, String actualRole) {
+    if (requestRole == null || actualRole == null) {
+      return false;
+    }
+    if (requestRole.equals(actualRole)) {
+      return true;
+    }
+    // The login page now has only STUDENT / AGENT entrances.
+    // AGENT entrance sends AGENT_ORG, but AGENT_MEMBER should also be able to log in.
+    return "AGENT_ORG".equals(requestRole) && "AGENT_MEMBER".equals(actualRole);
   }
 
   private boolean isProfileCompleted(StudentProfile profile) {

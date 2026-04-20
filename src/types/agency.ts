@@ -22,6 +22,27 @@ export interface AgencyOrgProfile {
   verificationStatus?: string
 }
 
+export type OrgVerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type AgentPermissionCode = 'CAN_CHAT_STUDENT' | 'CAN_PUBLISH_PACKAGE' | string
+export type OrgAdminMenuKey = 'verification' | 'members' | 'permissions' | 'company'
+export type AgentWorkbenchMenuKey = 'team-products' | 'recommend' | 'search' | 'communication' | 'profile' | 'data'
+
+export interface OrgVerificationPayload {
+  licenseNo: string
+  legalPersonName: string
+  licenseImageUrl: string
+  legalPersonIdImageUrl: string
+  remark?: string
+}
+
+export interface OrgVerificationView {
+  verificationStatus: OrgVerificationStatus
+  recordStatus?: string
+  payloadJson?: string
+  rejectReason?: string
+  submittedAt?: string
+}
+
 export interface AgencyTeam {
   id: number
   teamName: string
@@ -83,6 +104,43 @@ export interface MemberMetricsPayload {
   responseEfficiencyScore: number
   serviceTags?: string
   budgetTags?: string
+}
+
+export interface OrgMemberItem {
+  memberId: number
+  userId: number
+  phone: string
+  displayName: string
+  jobTitle: string
+  educationLevel: string
+  graduatedSchool: string
+  yearsOfExperience: number
+  publicStatus: 'PUBLIC' | 'PRIVATE'
+  verifiedBadgeStatus: string
+  accountStatus: 'ACTIVE' | 'DISABLED'
+  roleCodes: string[]
+  permissions: AgentPermissionCode[]
+}
+
+export interface OrgMemberCreatePayload extends MemberProfilePayload {
+  phone: string
+  roles: MemberRoleItem[]
+  permissions?: AgentPermissionCode[]
+}
+
+export interface OrgMemberStatusPayload {
+  status: 'ACTIVE' | 'DISABLED'
+}
+
+export interface OrgMemberPermissionsPayload {
+  permissions: AgentPermissionCode[]
+}
+
+export interface MemberWorkbenchAccess {
+  orgVerificationStatus: OrgVerificationStatus
+  permissions: AgentPermissionCode[]
+  canChatStudent: boolean
+  canPublishPackage: boolean
 }
 
 export interface DiscoveryMemberItem {

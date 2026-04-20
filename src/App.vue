@@ -1,5 +1,8 @@
 <template>
-  <el-container class="app-shell">
+  <template v-if="isBackofficeRoute">
+    <router-view />
+  </template>
+  <el-container v-else class="app-shell">
     <el-header class="topbar">
       <div class="topbar-inner">
         <button class="brand" @click="go('/')">
@@ -10,7 +13,8 @@
         <el-menu :default-active="route.path" mode="horizontal" class="main-menu" @select="go">
           <el-menu-item index="/">首页</el-menu-item>
           <el-menu-item index="/agencies">中介</el-menu-item>
-          <el-menu-item v-if="showAgencyCenter" index="/agency-center">中介入驻</el-menu-item>
+          <el-menu-item v-if="showAgencyCenter" index="/org-admin/verification">机构管理</el-menu-item>
+          <el-menu-item v-if="showWorkbench" index="/agent-workbench/communication">中介工作台</el-menu-item>
           <el-menu-item index="/universities">院校</el-menu-item>
           <el-menu-item index="/forum">论坛</el-menu-item>
         </el-menu>
@@ -57,7 +61,9 @@ const authStore = useAuthStore()
 
 const year = new Date().getFullYear()
 const currentRole = computed(() => authStore.authMeta?.role || '')
-const showAgencyCenter = computed(() => currentRole.value === 'AGENT_ORG' || currentRole.value === 'AGENT_MEMBER')
+const showAgencyCenter = computed(() => currentRole.value === 'AGENT_ORG')
+const showWorkbench = computed(() => currentRole.value === 'AGENT_MEMBER')
+const isBackofficeRoute = computed(() => route.path.startsWith('/org-admin') || route.path.startsWith('/agent-workbench'))
 const displayName = computed(() => {
   if (authStore.profile?.name) return authStore.profile.name
   const role = currentRole.value

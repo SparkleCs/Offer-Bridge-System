@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -490,5 +491,164 @@ public class AgencyDtos {
     public void setOrg(OrgProfileView org) { this.org = org; }
     public List<DiscoveryTeamMemberItem> getMembers() { return members; }
     public void setMembers(List<DiscoveryTeamMemberItem> members) { this.members = members; }
+  }
+
+  public static class OrgVerificationSubmitRequest {
+    @NotBlank private String licenseNo;
+    @NotBlank private String legalPersonName;
+    @NotBlank private String licenseImageUrl;
+    @NotBlank private String legalPersonIdImageUrl;
+    private String remark;
+
+    public String getLicenseNo() { return licenseNo; }
+    public void setLicenseNo(String licenseNo) { this.licenseNo = licenseNo; }
+    public String getLegalPersonName() { return legalPersonName; }
+    public void setLegalPersonName(String legalPersonName) { this.legalPersonName = legalPersonName; }
+    public String getLicenseImageUrl() { return licenseImageUrl; }
+    public void setLicenseImageUrl(String licenseImageUrl) { this.licenseImageUrl = licenseImageUrl; }
+    public String getLegalPersonIdImageUrl() { return legalPersonIdImageUrl; }
+    public void setLegalPersonIdImageUrl(String legalPersonIdImageUrl) { this.legalPersonIdImageUrl = legalPersonIdImageUrl; }
+    public String getRemark() { return remark; }
+    public void setRemark(String remark) { this.remark = remark; }
+  }
+
+  public static class OrgVerificationView {
+    private String verificationStatus;
+    private String recordStatus;
+    private String payloadJson;
+    private String rejectReason;
+    private String submittedAt;
+
+    public String getVerificationStatus() { return verificationStatus; }
+    public void setVerificationStatus(String verificationStatus) { this.verificationStatus = verificationStatus; }
+    public String getRecordStatus() { return recordStatus; }
+    public void setRecordStatus(String recordStatus) { this.recordStatus = recordStatus; }
+    public String getPayloadJson() { return payloadJson; }
+    public void setPayloadJson(String payloadJson) { this.payloadJson = payloadJson; }
+    public String getRejectReason() { return rejectReason; }
+    public void setRejectReason(String rejectReason) { this.rejectReason = rejectReason; }
+    public String getSubmittedAt() { return submittedAt; }
+    public void setSubmittedAt(String submittedAt) { this.submittedAt = submittedAt; }
+  }
+
+  public static class MemberCreateRequest {
+    @Pattern(regexp = "^1\\d{10}$")
+    private String phone;
+    @NotBlank private String displayName;
+    @NotBlank private String jobTitle;
+    @NotBlank private String educationLevel;
+    @NotBlank private String graduatedSchool;
+    private String major;
+    @NotNull @Min(0) @Max(60) private Integer yearsOfExperience;
+    @NotBlank private String specialCountries;
+    @NotBlank private String specialDirections;
+    @NotBlank private String bio;
+    private String serviceStyleTags;
+    @NotBlank private String publicStatus;
+    @NotEmpty @Valid private List<RoleItem> roles;
+    private List<@NotBlank String> permissions;
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getGraduatedSchool() { return graduatedSchool; }
+    public void setGraduatedSchool(String graduatedSchool) { this.graduatedSchool = graduatedSchool; }
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+    public Integer getYearsOfExperience() { return yearsOfExperience; }
+    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
+    public String getSpecialCountries() { return specialCountries; }
+    public void setSpecialCountries(String specialCountries) { this.specialCountries = specialCountries; }
+    public String getSpecialDirections() { return specialDirections; }
+    public void setSpecialDirections(String specialDirections) { this.specialDirections = specialDirections; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+    public String getServiceStyleTags() { return serviceStyleTags; }
+    public void setServiceStyleTags(String serviceStyleTags) { this.serviceStyleTags = serviceStyleTags; }
+    public String getPublicStatus() { return publicStatus; }
+    public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
+    public List<RoleItem> getRoles() { return roles; }
+    public void setRoles(List<RoleItem> roles) { this.roles = roles; }
+    public List<String> getPermissions() { return permissions; }
+    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+  }
+
+  public static class MemberAdminItem {
+    private Long memberId;
+    private Long userId;
+    private String phone;
+    private String displayName;
+    private String jobTitle;
+    private String educationLevel;
+    private String graduatedSchool;
+    private Integer yearsOfExperience;
+    private String publicStatus;
+    private String verifiedBadgeStatus;
+    private String accountStatus;
+    private List<String> roleCodes;
+    private List<String> permissions;
+
+    public Long getMemberId() { return memberId; }
+    public void setMemberId(Long memberId) { this.memberId = memberId; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getGraduatedSchool() { return graduatedSchool; }
+    public void setGraduatedSchool(String graduatedSchool) { this.graduatedSchool = graduatedSchool; }
+    public Integer getYearsOfExperience() { return yearsOfExperience; }
+    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
+    public String getPublicStatus() { return publicStatus; }
+    public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
+    public String getVerifiedBadgeStatus() { return verifiedBadgeStatus; }
+    public void setVerifiedBadgeStatus(String verifiedBadgeStatus) { this.verifiedBadgeStatus = verifiedBadgeStatus; }
+    public String getAccountStatus() { return accountStatus; }
+    public void setAccountStatus(String accountStatus) { this.accountStatus = accountStatus; }
+    public List<String> getRoleCodes() { return roleCodes; }
+    public void setRoleCodes(List<String> roleCodes) { this.roleCodes = roleCodes; }
+    public List<String> getPermissions() { return permissions; }
+    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+  }
+
+  public static class MemberStatusUpdateRequest {
+    @Pattern(regexp = "^(ACTIVE|DISABLED)$")
+    private String status;
+
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
+  }
+
+  public static class MemberPermissionsUpdateRequest {
+    @NotNull private List<@NotBlank String> permissions;
+
+    public List<String> getPermissions() { return permissions; }
+    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+  }
+
+  public static class MemberWorkbenchAccessView {
+    private String orgVerificationStatus;
+    private List<String> permissions;
+    private boolean canChatStudent;
+    private boolean canPublishPackage;
+
+    public String getOrgVerificationStatus() { return orgVerificationStatus; }
+    public void setOrgVerificationStatus(String orgVerificationStatus) { this.orgVerificationStatus = orgVerificationStatus; }
+    public List<String> getPermissions() { return permissions; }
+    public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+    public boolean isCanChatStudent() { return canChatStudent; }
+    public void setCanChatStudent(boolean canChatStudent) { this.canChatStudent = canChatStudent; }
+    public boolean isCanPublishPackage() { return canPublishPackage; }
+    public void setCanPublishPackage(boolean canPublishPackage) { this.canPublishPackage = canPublishPackage; }
   }
 }

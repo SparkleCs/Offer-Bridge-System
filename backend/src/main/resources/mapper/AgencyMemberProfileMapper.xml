@@ -36,6 +36,41 @@
     LIMIT 1
   </select>
 
+  <select id="findByOrgAndUserId" resultMap="BaseMap">
+    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    FROM agency_member_profile
+    WHERE org_id = #{orgId} AND user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <select id="findByOrgAndMemberId" resultMap="BaseMap">
+    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    FROM agency_member_profile
+    WHERE org_id = #{orgId} AND id = #{memberId}
+    LIMIT 1
+  </select>
+
+  <select id="listByOrgId" resultType="com.offerbridge.backend.dto.AgencyDtos$MemberAdminItem">
+    SELECT
+      m.id AS memberId,
+      m.user_id AS userId,
+      ua.phone AS phone,
+      m.display_name AS displayName,
+      m.job_title AS jobTitle,
+      m.education_level AS educationLevel,
+      m.graduated_school AS graduatedSchool,
+      m.years_of_experience AS yearsOfExperience,
+      m.public_status AS publicStatus,
+      m.verified_badge_status AS verifiedBadgeStatus,
+      ua.status AS accountStatus
+    FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
+    WHERE m.org_id = #{orgId}
+    ORDER BY m.id DESC
+  </select>
+
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO agency_member_profile(
       user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
@@ -64,6 +99,22 @@
         public_status = #{publicStatus},
         verified_badge_status = #{verifiedBadgeStatus}
     WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateByIdForAdmin">
+    UPDATE agency_member_profile
+    SET display_name = #{displayName},
+        job_title = #{jobTitle},
+        education_level = #{educationLevel},
+        graduated_school = #{graduatedSchool},
+        major = #{major},
+        years_of_experience = #{yearsOfExperience},
+        special_countries = #{specialCountries},
+        special_directions = #{specialDirections},
+        bio = #{bio},
+        service_style_tags = #{serviceStyleTags},
+        public_status = #{publicStatus}
+    WHERE id = #{id}
   </update>
 
   <select id="listDiscovery" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryMemberItem">

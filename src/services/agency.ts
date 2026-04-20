@@ -11,7 +11,14 @@ import type {
   InvitationResult,
   MemberMetricsPayload,
   MemberProfilePayload,
-  MemberRolesPayload
+  MemberRolesPayload,
+  MemberWorkbenchAccess,
+  OrgMemberCreatePayload,
+  OrgMemberItem,
+  OrgMemberPermissionsPayload,
+  OrgMemberStatusPayload,
+  OrgVerificationPayload,
+  OrgVerificationView
 } from '../types/agency'
 
 export function getAgencyOrgProfile() {
@@ -27,6 +34,63 @@ export function createAgencyOrgProfile(payload: AgencyOrgProfile) {
 
 export function updateAgencyOrgProfile(payload: AgencyOrgProfile) {
   return apiRequest<AgencyOrgProfile>('/api/v1/agency/org/profile', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function getOrgVerification() {
+  return apiRequest<OrgVerificationView>('/api/v1/agency/org/verification', { method: 'GET' }, true)
+}
+
+export function submitOrgVerification(payload: OrgVerificationPayload) {
+  return apiRequest<OrgVerificationView>('/api/v1/agency/org/verification', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateOrgVerification(payload: OrgVerificationPayload) {
+  return apiRequest<OrgVerificationView>('/api/v1/agency/org/verification', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function listOrgMembers() {
+  return apiRequest<OrgMemberItem[]>('/api/v1/agency/members', { method: 'GET' }, true)
+}
+
+export function createOrgMember(payload: OrgMemberCreatePayload) {
+  return apiRequest<OrgMemberItem>('/api/v1/agency/members', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateOrgMember(memberId: number, payload: MemberProfilePayload) {
+  return apiRequest<void>(`/api/v1/agency/members/${memberId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateOrgMemberRoles(memberId: number, payload: MemberRolesPayload) {
+  return apiRequest<void>(`/api/v1/agency/members/${memberId}/roles`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateOrgMemberStatus(memberId: number, payload: OrgMemberStatusPayload) {
+  return apiRequest<void>(`/api/v1/agency/members/${memberId}/status`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateOrgMemberPermissions(memberId: number, payload: OrgMemberPermissionsPayload) {
+  return apiRequest<void>(`/api/v1/agency/members/${memberId}/permissions`, {
     method: 'PUT',
     body: JSON.stringify(payload)
   }, true)
@@ -73,6 +137,10 @@ export function updateMyAgencyMetrics(payload: MemberMetricsPayload) {
     method: 'PUT',
     body: JSON.stringify(payload)
   }, true)
+}
+
+export function getMyWorkbenchAccess() {
+  return apiRequest<MemberWorkbenchAccess>('/api/v1/agency/members/me/workbench-access', { method: 'GET' }, true)
 }
 
 export function listDiscoveryMembers(params: {

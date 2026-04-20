@@ -48,7 +48,9 @@ export const useAuthStore = defineStore('auth', () => {
   async function loginBySms(payload: SmsLoginPayload) {
     const result = await smsLoginOrRegister(payload)
     applyAuth(result)
-    await loadProfile().catch(() => null)
+    if (result.role === 'STUDENT') {
+      await loadProfile().catch(() => null)
+    }
     return result
   }
 

@@ -11,4 +11,5 @@ public interface AgencyOrgMapper {
   AgencyOrg findByMemberUserId(@Param("userId") Long userId);
   int insertOne(AgencyOrg entity);
   int updateOne(AgencyOrg entity);
+  int updateVerificationStatus(@Param("id") Long id, @Param("verificationStatus") String verificationStatus);
 }

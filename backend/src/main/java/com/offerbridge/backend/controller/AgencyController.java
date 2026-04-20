@@ -42,6 +42,55 @@ public class AgencyController {
     return ApiResponse.ok(agencyService.getOrgProfile(AuthContext.getUserId()));
   }
 
+  @GetMapping("/org/verification")
+  public ApiResponse<AgencyDtos.OrgVerificationView> getOrgVerification() {
+    return ApiResponse.ok(agencyService.getOrgVerification(AuthContext.getUserId()));
+  }
+
+  @PostMapping("/org/verification")
+  public ApiResponse<AgencyDtos.OrgVerificationView> submitOrgVerification(@Valid @RequestBody AgencyDtos.OrgVerificationSubmitRequest request) {
+    return ApiResponse.ok(agencyService.submitOrgVerification(AuthContext.getUserId(), request));
+  }
+
+  @PutMapping("/org/verification")
+  public ApiResponse<AgencyDtos.OrgVerificationView> updateOrgVerification(@Valid @RequestBody AgencyDtos.OrgVerificationSubmitRequest request) {
+    return ApiResponse.ok(agencyService.updateOrgVerification(AuthContext.getUserId(), request));
+  }
+
+  @GetMapping("/members")
+  public ApiResponse<List<AgencyDtos.MemberAdminItem>> listOrgMembers() {
+    return ApiResponse.ok(agencyService.listOrgMembers(AuthContext.getUserId()));
+  }
+
+  @PostMapping("/members")
+  public ApiResponse<AgencyDtos.MemberAdminItem> createOrgMember(@Valid @RequestBody AgencyDtos.MemberCreateRequest request) {
+    return ApiResponse.ok(agencyService.createOrgMember(AuthContext.getUserId(), request));
+  }
+
+  @PutMapping("/members/{memberId}")
+  public ApiResponse<Void> updateOrgMember(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberProfileUpdateRequest request) {
+    agencyService.updateOrgMember(AuthContext.getUserId(), memberId, request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/{memberId}/roles")
+  public ApiResponse<Void> updateOrgMemberRoles(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberRolesUpdateRequest request) {
+    agencyService.updateOrgMemberRoles(AuthContext.getUserId(), memberId, request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/{memberId}/status")
+  public ApiResponse<Void> updateOrgMemberStatus(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberStatusUpdateRequest request) {
+    agencyService.updateOrgMemberStatus(AuthContext.getUserId(), memberId, request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/{memberId}/permissions")
+  public ApiResponse<Void> updateOrgMemberPermissions(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberPermissionsUpdateRequest request) {
+    agencyService.updateOrgMemberPermissions(AuthContext.getUserId(), memberId, request);
+    return ApiResponse.ok();
+  }
+
   @PostMapping("/teams")
   public ApiResponse<AgencyDtos.TeamView> createTeam(@Valid @RequestBody AgencyDtos.TeamCreateRequest request) {
     return ApiResponse.ok(agencyService.createTeam(AuthContext.getUserId(), request));
@@ -79,6 +128,11 @@ public class AgencyController {
   public ApiResponse<Void> updateMyMetrics(@Valid @RequestBody AgencyDtos.MemberMetricsUpdateRequest request) {
     agencyService.updateMyMetrics(AuthContext.getUserId(), request);
     return ApiResponse.ok();
+  }
+
+  @GetMapping("/members/me/workbench-access")
+  public ApiResponse<AgencyDtos.MemberWorkbenchAccessView> getMyWorkbenchAccess() {
+    return ApiResponse.ok(agencyService.getMyWorkbenchAccess(AuthContext.getUserId()));
   }
 
   @GetMapping("/discovery/members")

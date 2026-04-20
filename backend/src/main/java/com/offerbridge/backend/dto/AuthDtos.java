@@ -40,6 +40,13 @@ public class AuthDtos {
     public void setRefreshToken(String refreshToken) { this.refreshToken = refreshToken; }
   }
 
+  public static class SendSmsResult {
+    private String mockCode;
+
+    public String getMockCode() { return mockCode; }
+    public void setMockCode(String mockCode) { this.mockCode = mockCode; }
+  }
+
   public static class AuthResult {
     private String accessToken;
     private String refreshToken;

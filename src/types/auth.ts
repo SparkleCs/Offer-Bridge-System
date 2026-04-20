@@ -22,6 +22,10 @@ export interface SendSmsPayload {
   scene: 'LOGIN_REGISTER'
 }
 
+export interface SendSmsResult {
+  mockCode?: string | null
+}
+
 export interface SmsLoginPayload {
   phone: string
   code: string

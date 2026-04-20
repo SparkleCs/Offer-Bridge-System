@@ -86,4 +86,10 @@
         org_slogan = #{orgSlogan}
     WHERE id = #{id}
   </update>
+
+  <update id="updateVerificationStatus">
+    UPDATE agency_org
+    SET verification_status = #{verificationStatus}
+    WHERE id = #{id}
+  </update>
 </mapper>

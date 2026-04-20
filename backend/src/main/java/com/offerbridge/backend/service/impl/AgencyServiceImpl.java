@@ -11,6 +11,7 @@ import com.offerbridge.backend.entity.VerificationRecord;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.AgencyInvitationMapper;
 import com.offerbridge.backend.mapper.AgencyMemberMetricsMapper;
+import com.offerbridge.backend.mapper.AgencyMemberPermissionRelMapper;
 import com.offerbridge.backend.mapper.AgencyMemberProfileMapper;
 import com.offerbridge.backend.mapper.AgencyMemberRoleRelMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
@@ -19,11 +20,15 @@ import com.offerbridge.backend.mapper.AgencyTeamMemberRelMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
 import com.offerbridge.backend.service.AgencyService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.LinkedHashSet;
+import java.util.HashMap;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -35,8 +40,10 @@ public class AgencyServiceImpl implements AgencyService {
   private final AgencyTeamMemberRelMapper agencyTeamMemberRelMapper;
   private final AgencyMemberRoleRelMapper agencyMemberRoleRelMapper;
   private final AgencyMemberMetricsMapper agencyMemberMetricsMapper;
+  private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
   private final VerificationRecordMapper verificationRecordMapper;
   private final UserAccountMapper userAccountMapper;
+  private final ObjectMapper objectMapper;
 
   public AgencyServiceImpl(AgencyOrgMapper agencyOrgMapper,
                            AgencyTeamMapper agencyTeamMapper,
@@ -45,8 +52,10 @@ public class AgencyServiceImpl implements AgencyService {
                            AgencyTeamMemberRelMapper agencyTeamMemberRelMapper,
                            AgencyMemberRoleRelMapper agencyMemberRoleRelMapper,
                            AgencyMemberMetricsMapper agencyMemberMetricsMapper,
+                           AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
                            VerificationRecordMapper verificationRecordMapper,
-                           UserAccountMapper userAccountMapper) {
+                           UserAccountMapper userAccountMapper,
+                           ObjectMapper objectMapper) {
     this.agencyOrgMapper = agencyOrgMapper;
     this.agencyTeamMapper = agencyTeamMapper;
     this.agencyInvitationMapper = agencyInvitationMapper;
@@ -54,8 +63,10 @@ public class AgencyServiceImpl implements AgencyService {
     this.agencyTeamMemberRelMapper = agencyTeamMemberRelMapper;
     this.agencyMemberRoleRelMapper = agencyMemberRoleRelMapper;
     this.agencyMemberMetricsMapper = agencyMemberMetricsMapper;
+    this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
     this.verificationRecordMapper = verificationRecordMapper;
     this.userAccountMapper = userAccountMapper;
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -93,6 +104,156 @@ public class AgencyServiceImpl implements AgencyService {
     update.setId(existing.getId());
     agencyOrgMapper.updateOne(update);
     return toOrgView(agencyOrgMapper.findById(existing.getId()));
+  }
+
+  @Override
+  public AgencyDtos.OrgVerificationView getOrgVerification(Long userId) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    VerificationRecord record = verificationRecordMapper.findOne(userId, "AGENT_ORG");
+    return toOrgVerificationView(org, record);
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.OrgVerificationView submitOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request) {
+    return upsertOrgVerification(userId, request);
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.OrgVerificationView updateOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request) {
+    return upsertOrgVerification(userId, request);
+  }
+
+  @Override
+  public List<AgencyDtos.MemberAdminItem> listOrgMembers(Long userId) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    List<AgencyDtos.MemberAdminItem> members = agencyMemberProfileMapper.listByOrgId(org.getId());
+    for (AgencyDtos.MemberAdminItem item : members) {
+      item.setRoleCodes(agencyMemberRoleRelMapper.listRoleCodesByMemberId(item.getMemberId()));
+      item.setPermissions(agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(item.getMemberId()));
+    }
+    return members;
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.MemberAdminItem createOrgMember(Long userId, AgencyDtos.MemberCreateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+
+    UserAccount user = userAccountMapper.findByPhone(request.getPhone());
+    if (user == null) {
+      insertUserCompat(request.getPhone().trim(), "AGENT_MEMBER");
+      user = userAccountMapper.findByPhone(request.getPhone().trim());
+    } else if ("STUDENT".equals(user.getRole()) || "AGENT_ORG".equals(user.getRole())) {
+      throw new BizException("BIZ_BAD_REQUEST", "该手机号已绑定其他账号类型");
+    } else if (!"ACTIVE".equals(user.getStatus())) {
+      userAccountMapper.updateStatus(user.getId(), "ACTIVE");
+      user = userAccountMapper.findById(user.getId());
+    }
+    if (!"AGENT_MEMBER".equals(user.getRole())) {
+      userAccountMapper.updateRole(user.getId(), "AGENT_MEMBER");
+    }
+
+    AgencyMemberProfile existing = agencyMemberProfileMapper.findByUserId(user.getId());
+    if (existing != null && !org.getId().equals(existing.getOrgId())) {
+      throw new BizException("BIZ_FORBIDDEN", "该手机号成员已归属其他机构");
+    }
+    if (existing != null) {
+      throw new BizException("BIZ_BAD_REQUEST", "该成员已在当前机构中");
+    }
+
+    validateRoles(request.getRoles());
+
+    AgencyMemberProfile member = new AgencyMemberProfile();
+    member.setUserId(user.getId());
+    member.setOrgId(org.getId());
+    member.setDisplayName(request.getDisplayName().trim());
+    member.setRealName(null);
+    member.setJobTitle(request.getJobTitle().trim());
+    member.setEducationLevel(request.getEducationLevel().trim());
+    member.setGraduatedSchool(request.getGraduatedSchool().trim());
+    member.setMajor(request.getMajor());
+    member.setYearsOfExperience(request.getYearsOfExperience());
+    member.setSpecialCountries(request.getSpecialCountries().trim());
+    member.setSpecialDirections(request.getSpecialDirections().trim());
+    member.setBio(request.getBio().trim());
+    member.setServiceStyleTags(request.getServiceStyleTags());
+    member.setPublicStatus(request.getPublicStatus().trim());
+    member.setVerifiedBadgeStatus(calcMemberBadgeStatus(user.getId()));
+    agencyMemberProfileMapper.insertOne(member);
+
+    replaceMemberRoles(member.getId(), request.getRoles());
+    replaceMemberPermissions(member.getId(), request.getPermissions());
+    ensureDefaultPermissions(member.getId());
+
+    AgencyDtos.MemberAdminItem created = findOrgMemberOrThrow(org.getId(), member.getId());
+    created.setRoleCodes(agencyMemberRoleRelMapper.listRoleCodesByMemberId(member.getId()));
+    created.setPermissions(agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(member.getId()));
+    return created;
+  }
+
+  @Override
+  @Transactional
+  public void updateOrgMember(Long userId, Long memberId, AgencyDtos.MemberProfileUpdateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
+    member.setDisplayName(request.getDisplayName().trim());
+    member.setJobTitle(request.getJobTitle().trim());
+    member.setEducationLevel(request.getEducationLevel().trim());
+    member.setGraduatedSchool(request.getGraduatedSchool().trim());
+    member.setMajor(request.getMajor());
+    member.setYearsOfExperience(request.getYearsOfExperience());
+    member.setSpecialCountries(request.getSpecialCountries().trim());
+    member.setSpecialDirections(request.getSpecialDirections().trim());
+    member.setBio(request.getBio().trim());
+    member.setServiceStyleTags(request.getServiceStyleTags());
+    member.setPublicStatus(request.getPublicStatus().trim());
+    agencyMemberProfileMapper.updateByIdForAdmin(member);
+  }
+
+  @Override
+  @Transactional
+  public void updateOrgMemberRoles(Long userId, Long memberId, AgencyDtos.MemberRolesUpdateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgMember(org.getId(), memberId);
+    validateRoles(request.getRoles());
+    replaceMemberRoles(memberId, request.getRoles());
+  }
+
+  @Override
+  @Transactional
+  public void updateOrgMemberStatus(Long userId, Long memberId, AgencyDtos.MemberStatusUpdateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
+    userAccountMapper.updateStatus(member.getUserId(), request.getStatus().trim());
+  }
+
+  @Override
+  @Transactional
+  public void updateOrgMemberPermissions(Long userId, Long memberId, AgencyDtos.MemberPermissionsUpdateRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    requireOrgMember(org.getId(), memberId);
+    replaceMemberPermissions(memberId, request.getPermissions());
+    ensureDefaultPermissions(memberId);
+  }
+
+  @Override
+  public AgencyDtos.MemberWorkbenchAccessView getMyWorkbenchAccess(Long userId) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
+    List<String> permissions = agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(member.getId());
+    LinkedHashSet<String> permissionSet = new LinkedHashSet<>(permissions);
+    AgencyDtos.MemberWorkbenchAccessView view = new AgencyDtos.MemberWorkbenchAccessView();
+    view.setOrgVerificationStatus(org == null ? "PENDING" : org.getVerificationStatus());
+    view.setPermissions(permissions);
+    view.setCanChatStudent("APPROVED".equals(view.getOrgVerificationStatus()) && permissionSet.contains("CAN_CHAT_STUDENT"));
+    view.setCanPublishPackage("APPROVED".equals(view.getOrgVerificationStatus()) && permissionSet.contains("CAN_PUBLISH_PACKAGE"));
+    return view;
   }
 
   @Override
@@ -330,6 +491,94 @@ public class AgencyServiceImpl implements AgencyService {
     return detail;
   }
 
+  private AgencyDtos.OrgVerificationView upsertOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    String payloadJson;
+    try {
+      Map<String, Object> payload = new HashMap<>();
+      payload.put("licenseNo", request.getLicenseNo().trim());
+      payload.put("legalPersonName", request.getLegalPersonName().trim());
+      payload.put("licenseImageUrl", request.getLicenseImageUrl().trim());
+      payload.put("legalPersonIdImageUrl", request.getLegalPersonIdImageUrl().trim());
+      payload.put("remark", request.getRemark());
+      payloadJson = objectMapper.writeValueAsString(payload);
+    } catch (Exception ex) {
+      throw new BizException("BIZ_BAD_REQUEST", "认证材料格式不合法");
+    }
+
+    VerificationRecord record = new VerificationRecord();
+    record.setUserId(userId);
+    record.setVerifyType("AGENT_ORG");
+    record.setStatus("PENDING");
+    record.setPayloadJson(payloadJson);
+    record.setSubmittedAt(LocalDateTime.now());
+    verificationRecordMapper.upsert(record);
+    agencyOrgMapper.updateVerificationStatus(org.getId(), "PENDING");
+    AgencyOrg freshOrg = agencyOrgMapper.findById(org.getId());
+    VerificationRecord freshRecord = verificationRecordMapper.findOne(userId, "AGENT_ORG");
+    return toOrgVerificationView(freshOrg, freshRecord);
+  }
+
+  private AgencyDtos.OrgVerificationView toOrgVerificationView(AgencyOrg org, VerificationRecord record) {
+    AgencyDtos.OrgVerificationView view = new AgencyDtos.OrgVerificationView();
+    view.setVerificationStatus(org.getVerificationStatus());
+    if (record != null) {
+      view.setRecordStatus(record.getStatus());
+      view.setPayloadJson(record.getPayloadJson());
+      view.setRejectReason(record.getRejectReason());
+      view.setSubmittedAt(record.getSubmittedAt() == null ? null : record.getSubmittedAt().toString());
+    }
+    return view;
+  }
+
+  private AgencyMemberProfile requireOrgMember(Long orgId, Long memberId) {
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByOrgAndMemberId(orgId, memberId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员不存在或不属于当前机构");
+    }
+    return member;
+  }
+
+  private AgencyDtos.MemberAdminItem findOrgMemberOrThrow(Long orgId, Long memberId) {
+    return agencyMemberProfileMapper.listByOrgId(orgId).stream()
+      .filter(item -> memberId.equals(item.getMemberId()))
+      .findFirst()
+      .orElseThrow(() -> new BizException("BIZ_NOT_FOUND", "成员不存在"));
+  }
+
+  private void validateRoles(List<AgencyDtos.RoleItem> roles) {
+    long primaryCount = roles.stream().filter(r -> Boolean.TRUE.equals(r.getIsPrimary())).count();
+    if (primaryCount != 1) {
+      throw new BizException("BIZ_BAD_REQUEST", "必须且只能设置一个主角色");
+    }
+  }
+
+  private void replaceMemberRoles(Long memberId, List<AgencyDtos.RoleItem> roles) {
+    agencyMemberRoleRelMapper.deleteByMemberId(memberId);
+    for (AgencyDtos.RoleItem role : roles) {
+      agencyMemberRoleRelMapper.insertOne(memberId, role.getRoleCode().trim(), Boolean.TRUE.equals(role.getIsPrimary()));
+    }
+  }
+
+  private void replaceMemberPermissions(Long memberId, List<String> permissions) {
+    agencyMemberPermissionRelMapper.deleteByMemberId(memberId);
+    if (permissions == null) return;
+    LinkedHashSet<String> dedup = new LinkedHashSet<>();
+    for (String permission : permissions) {
+      if (permission == null || permission.isBlank()) continue;
+      dedup.add(permission.trim());
+    }
+    for (String permissionCode : dedup) {
+      agencyMemberPermissionRelMapper.insertOne(memberId, permissionCode);
+    }
+  }
+
+  private void ensureDefaultPermissions(Long memberId) {
+    List<String> permissions = agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(memberId);
+    if (permissions.contains("CAN_CHAT_STUDENT")) return;
+    agencyMemberPermissionRelMapper.insertOne(memberId, "CAN_CHAT_STUDENT");
+  }
+
   private String calcMemberBadgeStatus(Long userId) {
     VerificationRecord real = verificationRecordMapper.findOne(userId, "AGENT_REAL_NAME");
     VerificationRecord edu = verificationRecordMapper.findOne(userId, "AGENT_EDUCATION");
@@ -440,5 +689,18 @@ public class AgencyServiceImpl implements AgencyService {
 
   private String defaultStr(String input, String fallback) {
     return (input == null || input.isBlank()) ? fallback : input.trim();
+  }
+
+  private void insertUserCompat(String phone, String role) {
+    try {
+      userAccountMapper.insertByRole(phone, role);
+    } catch (Exception ex) {
+      String message = ex.getMessage() == null ? "" : ex.getMessage().toLowerCase();
+      if (message.contains("password_hash") || message.contains("doesn't have a default value") || message.contains("cannot be null")) {
+        userAccountMapper.insertByRoleWithEmptyPassword(phone, role);
+        return;
+      }
+      throw ex;
+    }
   }
 }

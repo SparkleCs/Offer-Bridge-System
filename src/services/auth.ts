@@ -3,11 +3,12 @@ import type {
   AuthResult,
   RefreshPayload,
   SendSmsPayload,
+  SendSmsResult,
   SmsLoginPayload
 } from '../types/auth'
 
 export function sendSmsCode(payload: SendSmsPayload) {
-  return apiRequest<void>(
+  return apiRequest<SendSmsResult>(
     '/api/v1/auth/sms/send',
     {
       method: 'POST',
