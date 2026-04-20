@@ -251,6 +251,35 @@ public class AgencyDtos {
     public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
   }
 
+  public static class MemberSelfProfileView {
+    private Long memberId;
+    private Long orgId;
+    private String displayName;
+    private String avatarUrl;
+    private String jobTitle;
+    private String profileAuditStatus;
+
+    public Long getMemberId() { return memberId; }
+    public void setMemberId(Long memberId) { this.memberId = memberId; }
+    public Long getOrgId() { return orgId; }
+    public void setOrgId(Long orgId) { this.orgId = orgId; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getProfileAuditStatus() { return profileAuditStatus; }
+    public void setProfileAuditStatus(String profileAuditStatus) { this.profileAuditStatus = profileAuditStatus; }
+  }
+
+  public static class MemberAvatarUpdateRequest {
+    @NotBlank private String avatarUrl;
+
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+  }
+
   public static class RoleItem {
     @NotBlank private String roleCode;
     @NotNull private Boolean isPrimary;
@@ -498,6 +527,13 @@ public class AgencyDtos {
     @NotBlank private String legalPersonName;
     @NotBlank private String licenseImageUrl;
     @NotBlank private String legalPersonIdImageUrl;
+    @NotBlank private String corporateAccountName;
+    @NotBlank private String corporateBankName;
+    @NotBlank private String corporateBankAccountNo;
+    private String corporateAccountProofImageUrl;
+    private String officeEnvironmentImageUrls;
+    @NotBlank private String adminRealNameImageUrl;
+    @NotBlank private String adminEmploymentProofImageUrl;
     private String remark;
 
     public String getLicenseNo() { return licenseNo; }
@@ -508,6 +544,20 @@ public class AgencyDtos {
     public void setLicenseImageUrl(String licenseImageUrl) { this.licenseImageUrl = licenseImageUrl; }
     public String getLegalPersonIdImageUrl() { return legalPersonIdImageUrl; }
     public void setLegalPersonIdImageUrl(String legalPersonIdImageUrl) { this.legalPersonIdImageUrl = legalPersonIdImageUrl; }
+    public String getCorporateAccountName() { return corporateAccountName; }
+    public void setCorporateAccountName(String corporateAccountName) { this.corporateAccountName = corporateAccountName; }
+    public String getCorporateBankName() { return corporateBankName; }
+    public void setCorporateBankName(String corporateBankName) { this.corporateBankName = corporateBankName; }
+    public String getCorporateBankAccountNo() { return corporateBankAccountNo; }
+    public void setCorporateBankAccountNo(String corporateBankAccountNo) { this.corporateBankAccountNo = corporateBankAccountNo; }
+    public String getCorporateAccountProofImageUrl() { return corporateAccountProofImageUrl; }
+    public void setCorporateAccountProofImageUrl(String corporateAccountProofImageUrl) { this.corporateAccountProofImageUrl = corporateAccountProofImageUrl; }
+    public String getOfficeEnvironmentImageUrls() { return officeEnvironmentImageUrls; }
+    public void setOfficeEnvironmentImageUrls(String officeEnvironmentImageUrls) { this.officeEnvironmentImageUrls = officeEnvironmentImageUrls; }
+    public String getAdminRealNameImageUrl() { return adminRealNameImageUrl; }
+    public void setAdminRealNameImageUrl(String adminRealNameImageUrl) { this.adminRealNameImageUrl = adminRealNameImageUrl; }
+    public String getAdminEmploymentProofImageUrl() { return adminEmploymentProofImageUrl; }
+    public void setAdminEmploymentProofImageUrl(String adminEmploymentProofImageUrl) { this.adminEmploymentProofImageUrl = adminEmploymentProofImageUrl; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
   }
@@ -536,16 +586,6 @@ public class AgencyDtos {
     private String phone;
     @NotBlank private String displayName;
     @NotBlank private String jobTitle;
-    @NotBlank private String educationLevel;
-    @NotBlank private String graduatedSchool;
-    private String major;
-    @NotNull @Min(0) @Max(60) private Integer yearsOfExperience;
-    @NotBlank private String specialCountries;
-    @NotBlank private String specialDirections;
-    @NotBlank private String bio;
-    private String serviceStyleTags;
-    @NotBlank private String publicStatus;
-    @NotEmpty @Valid private List<RoleItem> roles;
     private List<@NotBlank String> permissions;
 
     public String getPhone() { return phone; }
@@ -554,26 +594,6 @@ public class AgencyDtos {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getJobTitle() { return jobTitle; }
     public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
-    public String getEducationLevel() { return educationLevel; }
-    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
-    public String getGraduatedSchool() { return graduatedSchool; }
-    public void setGraduatedSchool(String graduatedSchool) { this.graduatedSchool = graduatedSchool; }
-    public String getMajor() { return major; }
-    public void setMajor(String major) { this.major = major; }
-    public Integer getYearsOfExperience() { return yearsOfExperience; }
-    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
-    public String getSpecialCountries() { return specialCountries; }
-    public void setSpecialCountries(String specialCountries) { this.specialCountries = specialCountries; }
-    public String getSpecialDirections() { return specialDirections; }
-    public void setSpecialDirections(String specialDirections) { this.specialDirections = specialDirections; }
-    public String getBio() { return bio; }
-    public void setBio(String bio) { this.bio = bio; }
-    public String getServiceStyleTags() { return serviceStyleTags; }
-    public void setServiceStyleTags(String serviceStyleTags) { this.serviceStyleTags = serviceStyleTags; }
-    public String getPublicStatus() { return publicStatus; }
-    public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
-    public List<RoleItem> getRoles() { return roles; }
-    public void setRoles(List<RoleItem> roles) { this.roles = roles; }
     public List<String> getPermissions() { return permissions; }
     public void setPermissions(List<String> permissions) { this.permissions = permissions; }
   }
@@ -589,6 +609,8 @@ public class AgencyDtos {
     private Integer yearsOfExperience;
     private String publicStatus;
     private String verifiedBadgeStatus;
+    private String profileAuditStatus;
+    private String memberStatus;
     private String accountStatus;
     private List<String> roleCodes;
     private List<String> permissions;
@@ -613,6 +635,10 @@ public class AgencyDtos {
     public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
     public String getVerifiedBadgeStatus() { return verifiedBadgeStatus; }
     public void setVerifiedBadgeStatus(String verifiedBadgeStatus) { this.verifiedBadgeStatus = verifiedBadgeStatus; }
+    public String getProfileAuditStatus() { return profileAuditStatus; }
+    public void setProfileAuditStatus(String profileAuditStatus) { this.profileAuditStatus = profileAuditStatus; }
+    public String getMemberStatus() { return memberStatus; }
+    public void setMemberStatus(String memberStatus) { this.memberStatus = memberStatus; }
     public String getAccountStatus() { return accountStatus; }
     public void setAccountStatus(String accountStatus) { this.accountStatus = accountStatus; }
     public List<String> getRoleCodes() { return roleCodes; }
@@ -634,6 +660,22 @@ public class AgencyDtos {
 
     public List<String> getPermissions() { return permissions; }
     public void setPermissions(List<String> permissions) { this.permissions = permissions; }
+  }
+
+  public static class PagedResult<T> {
+    private List<T> records;
+    private long total;
+    private int page;
+    private int pageSize;
+
+    public List<T> getRecords() { return records; }
+    public void setRecords(List<T> records) { this.records = records; }
+    public long getTotal() { return total; }
+    public void setTotal(long total) { this.total = total; }
+    public int getPage() { return page; }
+    public void setPage(int page) { this.page = page; }
+    public int getPageSize() { return pageSize; }
+    public void setPageSize(int pageSize) { this.pageSize = pageSize; }
   }
 
   public static class MemberWorkbenchAccessView {

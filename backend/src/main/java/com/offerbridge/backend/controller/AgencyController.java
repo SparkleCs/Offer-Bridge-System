@@ -58,8 +58,22 @@ public class AgencyController {
   }
 
   @GetMapping("/members")
-  public ApiResponse<List<AgencyDtos.MemberAdminItem>> listOrgMembers() {
-    return ApiResponse.ok(agencyService.listOrgMembers(AuthContext.getUserId()));
+  public ApiResponse<AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem>> listOrgMembers(
+    @RequestParam(defaultValue = "1") int page,
+    @RequestParam(defaultValue = "10") int pageSize,
+    @RequestParam(required = false) String keyword,
+    @RequestParam(required = false) String status
+  ) {
+    return ApiResponse.ok(agencyService.listOrgMembers(AuthContext.getUserId(), page, pageSize, keyword, status));
+  }
+
+  @GetMapping("/permissions/members")
+  public ApiResponse<AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem>> listPermissionMembers(
+    @RequestParam(defaultValue = "1") int page,
+    @RequestParam(defaultValue = "10") int pageSize,
+    @RequestParam(required = false) String keyword
+  ) {
+    return ApiResponse.ok(agencyService.listPermissionMembers(AuthContext.getUserId(), page, pageSize, keyword));
   }
 
   @PostMapping("/members")
@@ -82,6 +96,12 @@ public class AgencyController {
   @PutMapping("/members/{memberId}/status")
   public ApiResponse<Void> updateOrgMemberStatus(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberStatusUpdateRequest request) {
     agencyService.updateOrgMemberStatus(AuthContext.getUserId(), memberId, request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/{memberId}/soft-delete")
+  public ApiResponse<Void> softDeleteOrgMember(@PathVariable Long memberId) {
+    agencyService.softDeleteOrgMember(AuthContext.getUserId(), memberId);
     return ApiResponse.ok();
   }
 
@@ -112,9 +132,26 @@ public class AgencyController {
     return ApiResponse.ok();
   }
 
+  @GetMapping("/members/me/profile")
+  public ApiResponse<AgencyDtos.MemberSelfProfileView> getMyProfile() {
+    return ApiResponse.ok(agencyService.getMyProfile(AuthContext.getUserId()));
+  }
+
   @PutMapping("/members/me/profile")
   public ApiResponse<Void> updateMyProfile(@Valid @RequestBody AgencyDtos.MemberProfileUpdateRequest request) {
     agencyService.updateMyProfile(AuthContext.getUserId(), request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/me/avatar")
+  public ApiResponse<Void> updateMyAvatar(@Valid @RequestBody AgencyDtos.MemberAvatarUpdateRequest request) {
+    agencyService.updateMyAvatar(AuthContext.getUserId(), request);
+    return ApiResponse.ok();
+  }
+
+  @PutMapping("/members/me/profile/submit")
+  public ApiResponse<Void> submitMyProfileForAudit() {
+    agencyService.submitMyProfileForAudit(AuthContext.getUserId());
     return ApiResponse.ok();
   }
 

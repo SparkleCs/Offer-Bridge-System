@@ -17,6 +17,9 @@ public interface AgencyMemberProfileMapper {
   int insertOne(AgencyMemberProfile entity);
   int updateByUserId(AgencyMemberProfile entity);
   int updateByIdForAdmin(AgencyMemberProfile entity);
+  int updateStatusById(@Param("id") Long id, @Param("status") String status);
+  int updateProfileAuditStatusByUserId(@Param("userId") Long userId, @Param("profileAuditStatus") String profileAuditStatus);
+  int updateAvatarByUserId(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
 
   List<AgencyDtos.DiscoveryMemberItem> listDiscovery(@Param("roleCode") String roleCode,
                                                       @Param("country") String country,

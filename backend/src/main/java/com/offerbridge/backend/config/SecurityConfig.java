@@ -9,9 +9,11 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class SecurityConfig implements WebMvcConfigurer {
   private final AuthInterceptor authInterceptor;
+  private final AppProperties appProperties;
 
-  public SecurityConfig(AuthInterceptor authInterceptor) {
+  public SecurityConfig(AuthInterceptor authInterceptor, AppProperties appProperties) {
     this.authInterceptor = authInterceptor;
+    this.appProperties = appProperties;
   }
 
   @Override
@@ -37,6 +39,17 @@ public class SecurityConfig implements WebMvcConfigurer {
       .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
       .allowedHeaders("*")
       .allowCredentials(false);
+  }
+
+  @Override
+  public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+    String dir = appProperties.getUpload().getLocalDir();
+    if (dir == null || dir.isBlank()) {
+      dir = "uploads";
+    }
+    java.nio.file.Path absolute = java.nio.file.Paths.get(dir).toAbsolutePath().normalize();
+    registry.addResourceHandler("/uploads/**")
+      .addResourceLocations("file:" + absolute + "/");
   }
 
 }

@@ -28,7 +28,10 @@
       <el-form-item label="响应效率"><el-input-number v-model="metrics.responseEfficiencyScore" :min="0" :max="5" :step="0.1" /></el-form-item>
     </el-form>
 
-    <el-button type="primary" :loading="saving" @click="save">保存个人信息</el-button>
+    <div class="actions">
+      <el-button type="primary" :loading="saving" @click="save">保存个人信息</el-button>
+      <el-button @click="submitAudit">提交审核</el-button>
+    </div>
   </section>
 </template>
 
@@ -36,7 +39,7 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ApiError } from '../services/http'
-import { updateMyAgencyMetrics, updateMyAgencyProfile, updateMyAgencyRoles } from '../services/agency'
+import { submitMyProfileForAudit, updateMyAgencyMetrics, updateMyAgencyProfile, updateMyAgencyRoles } from '../services/agency'
 
 const saving = ref(false)
 const roleOptions = ['CONSULTANT', 'PLANNER', 'WRITER', 'APPLY_SPECIALIST', 'VISA_SPECIALIST', 'AFTERCARE', 'TEAM_LEADER']
@@ -80,4 +83,20 @@ async function save() {
     saving.value = false
   }
 }
+
+async function submitAudit() {
+  try {
+    await submitMyProfileForAudit()
+    ElMessage.success('已提交审核，等待平台管理员处理')
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '提交审核失败')
+  }
+}
 </script>
+
+<style scoped>
+.actions {
+  display: flex;
+  gap: 10px;
+}
+</style>

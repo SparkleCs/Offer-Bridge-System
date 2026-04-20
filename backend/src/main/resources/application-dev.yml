@@ -31,3 +31,5 @@ app:
     mock-enabled: true
     code-ttl-seconds: 300
     send-interval-seconds: 60
+  upload:
+    local-dir: uploads

@@ -67,10 +67,22 @@ router.beforeEach(async (to) => {
 
 router.beforeEach((to) => {
   const authStore = useAuthStore()
+  const role = authStore.authMeta?.role
+
+  if (role === 'AGENT_ORG') {
+    if (to.path === '/auth') return '/org-admin/verification'
+    if (!to.path.startsWith('/org-admin')) return '/org-admin/verification'
+    return true
+  }
+  if (role === 'AGENT_MEMBER') {
+    if (to.path === '/auth') return '/agent-workbench/communication'
+    if (!to.path.startsWith('/agent-workbench')) return '/agent-workbench/communication'
+    return true
+  }
+
   const allowedRoles = to.meta?.allowedRoles as string[] | undefined
   if (!allowedRoles || allowedRoles.length === 0) return true
 
-  const role = authStore.authMeta?.role
   if (!role || !allowedRoles.includes(role)) {
     return '/'
   }

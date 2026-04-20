@@ -5,6 +5,7 @@ public class AgencyMemberProfile {
   private Long userId;
   private Long orgId;
   private String displayName;
+  private String avatarUrl;
   private String realName;
   private String jobTitle;
   private String educationLevel;
@@ -17,6 +18,8 @@ public class AgencyMemberProfile {
   private String serviceStyleTags;
   private String publicStatus;
   private String verifiedBadgeStatus;
+  private String profileAuditStatus;
+  private String status;
 
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
@@ -26,6 +29,8 @@ public class AgencyMemberProfile {
   public void setOrgId(Long orgId) { this.orgId = orgId; }
   public String getDisplayName() { return displayName; }
   public void setDisplayName(String displayName) { this.displayName = displayName; }
+  public String getAvatarUrl() { return avatarUrl; }
+  public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
   public String getRealName() { return realName; }
   public void setRealName(String realName) { this.realName = realName; }
   public String getJobTitle() { return jobTitle; }
@@ -50,4 +55,8 @@ public class AgencyMemberProfile {
   public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
   public String getVerifiedBadgeStatus() { return verifiedBadgeStatus; }
   public void setVerifiedBadgeStatus(String verifiedBadgeStatus) { this.verifiedBadgeStatus = verifiedBadgeStatus; }
+  public String getProfileAuditStatus() { return profileAuditStatus; }
+  public void setProfileAuditStatus(String profileAuditStatus) { this.profileAuditStatus = profileAuditStatus; }
+  public String getStatus() { return status; }
+  public void setStatus(String status) { this.status = status; }
 }

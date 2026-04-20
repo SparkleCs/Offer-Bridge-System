@@ -32,6 +32,13 @@ export interface OrgVerificationPayload {
   legalPersonName: string
   licenseImageUrl: string
   legalPersonIdImageUrl: string
+  corporateAccountName: string
+  corporateBankName: string
+  corporateBankAccountNo: string
+  corporateAccountProofImageUrl?: string
+  officeEnvironmentImageUrls?: string
+  adminRealNameImageUrl: string
+  adminEmploymentProofImageUrl: string
   remark?: string
 }
 
@@ -106,6 +113,19 @@ export interface MemberMetricsPayload {
   budgetTags?: string
 }
 
+export interface MemberSelfProfile {
+  memberId: number
+  orgId: number
+  displayName: string
+  avatarUrl?: string | null
+  jobTitle: string
+  profileAuditStatus?: string
+}
+
+export interface MemberAvatarUpdatePayload {
+  avatarUrl: string
+}
+
 export interface OrgMemberItem {
   memberId: number
   userId: number
@@ -117,14 +137,17 @@ export interface OrgMemberItem {
   yearsOfExperience: number
   publicStatus: 'PUBLIC' | 'PRIVATE'
   verifiedBadgeStatus: string
+  profileAuditStatus: 'DRAFT' | 'PENDING' | 'APPROVED' | 'REJECTED' | string
+  memberStatus: 'ACTIVE' | 'DELETED' | string
   accountStatus: 'ACTIVE' | 'DISABLED'
   roleCodes: string[]
   permissions: AgentPermissionCode[]
 }
 
-export interface OrgMemberCreatePayload extends MemberProfilePayload {
+export interface OrgMemberCreatePayload {
   phone: string
-  roles: MemberRoleItem[]
+  displayName: string
+  jobTitle: string
   permissions?: AgentPermissionCode[]
 }
 
@@ -134,6 +157,13 @@ export interface OrgMemberStatusPayload {
 
 export interface OrgMemberPermissionsPayload {
   permissions: AgentPermissionCode[]
+}
+
+export interface PagedResult<T> {
+  records: T[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 export interface MemberWorkbenchAccess {

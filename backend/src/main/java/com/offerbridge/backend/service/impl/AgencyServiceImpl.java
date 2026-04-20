@@ -27,6 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -126,20 +128,38 @@ public class AgencyServiceImpl implements AgencyService {
   }
 
   @Override
-  public List<AgencyDtos.MemberAdminItem> listOrgMembers(Long userId) {
+  public AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem> listOrgMembers(Long userId, int page, int pageSize, String keyword, String status) {
     AgencyOrg org = requireOrgByAdmin(userId);
     List<AgencyDtos.MemberAdminItem> members = agencyMemberProfileMapper.listByOrgId(org.getId());
+    List<AgencyDtos.MemberAdminItem> filtered = new ArrayList<>();
     for (AgencyDtos.MemberAdminItem item : members) {
       item.setRoleCodes(agencyMemberRoleRelMapper.listRoleCodesByMemberId(item.getMemberId()));
       item.setPermissions(agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(item.getMemberId()));
+      if ("DELETED".equals(item.getMemberStatus())) continue;
+      if (status != null && !status.isBlank() && !status.equalsIgnoreCase(item.getAccountStatus())) continue;
+      if (keyword != null && !keyword.isBlank()) {
+        String k = keyword.trim();
+        boolean hit = contains(item.getDisplayName(), k) || contains(item.getPhone(), k) || contains(item.getJobTitle(), k);
+        if (!hit) continue;
+      }
+      filtered.add(item);
     }
-    return members;
+    filtered.sort(Comparator.comparing(AgencyDtos.MemberAdminItem::getMemberId).reversed());
+    return toPaged(filtered, page, pageSize);
+  }
+
+  @Override
+  public AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem> listPermissionMembers(Long userId, int page, int pageSize, String keyword) {
+    return listOrgMembers(userId, page, pageSize, keyword, null);
   }
 
   @Override
   @Transactional
   public AgencyDtos.MemberAdminItem createOrgMember(Long userId, AgencyDtos.MemberCreateRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
+    if (!"APPROVED".equals(org.getVerificationStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "机构认证未通过，暂不可新增员工");
+    }
 
     UserAccount user = userAccountMapper.findByPhone(request.getPhone());
     if (user == null) {
@@ -163,27 +183,28 @@ public class AgencyServiceImpl implements AgencyService {
       throw new BizException("BIZ_BAD_REQUEST", "该成员已在当前机构中");
     }
 
-    validateRoles(request.getRoles());
-
     AgencyMemberProfile member = new AgencyMemberProfile();
     member.setUserId(user.getId());
     member.setOrgId(org.getId());
     member.setDisplayName(request.getDisplayName().trim());
     member.setRealName(null);
     member.setJobTitle(request.getJobTitle().trim());
-    member.setEducationLevel(request.getEducationLevel().trim());
-    member.setGraduatedSchool(request.getGraduatedSchool().trim());
-    member.setMajor(request.getMajor());
-    member.setYearsOfExperience(request.getYearsOfExperience());
-    member.setSpecialCountries(request.getSpecialCountries().trim());
-    member.setSpecialDirections(request.getSpecialDirections().trim());
-    member.setBio(request.getBio().trim());
-    member.setServiceStyleTags(request.getServiceStyleTags());
-    member.setPublicStatus(request.getPublicStatus().trim());
+    member.setEducationLevel("UNKNOWN");
+    member.setGraduatedSchool("待完善");
+    member.setMajor(null);
+    member.setYearsOfExperience(0);
+    member.setSpecialCountries("待完善");
+    member.setSpecialDirections("待完善");
+    member.setBio("该成员尚未完善个人简介");
+    member.setServiceStyleTags(null);
+    member.setPublicStatus("PRIVATE");
     member.setVerifiedBadgeStatus(calcMemberBadgeStatus(user.getId()));
+    member.setProfileAuditStatus("DRAFT");
+    member.setStatus("ACTIVE");
     agencyMemberProfileMapper.insertOne(member);
 
-    replaceMemberRoles(member.getId(), request.getRoles());
+    agencyMemberRoleRelMapper.deleteByMemberId(member.getId());
+    agencyMemberRoleRelMapper.insertOne(member.getId(), mapJobTitleToRoleCode(member.getJobTitle()), true);
     replaceMemberPermissions(member.getId(), request.getPermissions());
     ensureDefaultPermissions(member.getId());
 
@@ -227,6 +248,15 @@ public class AgencyServiceImpl implements AgencyService {
     AgencyOrg org = requireOrgByAdmin(userId);
     AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
     userAccountMapper.updateStatus(member.getUserId(), request.getStatus().trim());
+  }
+
+  @Override
+  @Transactional
+  public void softDeleteOrgMember(Long userId, Long memberId) {
+    AgencyOrg org = requireOrgByAdmin(userId);
+    AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
+    agencyMemberProfileMapper.updateStatusById(member.getId(), "DELETED");
+    userAccountMapper.updateStatus(member.getUserId(), "DISABLED");
   }
 
   @Override
@@ -339,6 +369,8 @@ public class AgencyServiceImpl implements AgencyService {
       member.setServiceStyleTags(null);
       member.setPublicStatus("PRIVATE");
       member.setVerifiedBadgeStatus("PENDING");
+      member.setProfileAuditStatus("DRAFT");
+      member.setStatus("ACTIVE");
       agencyMemberProfileMapper.insertOne(member);
     } else if (!invitation.getOrgId().equals(member.getOrgId())) {
       throw new BizException("BIZ_FORBIDDEN", "当前账号已归属其他机构");
@@ -376,6 +408,16 @@ public class AgencyServiceImpl implements AgencyService {
   }
 
   @Override
+  public AgencyDtos.MemberSelfProfileView getMyProfile(Long userId) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    return toMemberSelfView(member);
+  }
+
+  @Override
   @Transactional
   public void updateMyProfile(Long userId, AgencyDtos.MemberProfileUpdateRequest request) {
     requireRole(requireUser(userId), "AGENT_MEMBER");
@@ -395,7 +437,30 @@ public class AgencyServiceImpl implements AgencyService {
     member.setServiceStyleTags(request.getServiceStyleTags());
     member.setPublicStatus(request.getPublicStatus().trim());
     member.setVerifiedBadgeStatus(calcMemberBadgeStatus(userId));
+    member.setProfileAuditStatus("DRAFT");
     agencyMemberProfileMapper.updateByUserId(member);
+  }
+
+  @Override
+  @Transactional
+  public void updateMyAvatar(Long userId, AgencyDtos.MemberAvatarUpdateRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    agencyMemberProfileMapper.updateAvatarByUserId(userId, request.getAvatarUrl().trim());
+  }
+
+  @Override
+  @Transactional
+  public void submitMyProfileForAudit(Long userId) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    agencyMemberProfileMapper.updateProfileAuditStatusByUserId(userId, "PENDING");
   }
 
   @Override
@@ -500,6 +565,13 @@ public class AgencyServiceImpl implements AgencyService {
       payload.put("legalPersonName", request.getLegalPersonName().trim());
       payload.put("licenseImageUrl", request.getLicenseImageUrl().trim());
       payload.put("legalPersonIdImageUrl", request.getLegalPersonIdImageUrl().trim());
+      payload.put("corporateAccountName", request.getCorporateAccountName().trim());
+      payload.put("corporateBankName", request.getCorporateBankName().trim());
+      payload.put("corporateBankAccountNo", request.getCorporateBankAccountNo().trim());
+      payload.put("corporateAccountProofImageUrl", request.getCorporateAccountProofImageUrl());
+      payload.put("officeEnvironmentImageUrls", request.getOfficeEnvironmentImageUrls());
+      payload.put("adminRealNameImageUrl", request.getAdminRealNameImageUrl().trim());
+      payload.put("adminEmploymentProofImageUrl", request.getAdminEmploymentProofImageUrl().trim());
       payload.put("remark", request.getRemark());
       payloadJson = objectMapper.writeValueAsString(payload);
     } catch (Exception ex) {
@@ -577,6 +649,38 @@ public class AgencyServiceImpl implements AgencyService {
     List<String> permissions = agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(memberId);
     if (permissions.contains("CAN_CHAT_STUDENT")) return;
     agencyMemberPermissionRelMapper.insertOne(memberId, "CAN_CHAT_STUDENT");
+  }
+
+  private String mapJobTitleToRoleCode(String jobTitle) {
+    if (jobTitle == null) return "CONSULTANT";
+    return switch (jobTitle.trim()) {
+      case "咨询顾问" -> "CONSULTANT";
+      case "文书顾问" -> "WRITER";
+      case "规划顾问" -> "PLANNER";
+      case "签证专员" -> "VISA_SPECIALIST";
+      case "申请专员" -> "APPLY_SPECIALIST";
+      case "后续服务" -> "AFTERCARE";
+      default -> "CONSULTANT";
+    };
+  }
+
+  private boolean contains(String source, String keyword) {
+    return source != null && source.contains(keyword);
+  }
+
+  private AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem> toPaged(List<AgencyDtos.MemberAdminItem> all, int page, int pageSize) {
+    int safePage = Math.max(1, page);
+    int safePageSize = Math.max(1, Math.min(pageSize, 200));
+    int from = (safePage - 1) * safePageSize;
+    int to = Math.min(from + safePageSize, all.size());
+    List<AgencyDtos.MemberAdminItem> records = from >= all.size() ? List.of() : all.subList(from, to);
+
+    AgencyDtos.PagedResult<AgencyDtos.MemberAdminItem> result = new AgencyDtos.PagedResult<>();
+    result.setRecords(records);
+    result.setTotal(all.size());
+    result.setPage(safePage);
+    result.setPageSize(safePageSize);
+    return result;
   }
 
   private String calcMemberBadgeStatus(Long userId) {
@@ -684,6 +788,17 @@ public class AgencyServiceImpl implements AgencyService {
     view.setTeamIntro(team.getTeamIntro());
     view.setServiceCountryScope(team.getServiceCountryScope());
     view.setServiceMajorScope(team.getServiceMajorScope());
+    return view;
+  }
+
+  private AgencyDtos.MemberSelfProfileView toMemberSelfView(AgencyMemberProfile member) {
+    AgencyDtos.MemberSelfProfileView view = new AgencyDtos.MemberSelfProfileView();
+    view.setMemberId(member.getId());
+    view.setOrgId(member.getOrgId());
+    view.setDisplayName(member.getDisplayName());
+    view.setAvatarUrl(member.getAvatarUrl());
+    view.setJobTitle(member.getJobTitle());
+    view.setProfileAuditStatus(member.getProfileAuditStatus());
     return view;
   }
 

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class AppProperties {
   private final Jwt jwt = new Jwt();
   private final Sms sms = new Sms();
+  private final Upload upload = new Upload();
 
   public Jwt getJwt() {
     return jwt;
@@ -15,6 +16,10 @@ public class AppProperties {
 
   public Sms getSms() {
     return sms;
+  }
+
+  public Upload getUpload() {
+    return upload;
   }
 
   public static class Jwt {
@@ -44,5 +49,12 @@ public class AppProperties {
     public void setCodeTtlSeconds(long codeTtlSeconds) { this.codeTtlSeconds = codeTtlSeconds; }
     public long getSendIntervalSeconds() { return sendIntervalSeconds; }
     public void setSendIntervalSeconds(long sendIntervalSeconds) { this.sendIntervalSeconds = sendIntervalSeconds; }
+  }
+
+  public static class Upload {
+    private String localDir = "uploads";
+
+    public String getLocalDir() { return localDir; }
+    public void setLocalDir(String localDir) { this.localDir = localDir; }
   }
 }

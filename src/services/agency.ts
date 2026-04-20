@@ -10,13 +10,16 @@ import type {
   InvitationPayload,
   InvitationResult,
   MemberMetricsPayload,
+  MemberAvatarUpdatePayload,
   MemberProfilePayload,
   MemberRolesPayload,
+  MemberSelfProfile,
   MemberWorkbenchAccess,
   OrgMemberCreatePayload,
   OrgMemberItem,
   OrgMemberPermissionsPayload,
   OrgMemberStatusPayload,
+  PagedResult,
   OrgVerificationPayload,
   OrgVerificationView
 } from '../types/agency'
@@ -57,8 +60,31 @@ export function updateOrgVerification(payload: OrgVerificationPayload) {
   }, true)
 }
 
-export function listOrgMembers() {
-  return apiRequest<OrgMemberItem[]>('/api/v1/agency/members', { method: 'GET' }, true)
+export function listOrgMembers(params: {
+  page?: number
+  pageSize?: number
+  keyword?: string
+  status?: string
+} = {}) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') search.append(key, String(value))
+  })
+  const query = search.toString()
+  return apiRequest<PagedResult<OrgMemberItem>>(`/api/v1/agency/members${query ? `?${query}` : ''}`, { method: 'GET' }, true)
+}
+
+export function listPermissionMembers(params: {
+  page?: number
+  pageSize?: number
+  keyword?: string
+} = {}) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') search.append(key, String(value))
+  })
+  const query = search.toString()
+  return apiRequest<PagedResult<OrgMemberItem>>(`/api/v1/agency/permissions/members${query ? `?${query}` : ''}`, { method: 'GET' }, true)
 }
 
 export function createOrgMember(payload: OrgMemberCreatePayload) {
@@ -96,6 +122,10 @@ export function updateOrgMemberPermissions(memberId: number, payload: OrgMemberP
   }, true)
 }
 
+export function softDeleteOrgMember(memberId: number) {
+  return apiRequest<void>(`/api/v1/agency/members/${memberId}/soft-delete`, { method: 'PUT' }, true)
+}
+
 export function createAgencyTeam(payload: CreateTeamPayload) {
   return apiRequest<AgencyTeam>('/api/v1/agency/teams', {
     method: 'POST',
@@ -123,6 +153,21 @@ export function updateMyAgencyProfile(payload: MemberProfilePayload) {
     method: 'PUT',
     body: JSON.stringify(payload)
   }, true)
+}
+
+export function getMyAgencyProfile() {
+  return apiRequest<MemberSelfProfile>('/api/v1/agency/members/me/profile', { method: 'GET' }, true)
+}
+
+export function updateMyAvatar(payload: MemberAvatarUpdatePayload) {
+  return apiRequest<void>('/api/v1/agency/members/me/avatar', {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function submitMyProfileForAudit() {
+  return apiRequest<void>('/api/v1/agency/members/me/profile/submit', { method: 'PUT' }, true)
 }
 
 export function updateMyAgencyRoles(payload: MemberRolesPayload) {
@@ -181,4 +226,13 @@ export function listDiscoveryTeams(params: {
 
 export function getDiscoveryTeamDetail(teamId: number) {
   return apiRequest<DiscoveryTeamDetail>(`/api/v1/agency/discovery/teams/${teamId}`, { method: 'GET' }, false)
+}
+
+export async function uploadFile(file: File) {
+  const form = new FormData()
+  form.append('file', file)
+  return apiRequest<{ url: string }>('/api/v1/files/upload', {
+    method: 'POST',
+    body: form
+  }, true)
 }

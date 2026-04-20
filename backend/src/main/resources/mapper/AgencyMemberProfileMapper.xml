@@ -6,6 +6,7 @@
     <result column="user_id" property="userId"/>
     <result column="org_id" property="orgId"/>
     <result column="display_name" property="displayName"/>
+    <result column="avatar_url" property="avatarUrl"/>
     <result column="real_name" property="realName"/>
     <result column="job_title" property="jobTitle"/>
     <result column="education_level" property="educationLevel"/>
@@ -18,35 +19,41 @@
     <result column="service_style_tags" property="serviceStyleTags"/>
     <result column="public_status" property="publicStatus"/>
     <result column="verified_badge_status" property="verifiedBadgeStatus"/>
+    <result column="profile_audit_status" property="profileAuditStatus"/>
+    <result column="status" property="status"/>
   </resultMap>
 
   <select id="findByUserId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
-           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
+           profile_audit_status, status
     FROM agency_member_profile
     WHERE user_id = #{userId}
     LIMIT 1
   </select>
 
   <select id="findById" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
-           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
+           profile_audit_status, status
     FROM agency_member_profile
     WHERE id = #{id}
     LIMIT 1
   </select>
 
   <select id="findByOrgAndUserId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
-           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
+           profile_audit_status, status
     FROM agency_member_profile
     WHERE org_id = #{orgId} AND user_id = #{userId}
     LIMIT 1
   </select>
 
   <select id="findByOrgAndMemberId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
-           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+           years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
+           profile_audit_status, status
     FROM agency_member_profile
     WHERE org_id = #{orgId} AND id = #{memberId}
     LIMIT 1
@@ -64,6 +71,8 @@
       m.years_of_experience AS yearsOfExperience,
       m.public_status AS publicStatus,
       m.verified_badge_status AS verifiedBadgeStatus,
+      m.profile_audit_status AS profileAuditStatus,
+      m.status AS memberStatus,
       ua.status AS accountStatus
     FROM agency_member_profile m
     JOIN user_account ua ON ua.id = m.user_id
@@ -73,19 +82,20 @@
 
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO agency_member_profile(
-      user_id, org_id, display_name, real_name, job_title, education_level, graduated_school, major,
+      user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
       years_of_experience, special_countries, special_directions, bio, service_style_tags,
       public_status, verified_badge_status, status
     ) VALUES(
-      #{userId}, #{orgId}, #{displayName}, #{realName}, #{jobTitle}, #{educationLevel}, #{graduatedSchool}, #{major},
+      #{userId}, #{orgId}, #{displayName}, #{avatarUrl}, #{realName}, #{jobTitle}, #{educationLevel}, #{graduatedSchool}, #{major},
       #{yearsOfExperience}, #{specialCountries}, #{specialDirections}, #{bio}, #{serviceStyleTags},
-      #{publicStatus}, #{verifiedBadgeStatus}, 'ACTIVE'
+      #{publicStatus}, #{verifiedBadgeStatus}, #{status}
     )
   </insert>
 
   <update id="updateByUserId">
     UPDATE agency_member_profile
     SET display_name = #{displayName},
+        avatar_url = #{avatarUrl},
         real_name = #{realName},
         job_title = #{jobTitle},
         education_level = #{educationLevel},
@@ -97,13 +107,15 @@
         bio = #{bio},
         service_style_tags = #{serviceStyleTags},
         public_status = #{publicStatus},
-        verified_badge_status = #{verifiedBadgeStatus}
+        verified_badge_status = #{verifiedBadgeStatus},
+        profile_audit_status = #{profileAuditStatus}
     WHERE user_id = #{userId}
   </update>
 
   <update id="updateByIdForAdmin">
     UPDATE agency_member_profile
     SET display_name = #{displayName},
+        avatar_url = #{avatarUrl},
         job_title = #{jobTitle},
         education_level = #{educationLevel},
         graduated_school = #{graduatedSchool},
@@ -115,6 +127,24 @@
         service_style_tags = #{serviceStyleTags},
         public_status = #{publicStatus}
     WHERE id = #{id}
+  </update>
+
+  <update id="updateStatusById">
+    UPDATE agency_member_profile
+    SET status = #{status}
+    WHERE id = #{id}
+  </update>
+
+  <update id="updateProfileAuditStatusByUserId">
+    UPDATE agency_member_profile
+    SET profile_audit_status = #{profileAuditStatus}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateAvatarByUserId">
+    UPDATE agency_member_profile
+    SET avatar_url = #{avatarUrl}
+    WHERE user_id = #{userId}
   </update>
 
   <select id="listDiscovery" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryMemberItem">
