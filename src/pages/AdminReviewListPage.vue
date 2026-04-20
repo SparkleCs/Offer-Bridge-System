@@ -3,12 +3,11 @@
     <div class="head">
       <h2 class="section-title">{{ title }}</h2>
       <div class="toolbar">
-        <el-input v-model="keyword" placeholder="搜索姓名/手机号/机构" clearable class="kw" @keyup.enter="load" />
+        <el-input v-model="keyword" :placeholder="keywordPlaceholder" clearable class="kw" @keyup.enter="load" />
         <el-select v-model="status" clearable placeholder="状态" class="st" @change="load">
           <el-option label="待审核" value="PENDING" />
           <el-option label="已通过" value="APPROVED" />
           <el-option label="已驳回" value="REJECTED" />
-          <el-option label="未提交" value="UNVERIFIED" />
         </el-select>
         <el-button type="primary" @click="load" :loading="loading">搜索</el-button>
       </div>
@@ -17,7 +16,7 @@
     <el-table :data="rows" v-loading="loading" border>
       <el-table-column prop="subjectName" label="对象" min-width="130" />
       <el-table-column prop="phone" label="手机号" width="130" />
-      <el-table-column prop="orgName" label="机构" min-width="120" />
+      <el-table-column v-if="!isStudentReview" prop="orgName" label="机构" min-width="120" />
       <el-table-column prop="status" label="状态" width="110" />
       <el-table-column prop="submittedAt" label="提交时间" min-width="170" />
       <el-table-column label="操作" width="220" fixed="right">
@@ -41,20 +40,23 @@
       />
     </div>
 
-    <el-dialog v-model="detailVisible" title="审核详情" width="720px">
-      <div v-if="detail">
+    <el-dialog v-model="detailVisible" title="审核详情" fullscreen>
+      <div v-if="detail" class="detail-content">
         <p><b>对象：</b>{{ detail.subjectName }}（{{ detail.phone }}）</p>
         <p><b>状态：</b>{{ detail.status }}</p>
         <p><b>驳回原因：</b>{{ detail.rejectReason || '无' }}</p>
         <p><b>提交时间：</b>{{ detail.submittedAt || '-' }}</p>
-        <el-input type="textarea" :rows="12" :model-value="detail.payloadJson || ''" readonly />
+        <div class="payload-block">
+          <p class="payload-title"><b>提交内容：</b></p>
+          <pre class="payload-json">{{ detail.payloadJson || '' }}</pre>
+        </div>
       </div>
     </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ApiError } from '../services/http'
 import {
@@ -72,12 +74,15 @@ const props = defineProps<{
   title: string
 }>()
 
+const isStudentReview = computed(() => props.subjectType === 'STUDENT')
+const keywordPlaceholder = computed(() => (isStudentReview.value ? '搜索姓名/手机号' : '搜索姓名/手机号/机构'))
+
 const loading = ref(false)
 const rows = ref<AdminReviewListItem[]>([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(10)
-const status = ref('')
+const status = ref('PENDING')
 const keyword = ref('')
 
 const detailVisible = ref(false)
@@ -166,6 +171,35 @@ onMounted(load)
   margin-top: 12px;
   display: flex;
   justify-content: flex-end;
+}
+
+.detail-content {
+  max-height: calc(100vh - 180px);
+  overflow: auto;
+}
+
+.payload-block {
+  margin-top: 10px;
+}
+
+.payload-title {
+  margin-bottom: 8px;
+}
+
+.payload-json {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #dcdfe6;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #303133;
+  font-size: 13px;
+  line-height: 1.5;
+  max-height: 55vh;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
 }
 
 @media (max-width: 980px) {

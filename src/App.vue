@@ -21,7 +21,9 @@
 
         <div class="auth-area">
           <template v-if="authStore.isLoggedIn">
-            <el-button text class="msg-btn" @click="go('/messages')">消息</el-button>
+            <el-badge :value="messageUnreadTotal" :hidden="messageUnreadTotal === 0" class="msg-badge">
+              <el-button text class="msg-btn" @click="go('/messages')">消息</el-button>
+            </el-badge>
             <el-dropdown trigger="click">
               <div class="avatar-trigger">
                 <el-avatar :size="34">{{ userInitial }}</el-avatar>
@@ -51,8 +53,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { listForumNotifications } from './services/forum'
+import { listSystemNotifications } from './services/message'
 import { useAuthStore } from './stores/auth'
 
 const route = useRoute()
@@ -64,6 +68,7 @@ const currentRole = computed(() => authStore.authMeta?.role || '')
 const showAgencyCenter = computed(() => currentRole.value === 'AGENT_ORG')
 const showWorkbench = computed(() => currentRole.value === 'AGENT_MEMBER')
 const isBackofficeRoute = computed(() => route.path.startsWith('/org-admin') || route.path.startsWith('/agent-workbench') || route.path.startsWith('/admin'))
+const messageUnreadTotal = ref(0)
 const displayName = computed(() => {
   if (authStore.profile?.name) return authStore.profile.name
   const role = currentRole.value
@@ -80,15 +85,52 @@ function go(path: string) {
   }
 }
 
+async function refreshMessageUnreadTotal() {
+  if (!authStore.isLoggedIn) {
+    messageUnreadTotal.value = 0
+    return
+  }
+  try {
+    const [forum, system] = await Promise.all([
+      listForumNotifications({ page: 1, pageSize: 1 }),
+      listSystemNotifications({ page: 1, pageSize: 1 })
+    ])
+    messageUnreadTotal.value = (forum.unreadCount || 0) + (system.unreadCount || 0)
+  } catch {
+    messageUnreadTotal.value = 0
+  }
+}
+
 async function handleLogout() {
   await authStore.logoutAll()
+  messageUnreadTotal.value = 0
   router.push('/auth')
 }
+
+watch(
+  () => authStore.isLoggedIn,
+  () => {
+    refreshMessageUnreadTotal()
+  },
+  { immediate: true }
+)
+
+watch(
+  () => route.fullPath,
+  () => {
+    if (authStore.isLoggedIn) {
+      refreshMessageUnreadTotal()
+    }
+  }
+)
 </script>
 
 <style scoped>
-.msg-btn {
+.msg-badge {
   margin-right: 8px;
+}
+
+.msg-btn {
   font-weight: 600;
 }
 </style>

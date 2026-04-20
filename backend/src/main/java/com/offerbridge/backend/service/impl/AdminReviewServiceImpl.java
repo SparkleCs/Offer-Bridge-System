@@ -153,10 +153,13 @@ public class AdminReviewServiceImpl implements AdminReviewService {
 
   private List<AdminDtos.ReviewListItem> filter(List<AdminDtos.ReviewListItem> source, String status, String keyword) {
     String statusFilter = status == null ? "" : status.trim().toUpperCase();
+    if (statusFilter.isBlank()) {
+      statusFilter = "PENDING";
+    }
     String keywordFilter = keyword == null ? "" : keyword.trim();
     List<AdminDtos.ReviewListItem> filtered = new ArrayList<>();
     for (AdminDtos.ReviewListItem item : source) {
-      if (!statusFilter.isBlank() && !statusFilter.equals((item.getStatus() == null ? "" : item.getStatus().toUpperCase()))) {
+      if (!statusFilter.equals((item.getStatus() == null ? "" : item.getStatus().toUpperCase()))) {
         continue;
       }
       if (!keywordFilter.isBlank()) {
@@ -232,4 +235,3 @@ public class AdminReviewServiceImpl implements AdminReviewService {
     return source != null && source.contains(keyword);
   }
 }
-

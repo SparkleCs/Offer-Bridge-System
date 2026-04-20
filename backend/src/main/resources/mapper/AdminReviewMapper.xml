@@ -14,6 +14,7 @@
     FROM agency_org o
     JOIN user_account ua ON ua.id = o.admin_user_id
     LEFT JOIN verification_record vr ON vr.user_id = o.admin_user_id AND vr.verify_type = 'AGENT_ORG'
+    WHERE vr.id IS NOT NULL
     ORDER BY vr.submitted_at DESC, o.id DESC
   </select>
 
@@ -32,6 +33,7 @@
     LEFT JOIN agency_org o ON o.id = m.org_id
     LEFT JOIN verification_record vr ON vr.user_id = m.user_id AND vr.verify_type = 'AGENT_MEMBER_CERT'
     WHERE m.status = 'ACTIVE'
+      AND vr.id IS NOT NULL
     ORDER BY vr.submitted_at DESC, m.id DESC
   </select>
 
@@ -54,6 +56,7 @@
     JOIN user_account ua ON ua.id = svm.user_id
     LEFT JOIN verification_record vrn ON vrn.user_id = svm.user_id AND vrn.verify_type = 'REAL_NAME'
     LEFT JOIN verification_record vre ON vre.user_id = svm.user_id AND vre.verify_type = 'EDUCATION'
+    WHERE vrn.id IS NOT NULL OR vre.id IS NOT NULL
     ORDER BY COALESCE(vrn.submitted_at, vre.submitted_at) DESC, svm.id DESC
   </select>
 
@@ -118,4 +121,3 @@
     LIMIT 1
   </select>
 </mapper>
-
