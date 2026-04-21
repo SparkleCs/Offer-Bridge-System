@@ -2,7 +2,10 @@
   <section class="products-page fade-up">
     <header class="header-card">
       <div>
-        <h2 class="section-title">团队产品管理</h2>
+        <div class="title-row">
+          <h2 class="section-title">团队产品管理</h2>
+          <span class="mode-pill" :class="`mode-${editorMode}`">{{ editorModeLabel }}</span>
+        </div>
         <p class="section-desc">创建、编辑并发布团队套餐，发布前可实时预览前台展示效果。</p>
       </div>
       <el-button type="primary" class="new-btn" @click="onCreateProduct" :disabled="isBlocked">新建套餐</el-button>
@@ -11,7 +14,7 @@
     <el-alert v-if="blockedReason" :title="blockedReason" type="warning" :closable="false" show-icon class="gate-alert" />
 
     <div v-else class="workspace">
-      <aside class="left-panel" v-loading="loadingList">
+      <aside class="left-panel glass-panel" v-loading="loadingList">
         <el-empty v-if="products.length === 0" description="暂无套餐，点击右上角创建" />
         <button
           v-for="item in products"
@@ -21,19 +24,25 @@
           @click="onSelectProduct(item.teamId)"
         >
           <div class="row-top">
-            <strong>{{ item.teamName }}</strong>
+            <strong class="product-title">{{ item.teamName }}</strong>
             <el-tag :type="item.publishStatus === 'PUBLISHED' ? 'success' : 'info'" size="small">{{ item.publishStatus === 'PUBLISHED' ? '已发布' : '草稿' }}</el-tag>
           </div>
-          <p class="type-line">{{ item.teamType || '未设置类型' }}</p>
+          <p class="type-line"><span class="type-pill">{{ item.teamType || '未设置类型' }}</span></p>
           <div class="row-meta">
-            <span>{{ formatPrice(item.priceMin, item.priceMax) }}</span>
-            <span>{{ item.updatedAt || '-' }}</span>
+            <span class="meta-cell">
+              <em class="meta-label">价格</em>
+              <strong class="meta-value">{{ formatPrice(item.priceMin, item.priceMax) }}</strong>
+            </span>
+            <span class="meta-cell">
+              <em class="meta-label">更新时间</em>
+              <strong class="meta-value">{{ item.updatedAt || '-' }}</strong>
+            </span>
           </div>
         </button>
       </aside>
 
-      <main class="main-panel" v-loading="loadingDetail">
-        <el-empty v-if="!editingTeamId" description="请选择或创建一个套餐" />
+      <main class="main-panel glass-panel" v-loading="loadingDetail">
+        <el-empty v-if="editorMode === 'view'" description="请选择或创建一个套餐" />
 
         <template v-else>
           <el-form ref="formRef" :model="form" label-position="top" class="editor-form">
@@ -94,7 +103,7 @@
           </el-form>
 
           <div class="editor-actions">
-            <el-button @click="reloadCurrent" :disabled="!editingTeamId">重载</el-button>
+            <el-button @click="cancelEditing">{{ editorMode === 'creating' ? '取消新建' : '撤销修改' }}</el-button>
             <el-button type="primary" @click="saveProduct" :loading="saving">保存草稿</el-button>
             <el-button type="success" @click="publishProduct" :loading="publishing">发布套餐</el-button>
           </div>
@@ -130,12 +139,13 @@
       @closed="handleMemberDialogClosed"
     >
       <div class="dialog-toolbar">
-        <el-input v-model="memberKeyword" placeholder="按姓名/岗位搜索" clearable @keyup.enter="loadOrgMembers" />
-        <el-button @click="loadOrgMembers" :loading="loadingMembers">搜索</el-button>
+        <el-input v-model="memberKeyword" placeholder="按姓名/岗位搜索" clearable @keyup.enter="onMemberSearch" />
+        <el-button @click="onMemberSearch" :loading="loadingMembers">搜索</el-button>
       </div>
       <el-table
         :data="orgMembers"
         :empty-text="memberEmptyText"
+        :row-key="(row: TeamProductOrgMemberItem) => row.memberId"
         v-loading="loadingMembers"
         max-height="420"
         @selection-change="onMemberSelectionChange"
@@ -176,6 +186,14 @@ import type {
   TeamProductUpsertPayload
 } from '../types/agency'
 
+type EditorMode = 'view' | 'edit-existing' | 'creating'
+
+interface DraftSnapshot {
+  selectedTeamId: number | null
+  editingTeamId: number | null
+  form: TeamProductUpsertPayload
+}
+
 const access = ref<MemberWorkbenchAccess | null>(null)
 const loadingList = ref(false)
 const loadingDetail = ref(false)
@@ -186,6 +204,8 @@ const products = ref<TeamProductSummaryItem[]>([])
 const selectedTeamId = ref<number | null>(null)
 const editingTeamId = ref<number | null>(null)
 const formRef = ref<FormInstance>()
+const editorMode = ref<EditorMode>('view')
+const draftSnapshot = ref<DraftSnapshot | null>(null)
 
 const form = reactive<TeamProductUpsertPayload>({
   teamName: '',
@@ -199,11 +219,13 @@ const form = reactive<TeamProductUpsertPayload>({
 })
 
 const orgMembers = ref<TeamProductOrgMemberItem[]>([])
+const allOrgMembers = ref<TeamProductOrgMemberItem[]>([])
 const memberLookup = ref<Record<number, TeamProductOrgMemberItem>>({})
 const memberKeyword = ref('')
 const loadingMembers = ref(false)
 const memberDialogVisible = ref(false)
 const pendingMemberIds = ref<number[]>([])
+const membersLoadedOnce = ref(false)
 const memberLoadRequestId = ref(0)
 const activeMemberLoadRequestId = ref(0)
 const MEMBER_LOAD_TIMEOUT_MS = 10000
@@ -221,6 +243,11 @@ const blockedReason = computed(() => {
 })
 
 const isBlocked = computed(() => !!blockedReason.value)
+const editorModeLabel = computed(() => {
+  if (editorMode.value === 'creating') return '新建模式'
+  if (editorMode.value === 'edit-existing') return '编辑模式'
+  return '浏览模式'
+})
 
 const selectedMemberObjects = computed(() => {
   return form.publisherMemberIds.map((id) => memberLookup.value[id]).filter(Boolean) as TeamProductOrgMemberItem[]
@@ -229,7 +256,11 @@ const selectedMemberObjects = computed(() => {
 watch(memberDialogVisible, (visible) => {
   if (visible) {
     pendingMemberIds.value = [...form.publisherMemberIds]
-    loadOrgMembers()
+    if (membersLoadedOnce.value) {
+      applyMemberFilter()
+      return
+    }
+    fetchAllOrgMembers()
   }
 })
 
@@ -255,6 +286,21 @@ function handleMemberDialogClosed() {
 
 function shouldApplyMemberLoadResult(requestId: number) {
   return memberDialogVisible.value && activeMemberLoadRequestId.value === requestId
+}
+
+function includesKeyword(source: string | null | undefined, keyword: string) {
+  return (source || '').toLowerCase().includes(keyword)
+}
+
+function applyMemberFilter() {
+  const keyword = memberKeyword.value.trim().toLowerCase()
+  if (!keyword) {
+    orgMembers.value = [...allOrgMembers.value]
+    return
+  }
+  orgMembers.value = allOrgMembers.value.filter((member) => (
+    includesKeyword(member.displayName, keyword) || includesKeyword(member.jobTitle, keyword)
+  ))
 }
 
 function roleLabel(code?: string | null) {
@@ -309,6 +355,59 @@ function fillFormFromDetail(detail: TeamProductDetailView) {
   memberLookup.value = { ...memberLookup.value, ...nextLookup }
 }
 
+function resetForm() {
+  form.teamName = ''
+  form.teamType = ''
+  form.teamIntro = ''
+  form.serviceCountryScope = ''
+  form.serviceMajorScope = ''
+  form.priceMin = 0
+  form.priceMax = 0
+  form.publisherMemberIds = []
+}
+
+function buildPayload(): TeamProductUpsertPayload {
+  return {
+    ...form,
+    teamName: form.teamName.trim(),
+    teamType: form.teamType?.trim() || '',
+    teamIntro: form.teamIntro?.trim() || '',
+    serviceCountryScope: form.serviceCountryScope.trim(),
+    serviceMajorScope: form.serviceMajorScope.trim(),
+    publisherMemberIds: [...form.publisherMemberIds]
+  }
+}
+
+function snapshotCurrentContext() {
+  draftSnapshot.value = {
+    selectedTeamId: selectedTeamId.value,
+    editingTeamId: editingTeamId.value,
+    form: buildPayload()
+  }
+}
+
+function restoreSnapshotContext() {
+  const snapshot = draftSnapshot.value
+  if (!snapshot) {
+    selectedTeamId.value = null
+    editingTeamId.value = null
+    editorMode.value = 'view'
+    resetForm()
+    return
+  }
+  selectedTeamId.value = snapshot.selectedTeamId
+  editingTeamId.value = snapshot.editingTeamId
+  form.teamName = snapshot.form.teamName
+  form.teamType = snapshot.form.teamType || ''
+  form.teamIntro = snapshot.form.teamIntro || ''
+  form.serviceCountryScope = snapshot.form.serviceCountryScope
+  form.serviceMajorScope = snapshot.form.serviceMajorScope
+  form.priceMin = snapshot.form.priceMin
+  form.priceMax = snapshot.form.priceMax
+  form.publisherMemberIds = [...snapshot.form.publisherMemberIds]
+  editorMode.value = snapshot.editingTeamId ? 'edit-existing' : 'view'
+}
+
 async function loadAccessAndList() {
   access.value = await getMyWorkbenchAccess().catch(() => null)
   if (blockedReason.value) return
@@ -322,6 +421,7 @@ async function loadProducts() {
     if (products.value.length === 0) {
       selectedTeamId.value = null
       editingTeamId.value = null
+      editorMode.value = 'view'
       return
     }
     const firstId = selectedTeamId.value && products.value.some((it) => it.teamId === selectedTeamId.value)
@@ -335,22 +435,24 @@ async function loadProducts() {
   }
 }
 
-async function loadOrgMembers() {
+async function fetchAllOrgMembers() {
   const requestId = ++memberLoadRequestId.value
   activeMemberLoadRequestId.value = requestId
   loadingMembers.value = true
   try {
     const loaded = await withTimeout(
-      listTeamProductOrgMembers(memberKeyword.value),
+      listTeamProductOrgMembers(),
       MEMBER_LOAD_TIMEOUT_MS
     )
     if (!shouldApplyMemberLoadResult(requestId)) return
-    orgMembers.value = loaded
+    allOrgMembers.value = loaded
+    membersLoadedOnce.value = true
     const lookup = { ...memberLookup.value }
     loaded.forEach((member) => {
       lookup[member.memberId] = member
     })
     memberLookup.value = lookup
+    applyMemberFilter()
   } catch (error: any) {
     if (!shouldApplyMemberLoadResult(requestId)) return
     ElMessage.error(resolveMemberLoadError(error))
@@ -359,6 +461,14 @@ async function loadOrgMembers() {
       loadingMembers.value = false
     }
   }
+}
+
+function onMemberSearch() {
+  if (!membersLoadedOnce.value) {
+    fetchAllOrgMembers()
+    return
+  }
+  applyMemberFilter()
 }
 
 function resolveMemberLoadError(error: any) {
@@ -393,6 +503,7 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T
 async function onSelectProduct(teamId: number) {
   selectedTeamId.value = teamId
   editingTeamId.value = teamId
+  editorMode.value = 'edit-existing'
   loadingDetail.value = true
   try {
     const detail = await getTeamProduct(teamId)
@@ -405,21 +516,31 @@ async function onSelectProduct(teamId: number) {
 }
 
 async function onCreateProduct() {
+  if (editorMode.value !== 'creating') {
+    snapshotCurrentContext()
+  }
   editingTeamId.value = null
   selectedTeamId.value = null
-  form.teamName = ''
-  form.teamType = ''
-  form.teamIntro = ''
-  form.serviceCountryScope = ''
-  form.serviceMajorScope = ''
-  form.priceMin = 0
-  form.priceMax = 0
-  form.publisherMemberIds = []
+  editorMode.value = 'creating'
+  resetForm()
 }
 
 async function reloadCurrent() {
   if (!editingTeamId.value) return
   await onSelectProduct(editingTeamId.value)
+}
+
+async function cancelEditing() {
+  if (editorMode.value === 'creating') {
+    restoreSnapshotContext()
+    draftSnapshot.value = null
+    return
+  }
+  if (editingTeamId.value) {
+    await reloadCurrent()
+    return
+  }
+  editorMode.value = 'view'
 }
 
 async function saveProduct() {
@@ -432,23 +553,17 @@ async function saveProduct() {
 
   saving.value = true
   try {
-    const payload: TeamProductUpsertPayload = {
-      ...form,
-      teamName: form.teamName.trim(),
-      teamType: form.teamType?.trim() || '',
-      teamIntro: form.teamIntro?.trim() || '',
-      serviceCountryScope: form.serviceCountryScope.trim(),
-      serviceMajorScope: form.serviceMajorScope.trim(),
-      publisherMemberIds: [...form.publisherMemberIds]
-    }
+    const payload = buildPayload()
 
-    if (editingTeamId.value) {
+    if (editorMode.value === 'edit-existing' && editingTeamId.value) {
       await updateTeamProduct(editingTeamId.value, payload)
       ElMessage.success('草稿已保存')
     } else {
       const created = await createTeamProduct(payload)
       editingTeamId.value = created.teamId
       selectedTeamId.value = created.teamId
+      editorMode.value = 'edit-existing'
+      draftSnapshot.value = null
       ElMessage.success('套餐草稿已创建')
     }
 
@@ -461,10 +576,6 @@ async function saveProduct() {
 }
 
 async function publishProduct() {
-  if (!editingTeamId.value) {
-    ElMessage.warning('请先创建并保存套餐')
-    return
-  }
   try {
     validateForm()
     if (form.publisherMemberIds.length === 0) {
@@ -484,8 +595,19 @@ async function publishProduct() {
 
   publishing.value = true
   try {
-    await updateTeamProduct(editingTeamId.value, { ...form, publisherMemberIds: [...form.publisherMemberIds] })
-    await publishTeamProduct(editingTeamId.value)
+    let targetTeamId = editingTeamId.value
+    const payload = buildPayload()
+    if (editorMode.value === 'creating' || !targetTeamId) {
+      const created = await createTeamProduct(payload)
+      targetTeamId = created.teamId
+      editingTeamId.value = targetTeamId
+      selectedTeamId.value = targetTeamId
+      editorMode.value = 'edit-existing'
+      draftSnapshot.value = null
+    } else {
+      await updateTeamProduct(targetTeamId, payload)
+    }
+    await publishTeamProduct(targetTeamId)
     ElMessage.success('套餐已发布')
     await loadProducts()
   } catch (error: any) {
@@ -516,20 +638,59 @@ loadAccessAndList()
   display: flex;
   flex-direction: column;
   gap: 12px;
+  --panel-border: #d6e8f4;
+  --panel-shadow: 0 16px 36px rgba(17, 63, 97, 0.1);
 }
 
 .header-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border: 1px solid #d7e9f3;
-  border-radius: 16px;
-  padding: 14px;
-  background: linear-gradient(140deg, #f8fdff, #eef8ff);
+  border: 1px solid var(--panel-border);
+  border-radius: 18px;
+  padding: 16px;
+  background:
+    radial-gradient(circle at 80% 18%, rgba(126, 203, 254, 0.24), rgba(126, 203, 254, 0)),
+    linear-gradient(130deg, #f9feff, #edf8ff);
+  box-shadow: var(--panel-shadow);
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mode-pill {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+}
+
+.mode-creating {
+  color: #0f6d52;
+  background: #e7f8f1;
+  border-color: #97dbbe;
+}
+
+.mode-edit-existing {
+  color: #1660a6;
+  background: #ecf6ff;
+  border-color: #abd0f5;
+}
+
+.mode-view {
+  color: #5b6f80;
+  background: #f1f5f8;
+  border-color: #d2dde7;
 }
 
 .new-btn {
   border-radius: 12px;
+  box-shadow: 0 10px 20px rgba(28, 117, 193, 0.3);
 }
 
 .gate-alert {
@@ -544,10 +705,14 @@ loadAccessAndList()
 
 .left-panel,
 .main-panel {
-  border: 1px solid #d8e7f2;
+  border: 1px solid var(--panel-border);
   border-radius: 16px;
-  background: #fff;
+  background: #ffffff;
   padding: 12px;
+}
+
+.glass-panel {
+  box-shadow: var(--panel-shadow);
 }
 
 .left-panel {
@@ -561,10 +726,17 @@ loadAccessAndList()
 .product-item {
   border: 1px solid #dfebf4;
   border-radius: 12px;
-  padding: 10px;
+  padding: 12px;
   text-align: left;
   background: linear-gradient(140deg, #ffffff, #f6fbff);
   cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, border-color 0.2s ease;
+}
+
+.product-item:hover {
+  border-color: #9ec9e9;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 18px rgba(36, 102, 149, 0.13);
 }
 
 .product-item.active {
@@ -579,24 +751,60 @@ loadAccessAndList()
   gap: 8px;
 }
 
+.product-title {
+  font-size: 26px;
+  line-height: 1.18;
+  letter-spacing: 0.01em;
+  color: #193449;
+}
+
 .type-line {
-  margin: 6px 0;
-  color: #4f6a80;
-  font-size: 13px;
+  margin: 8px 0 10px;
+}
+
+.type-pill {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid #c6dff4;
+  background: #eef7ff;
+  color: #2d5f89;
+  font-size: 15px;
+  font-weight: 700;
 }
 
 .row-meta {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.meta-cell {
   display: flex;
-  justify-content: space-between;
-  color: #6f8598;
-  font-size: 12px;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.meta-label {
+  color: #5f7990;
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.meta-value {
+  color: #304f6a;
+  font-size: 16px;
+  line-height: 1.34;
+  font-weight: 700;
 }
 
 .editor-form {
   border: 1px solid #e5edf4;
   border-radius: 14px;
-  padding: 12px;
-  background: #fcfeff;
+  padding: 14px;
+  background: linear-gradient(150deg, #fcfeff, #f4faff);
 }
 
 .editor-actions {
@@ -613,6 +821,8 @@ loadAccessAndList()
   padding: 14px;
   background: linear-gradient(160deg, #09212e, #0f3b52);
   color: #ecfbff;
+  box-shadow: 0 18px 28px rgba(10, 41, 59, 0.24);
+  animation: preview-enter 0.28s ease;
 }
 
 .preview-head {
@@ -697,6 +907,17 @@ loadAccessAndList()
   gap: 8px;
 }
 
+@keyframes preview-enter {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .full {
   width: 100%;
 }
@@ -712,6 +933,14 @@ loadAccessAndList()
 
   .preview-members {
     grid-template-columns: 1fr;
+  }
+
+  .product-title {
+    font-size: 22px;
+  }
+
+  .meta-value {
+    font-size: 14px;
   }
 }
 </style>

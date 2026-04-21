@@ -19,31 +19,37 @@
 
       <section class="auth-panel">
         <button class="admin-entry" type="button" @click="goAdminAuth">平台管理员入口</button>
-        <h2 class="title" style="font-size:28px;">验证码登录/注册</h2>
+        <h2 class="title">验证码登录/注册</h2>
         <p class="desc">首次验证通过即注册</p>
 
         <el-form label-position="top" class="auth-form" @submit.prevent>
-          <el-form-item label="选择角色">
-            <el-radio-group v-model="selectedRole" class="role-group" size="large">
-              <el-radio-button label="STUDENT">学生</el-radio-button>
-              <el-radio-button label="AGENT">中介</el-radio-button>
-            </el-radio-group>
-          </el-form-item>
-
-          <el-form-item label="手机号">
-            <el-input v-model="phone" maxlength="11" size="large" placeholder="请输入手机号" />
-          </el-form-item>
-
-          <el-form-item label="短信验证码">
-            <div class="code-row">
-              <el-input v-model="code" maxlength="6" size="large" placeholder="请输入验证码" />
-              <el-button class="code-btn" size="large" :disabled="countdown > 0 || !phone" @click="sendCode">
-                {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-              </el-button>
+          <el-form-item label="选择角色" class="auth-field-item">
+            <div class="field-card role-card">
+              <el-radio-group v-model="selectedRole" class="role-group" size="large">
+                <el-radio-button label="STUDENT">学生</el-radio-button>
+                <el-radio-button label="AGENT">中介</el-radio-button>
+              </el-radio-group>
             </div>
           </el-form-item>
 
-          <div class="agreement-row">
+          <el-form-item label="手机号" class="auth-field-item">
+            <div class="field-card">
+              <el-input v-model="phone" maxlength="11" size="large" placeholder="请输入手机号" />
+            </div>
+          </el-form-item>
+
+          <el-form-item label="短信验证码" class="auth-field-item">
+            <div class="field-card">
+              <div class="code-row">
+                <el-input v-model="code" maxlength="6" size="large" placeholder="请输入验证码" />
+                <el-button class="code-btn" size="large" :disabled="countdown > 0 || !phone" @click="sendCode">
+                  {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
+                </el-button>
+              </div>
+            </div>
+          </el-form-item>
+
+          <div class="agreement-row field-card agreement-card">
             <el-checkbox v-model="agreed">已阅读并同意《用户协议》《隐私政策》</el-checkbox>
           </div>
 
@@ -206,7 +212,18 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .auth-stage {
-  padding: 18px 0;
+  --bg-soft: #f4f8fd;
+  --panel-stroke: #d4e3f2;
+  --panel-shadow: 0 20px 44px rgba(33, 74, 122, 0.12);
+  --card-bg: #f8fbff;
+  --card-stroke: #d8e5f3;
+  --focus-stroke: #77aee8;
+  --focus-shadow: 0 10px 18px rgba(52, 128, 201, 0.2);
+  --text-main: #2a3f56;
+  --text-sub: #6a7f92;
+  min-height: calc(100vh - 40px);
+  padding: 20px;
+  background: linear-gradient(145deg, #f3f8fd, #eaf2fa);
 }
 
 .auth-shell {
@@ -214,17 +231,17 @@ onBeforeUnmount(() => {
   margin: 0 auto;
   border-radius: 28px;
   overflow: hidden;
-  background: linear-gradient(135deg, #dff5fb 0%, #eef9ff 52%, #ffffff 100%);
-  border: 1px solid #d3e6f6;
-  box-shadow: 0 24px 46px rgba(27, 56, 92, 0.12);
+  background: linear-gradient(136deg, #eff7fd 0%, #f8fcff 45%, #ffffff 100%);
+  border: 1px solid var(--panel-stroke);
+  box-shadow: var(--panel-shadow);
   display: grid;
   grid-template-columns: 0.95fr 1.25fr;
 }
 
 .auth-aside {
   padding: 44px 34px;
-  background: rgba(234, 247, 253, 0.78);
-  border-right: 1px solid rgba(165, 202, 225, 0.45);
+  background: rgba(236, 246, 252, 0.85);
+  border-right: 1px solid rgba(166, 198, 223, 0.48);
 }
 
 .brand {
@@ -234,8 +251,9 @@ onBeforeUnmount(() => {
   min-width: 120px;
   height: 34px;
   border-radius: 999px;
-  background: rgba(57, 167, 209, 0.16);
-  color: #1f8ead;
+  background: rgba(63, 164, 217, 0.14);
+  color: #237fa8;
+  border: 1px solid rgba(133, 194, 228, 0.35);
   font-size: 13px;
   letter-spacing: 0.04em;
   font-weight: 700;
@@ -244,12 +262,12 @@ onBeforeUnmount(() => {
 .auth-aside h3 {
   margin: 24px 0 10px;
   font-size: 28px;
-  color: #2a405a;
+  color: #2a415a;
 }
 
 .auth-aside > p {
   margin: 0;
-  color: #5d738a;
+  color: #607b91;
   line-height: 1.7;
 }
 
@@ -273,17 +291,17 @@ onBeforeUnmount(() => {
   height: 12px;
   border-radius: 999px;
   margin-top: 5px;
-  background: linear-gradient(135deg, #4eb9df, #2f8fd8);
+  background: linear-gradient(135deg, #64c7e8, #4b96de);
 }
 
 .feature-title {
   font-weight: 700;
-  color: #304861;
+  color: #314c66;
   margin-bottom: 4px;
 }
 
 .feature-desc {
-  color: #6a8197;
+  color: #6b8398;
   font-size: 14px;
 }
 
@@ -299,7 +317,7 @@ onBeforeUnmount(() => {
   right: 16px;
   border: none;
   background: transparent;
-  color: #7390ad;
+  color: #6f89a4;
   font-size: 12px;
   cursor: pointer;
   padding: 4px 6px;
@@ -315,14 +333,15 @@ onBeforeUnmount(() => {
 .title {
   margin: 0;
   text-align: center;
-  font-size: 38px;
-  color: #2b3d50;
+  font-size: 32px;
+  color: #2a3f56;
+  letter-spacing: 0.02em;
 }
 
 .desc {
   margin: 10px 0 28px;
   text-align: center;
-  color: #9aadb9;
+  color: #7f94a6;
   font-size: 15px;
 }
 
@@ -331,25 +350,105 @@ onBeforeUnmount(() => {
   margin: 0 auto;
 }
 
-.role-group {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+.auth-field-item {
+  margin-bottom: 14px;
+}
+
+.auth-field-item :deep(.el-form-item__label) {
+  color: var(--text-main);
+  font-weight: 700;
+  font-size: 15px;
+  margin-bottom: 8px;
+  transition: color 0.2s ease;
+}
+
+.auth-field-item:focus-within :deep(.el-form-item__label) {
+  color: #245f95;
+}
+
+.field-card {
   width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--card-stroke);
+  border-radius: 14px;
+  background: var(--card-bg);
+  padding: 8px;
+  transition: border-color 0.18s ease-out, box-shadow 0.2s ease-out, transform 0.18s ease-out, background-color 0.2s ease-out;
+}
+
+.field-card:hover {
+  border-color: #c4d7ea;
+}
+
+.field-card:focus-within {
+  border-color: var(--focus-stroke);
+  box-shadow: var(--focus-shadow);
+  transform: translateY(-1px);
+  background: #ffffff;
+}
+
+.field-card :deep(.el-input__wrapper) {
+  box-shadow: none !important;
+  background: transparent;
+  border-radius: 10px;
+}
+
+.field-card :deep(.el-input__inner) {
+  font-size: 16px;
+  color: #2b4259;
+}
+
+.role-group {
+  display: flex;
+  width: 100%;
+}
+
+.role-group :deep(.el-radio-button) {
+  flex: 1 1 50%;
 }
 
 .role-group :deep(.el-radio-button__inner) {
   width: 100%;
+  border-radius: 10px;
+  border: none;
+  background: #f3f7fc;
+  transition: all 0.2s ease-out;
+}
+
+.role-group :deep(.el-radio-button__inner:hover) {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(66, 130, 191, 0.12);
+}
+
+.role-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+  box-shadow: 0 10px 18px rgba(57, 131, 207, 0.26);
 }
 
 .code-row {
   display: grid;
-  grid-template-columns: 1fr 150px;
+  grid-template-columns: minmax(0, 1fr) 150px;
   gap: 10px;
+  width: 100%;
 }
 
 .code-btn {
   width: 100%;
   border-color: #b8d6f6;
+  border-radius: 10px;
+  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out, background-color 0.18s ease-out;
+}
+
+.code-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 16px rgba(63, 136, 201, 0.16);
+}
+
+.code-btn:active {
+  transform: translateY(0);
+}
+
+.code-btn.is-disabled {
+  opacity: 0.72;
 }
 
 .agreement-row {
@@ -357,11 +456,28 @@ onBeforeUnmount(() => {
   color: #6d7d8c;
 }
 
+.agreement-card {
+  padding: 10px 12px;
+  border-radius: 12px;
+}
+
+.agreement-card:focus-within {
+  transform: translateY(0);
+}
+
 .submit-btn {
   width: 100%;
   height: 48px;
   border: none;
-  background: linear-gradient(120deg, #31a7e7, #1678f3);
+  background: linear-gradient(120deg, #36a6ef, #2f78de);
+  box-shadow: 0 12px 22px rgba(43, 113, 193, 0.3);
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out, filter 0.2s ease-out;
+}
+
+.submit-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+  box-shadow: 0 18px 30px rgba(26, 122, 218, 0.4);
 }
 
 @media (max-width: 980px) {
@@ -379,11 +495,15 @@ onBeforeUnmount(() => {
   }
 
   .title {
-    font-size: 32px;
+    font-size: 30px;
   }
 }
 
 @media (max-width: 640px) {
+  .auth-stage {
+    padding: 10px;
+  }
+
   .auth-aside {
     padding: 30px 20px;
   }
@@ -397,11 +517,15 @@ onBeforeUnmount(() => {
   }
 
   .title {
-    font-size: 28px;
+    font-size: 26px;
   }
 
   .code-row {
     grid-template-columns: 1fr 132px;
+  }
+
+  .field-card {
+    padding: 6px;
   }
 }
 </style>

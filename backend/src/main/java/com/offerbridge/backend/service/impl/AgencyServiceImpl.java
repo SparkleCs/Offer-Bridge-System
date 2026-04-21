@@ -419,9 +419,21 @@ public class AgencyServiceImpl implements AgencyService {
   @Override
   public List<AgencyDtos.TeamProductOrgMemberItem> listTeamProductOrgMembers(Long userId, String keyword) {
     PublisherContext context = requirePublishPermission(userId);
-    List<AgencyDtos.TeamProductOrgMemberItem> members = agencyMemberProfileMapper.listOrgProductMembers(context.org().getId(), keyword);
-    log.debug("listTeamProductOrgMembers orgId={}, keyword='{}', count={}", context.org().getId(), keyword, members.size());
-    return members;
+    Long orgId = context.org().getId();
+    String safeKeyword = keyword == null ? "" : keyword.trim();
+    log.debug("listTeamProductOrgMembers start userId={}, orgId={}, keyword='{}'", userId, orgId, safeKeyword);
+    try {
+      List<AgencyDtos.TeamProductOrgMemberItem> members = agencyMemberProfileMapper.listOrgProductMembers(orgId, safeKeyword);
+      log.debug("listTeamProductOrgMembers success userId={}, orgId={}, keyword='{}', count={}", userId, orgId, safeKeyword, members.size());
+      return members;
+    } catch (BizException ex) {
+      log.warn("listTeamProductOrgMembers biz-fail userId={}, orgId={}, keyword='{}', code={}, msg={}",
+        userId, orgId, safeKeyword, ex.getCode(), ex.getMessage());
+      throw ex;
+    } catch (Exception ex) {
+      log.error("listTeamProductOrgMembers fail userId={}, orgId={}, keyword='{}'", userId, orgId, safeKeyword, ex);
+      throw ex;
+    }
   }
 
   @Override
