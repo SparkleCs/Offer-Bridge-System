@@ -1,5 +1,8 @@
 package com.offerbridge.backend.entity;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+
 public class AgencyTeam {
   private Long id;
   private Long orgId;
@@ -8,6 +11,11 @@ public class AgencyTeam {
   private String teamIntro;
   private String serviceCountryScope;
   private String serviceMajorScope;
+  private BigDecimal priceMin;
+  private BigDecimal priceMax;
+  private String publishStatus;
+  private LocalDateTime publishedAt;
+  private Long publishedBy;
 
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
@@ -23,4 +31,14 @@ public class AgencyTeam {
   public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
   public String getServiceMajorScope() { return serviceMajorScope; }
   public void setServiceMajorScope(String serviceMajorScope) { this.serviceMajorScope = serviceMajorScope; }
+  public BigDecimal getPriceMin() { return priceMin; }
+  public void setPriceMin(BigDecimal priceMin) { this.priceMin = priceMin; }
+  public BigDecimal getPriceMax() { return priceMax; }
+  public void setPriceMax(BigDecimal priceMax) { this.priceMax = priceMax; }
+  public String getPublishStatus() { return publishStatus; }
+  public void setPublishStatus(String publishStatus) { this.publishStatus = publishStatus; }
+  public LocalDateTime getPublishedAt() { return publishedAt; }
+  public void setPublishedAt(LocalDateTime publishedAt) { this.publishedAt = publishedAt; }
+  public Long getPublishedBy() { return publishedBy; }
+  public void setPublishedBy(Long publishedBy) { this.publishedBy = publishedBy; }
 }

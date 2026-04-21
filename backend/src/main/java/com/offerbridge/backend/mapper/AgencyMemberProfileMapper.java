@@ -14,6 +14,7 @@ public interface AgencyMemberProfileMapper {
   AgencyMemberProfile findByOrgAndUserId(@Param("orgId") Long orgId, @Param("userId") Long userId);
   AgencyMemberProfile findByOrgAndMemberId(@Param("orgId") Long orgId, @Param("memberId") Long memberId);
   List<AgencyDtos.MemberAdminItem> listByOrgId(@Param("orgId") Long orgId);
+  List<AgencyDtos.TeamProductOrgMemberItem> listOrgProductMembers(@Param("orgId") Long orgId, @Param("keyword") String keyword);
   int insertOne(AgencyMemberProfile entity);
   int updateByUserId(AgencyMemberProfile entity);
   int updateByIdForAdmin(AgencyMemberProfile entity);

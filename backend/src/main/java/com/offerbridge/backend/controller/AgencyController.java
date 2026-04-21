@@ -121,6 +121,42 @@ public class AgencyController {
     return ApiResponse.ok(agencyService.listTeams(AuthContext.getUserId()));
   }
 
+  @GetMapping("/team-products")
+  public ApiResponse<List<AgencyDtos.TeamProductSummaryItem>> listTeamProducts() {
+    return ApiResponse.ok(agencyService.listTeamProducts(AuthContext.getUserId()));
+  }
+
+  @GetMapping("/team-products/org-members")
+  public ApiResponse<List<AgencyDtos.TeamProductOrgMemberItem>> listTeamProductOrgMembers(
+    @RequestParam(required = false) String keyword
+  ) {
+    return ApiResponse.ok(agencyService.listTeamProductOrgMembers(AuthContext.getUserId(), keyword));
+  }
+
+  @GetMapping("/team-products/{teamId}")
+  public ApiResponse<AgencyDtos.TeamProductDetailView> getTeamProduct(@PathVariable Long teamId) {
+    return ApiResponse.ok(agencyService.getTeamProduct(AuthContext.getUserId(), teamId));
+  }
+
+  @PostMapping("/team-products")
+  public ApiResponse<AgencyDtos.TeamProductDetailView> createTeamProduct(@Valid @RequestBody AgencyDtos.TeamProductUpsertRequest request) {
+    return ApiResponse.ok(agencyService.createTeamProduct(AuthContext.getUserId(), request));
+  }
+
+  @PutMapping("/team-products/{teamId}")
+  public ApiResponse<AgencyDtos.TeamProductDetailView> updateTeamProduct(
+    @PathVariable Long teamId,
+    @Valid @RequestBody AgencyDtos.TeamProductUpsertRequest request
+  ) {
+    return ApiResponse.ok(agencyService.updateTeamProduct(AuthContext.getUserId(), teamId, request));
+  }
+
+  @PostMapping("/team-products/{teamId}/publish")
+  public ApiResponse<Void> publishTeamProduct(@PathVariable Long teamId) {
+    agencyService.publishTeamProduct(AuthContext.getUserId(), teamId);
+    return ApiResponse.ok();
+  }
+
   @PostMapping("/invitations")
   public ApiResponse<AgencyDtos.InvitationView> createInvitation(@Valid @RequestBody AgencyDtos.InvitationCreateRequest request) {
     return ApiResponse.ok(agencyService.createInvitation(AuthContext.getUserId(), request));

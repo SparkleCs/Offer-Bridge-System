@@ -22,6 +22,10 @@ import type {
   OrgMemberPermissionsPayload,
   OrgMemberStatusPayload,
   PagedResult,
+  TeamProductDetailView,
+  TeamProductOrgMemberItem,
+  TeamProductSummaryItem,
+  TeamProductUpsertPayload,
   OrgVerificationPayload,
   OrgVerificationView
 } from '../types/agency'
@@ -137,6 +141,39 @@ export function createAgencyTeam(payload: CreateTeamPayload) {
 
 export function listAgencyTeams() {
   return apiRequest<AgencyTeam[]>('/api/v1/agency/teams', { method: 'GET' }, true)
+}
+
+export function listTeamProducts() {
+  return apiRequest<TeamProductSummaryItem[]>('/api/v1/agency/team-products', { method: 'GET' }, true)
+}
+
+export function getTeamProduct(teamId: number) {
+  return apiRequest<TeamProductDetailView>(`/api/v1/agency/team-products/${teamId}`, { method: 'GET' }, true)
+}
+
+export function createTeamProduct(payload: TeamProductUpsertPayload) {
+  return apiRequest<TeamProductDetailView>('/api/v1/agency/team-products', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function updateTeamProduct(teamId: number, payload: TeamProductUpsertPayload) {
+  return apiRequest<TeamProductDetailView>(`/api/v1/agency/team-products/${teamId}`, {
+    method: 'PUT',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function publishTeamProduct(teamId: number) {
+  return apiRequest<void>(`/api/v1/agency/team-products/${teamId}/publish`, {
+    method: 'POST'
+  }, true)
+}
+
+export function listTeamProductOrgMembers(keyword?: string) {
+  const query = keyword && keyword.trim() ? `?keyword=${encodeURIComponent(keyword.trim())}` : ''
+  return apiRequest<TeamProductOrgMemberItem[]>(`/api/v1/agency/team-products/org-members${query}`, { method: 'GET' }, true)
 }
 
 export function createAgencyInvitation(payload: InvitationPayload) {

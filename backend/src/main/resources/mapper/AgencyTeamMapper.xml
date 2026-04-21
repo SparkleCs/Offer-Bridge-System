@@ -9,23 +9,125 @@
     <result column="team_intro" property="teamIntro"/>
     <result column="service_country_scope" property="serviceCountryScope"/>
     <result column="service_major_scope" property="serviceMajorScope"/>
+    <result column="price_min" property="priceMin"/>
+    <result column="price_max" property="priceMax"/>
+    <result column="publish_status" property="publishStatus"/>
+    <result column="published_at" property="publishedAt"/>
+    <result column="published_by" property="publishedBy"/>
   </resultMap>
 
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
-    INSERT INTO agency_team(org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope, is_front_visible, status)
-    VALUES(#{orgId}, #{teamName}, #{teamType}, #{teamIntro}, #{serviceCountryScope}, #{serviceMajorScope}, 1, 'ACTIVE')
+    INSERT INTO agency_team(
+      org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope,
+      price_min, price_max, publish_status, is_front_visible, status
+    )
+    VALUES(
+      #{orgId}, #{teamName}, #{teamType}, #{teamIntro}, #{serviceCountryScope}, #{serviceMajorScope},
+      #{priceMin}, #{priceMax}, #{publishStatus}, 1, 'ACTIVE'
+    )
   </insert>
 
+  <update id="updateTeamProductById">
+    UPDATE agency_team
+    SET team_name = #{teamName},
+        team_type = #{teamType},
+        team_intro = #{teamIntro},
+        service_country_scope = #{serviceCountryScope},
+        service_major_scope = #{serviceMajorScope},
+        price_min = #{priceMin},
+        price_max = #{priceMax}
+    WHERE id = #{id}
+      AND org_id = #{orgId}
+      AND status = 'ACTIVE'
+  </update>
+
+  <update id="publishTeamProduct">
+    UPDATE agency_team
+    SET publish_status = 'PUBLISHED',
+        published_at = CURRENT_TIMESTAMP,
+        published_by = #{publishedBy},
+        is_front_visible = 1
+    WHERE id = #{id}
+      AND org_id = #{orgId}
+      AND status = 'ACTIVE'
+  </update>
+
   <select id="findById" resultMap="BaseMap">
-    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope
+    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope,
+           price_min, price_max, publish_status, published_at, published_by
     FROM agency_team WHERE id = #{id} LIMIT 1
   </select>
 
   <select id="listByOrgId" resultMap="BaseMap">
-    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope
+    SELECT id, org_id, team_name, team_type, team_intro, service_country_scope, service_major_scope,
+           price_min, price_max, publish_status, published_at, published_by
     FROM agency_team
     WHERE org_id = #{orgId} AND status = 'ACTIVE'
     ORDER BY id DESC
+  </select>
+
+  <select id="listTeamProductsByOrgId" resultType="com.offerbridge.backend.dto.AgencyDtos$TeamProductSummaryItem">
+    SELECT
+      t.id AS teamId,
+      t.team_name AS teamName,
+      t.team_type AS teamType,
+      t.publish_status AS publishStatus,
+      t.price_min AS priceMin,
+      t.price_max AS priceMax,
+      DATE_FORMAT(t.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedAt
+    FROM agency_team t
+    WHERE t.org_id = #{orgId}
+      AND t.status = 'ACTIVE'
+    ORDER BY t.updated_at DESC, t.id DESC
+  </select>
+
+  <select id="findTeamProductDetail" resultType="com.offerbridge.backend.dto.AgencyDtos$TeamProductDetailView">
+    SELECT
+      t.id AS teamId,
+      t.team_name AS teamName,
+      t.team_type AS teamType,
+      t.team_intro AS teamIntro,
+      t.service_country_scope AS serviceCountryScope,
+      t.service_major_scope AS serviceMajorScope,
+      t.price_min AS priceMin,
+      t.price_max AS priceMax,
+      t.publish_status AS publishStatus,
+      DATE_FORMAT(t.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedAt
+    FROM agency_team t
+    WHERE t.id = #{id}
+      AND t.org_id = #{orgId}
+      AND t.status = 'ACTIVE'
+    LIMIT 1
+  </select>
+
+  <select id="listActivePublisherMembers" resultType="com.offerbridge.backend.dto.AgencyDtos$TeamProductPublisherItem">
+    SELECT DISTINCT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.avatar_url AS avatarUrl,
+      m.job_title AS jobTitle,
+      r.role_code AS roleCode,
+      m.bio AS bio,
+      m.years_of_experience AS yearsOfExperience,
+      m.education_level AS educationLevel,
+      m.special_countries AS specialCountries,
+      m.special_directions AS specialDirections
+    FROM agency_team_publisher_rel r
+    JOIN agency_member_profile m ON m.id = r.member_id
+    WHERE r.team_id = #{teamId}
+      AND r.status = 'ACTIVE'
+      AND m.status = 'ACTIVE'
+    ORDER BY
+      CASE r.role_code
+        WHEN 'CONSULTANT' THEN 1
+        WHEN 'PLANNER' THEN 2
+        WHEN 'WRITER' THEN 3
+        WHEN 'APPLY_SPECIALIST' THEN 4
+        WHEN 'VISA_SPECIALIST' THEN 5
+        WHEN 'AFTERCARE' THEN 6
+        ELSE 99
+      END,
+      m.id ASC
   </select>
 
   <select id="listDiscoveryTeams" resultType="com.offerbridge.backend.dto.AgencyDtos$DiscoveryTeamItem">
@@ -41,15 +143,20 @@
       COALESCE(ROUND(AVG(mm.success_rate), 2), 0) AS successRate,
       COALESCE(ROUND(AVG(mm.avg_rating), 2), 0) AS avgRating,
       COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
-      '价格待上线' AS priceTextPlaceholder
+      CASE
+        WHEN t.price_min &lt;= 0 AND t.price_max &lt;= 0 THEN '价格待沟通'
+        WHEN t.price_min = t.price_max THEN CONCAT('¥', REPLACE(FORMAT(t.price_min, 2), ',', ''))
+        ELSE CONCAT('¥', REPLACE(FORMAT(LEAST(t.price_min, t.price_max), 2), ',', ''), ' - ¥', REPLACE(FORMAT(GREATEST(t.price_min, t.price_max), 2), ',', ''))
+      END AS priceTextPlaceholder
     FROM agency_team t
     JOIN agency_org o ON o.id = t.org_id
-    LEFT JOIN agency_team_member_rel tm ON tm.team_id = t.id AND tm.status = 'ACTIVE'
-    LEFT JOIN agency_member_profile m ON m.id = tm.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
+    LEFT JOIN agency_team_publisher_rel tr ON tr.team_id = t.id AND tr.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tr.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
     LEFT JOIN user_account ua ON ua.id = m.user_id AND ua.status = 'ACTIVE'
     LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
     LEFT JOIN agency_member_role_rel rr ON rr.member_id = m.id AND rr.role_status = 'ACTIVE'
     WHERE t.status = 'ACTIVE'
+      AND t.publish_status = 'PUBLISHED'
       AND t.is_front_visible = 1
       AND o.status = 'ACTIVE'
       <if test="keyword != null and keyword != ''">
@@ -76,7 +183,7 @@
       <if test="serviceTag != null and serviceTag != ''">
         AND mm.service_tags LIKE CONCAT('%', #{serviceTag}, '%')
       </if>
-    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope
+    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
     ORDER BY avgRating DESC, successRate DESC, caseCount DESC, t.id DESC
     LIMIT 200
   </select>
@@ -95,19 +202,24 @@
       COALESCE(ROUND(AVG(mm.success_rate), 2), 0) AS successRate,
       COALESCE(ROUND(AVG(mm.avg_rating), 2), 0) AS avgRating,
       COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
-      '价格待上线' AS priceTextPlaceholder,
-      '套餐内容（开发中）' AS packagePlaceholderTitle,
-      '后续将展示该团队服务产品、分档价格、服务边界和交付内容。' AS packagePlaceholderDesc
+      CASE
+        WHEN t.price_min &lt;= 0 AND t.price_max &lt;= 0 THEN '价格待沟通'
+        WHEN t.price_min = t.price_max THEN CONCAT('¥', REPLACE(FORMAT(t.price_min, 2), ',', ''))
+        ELSE CONCAT('¥', REPLACE(FORMAT(LEAST(t.price_min, t.price_max), 2), ',', ''), ' - ¥', REPLACE(FORMAT(GREATEST(t.price_min, t.price_max), 2), ',', ''))
+      END AS priceTextPlaceholder,
+      '服务内容' AS packagePlaceholderTitle,
+      '该套餐由下方负责成员提供服务，支持先沟通后下单。' AS packagePlaceholderDesc
     FROM agency_team t
     JOIN agency_org o ON o.id = t.org_id
-    LEFT JOIN agency_team_member_rel tm ON tm.team_id = t.id AND tm.status = 'ACTIVE'
-    LEFT JOIN agency_member_profile m ON m.id = tm.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
+    LEFT JOIN agency_team_publisher_rel tr ON tr.team_id = t.id AND tr.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tr.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
     LEFT JOIN user_account ua ON ua.id = m.user_id AND ua.status = 'ACTIVE'
     LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
     LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
     LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
     WHERE t.id = #{teamId}
       AND t.status = 'ACTIVE'
+      AND t.publish_status = 'PUBLISHED'
       AND t.is_front_visible = 1
       AND o.status = 'ACTIVE'
       AND o.verification_status IN ('APPROVED', 'PENDING')
@@ -116,7 +228,7 @@
         OR m.verified_badge_status = 'APPROVED'
         OR m.id IS NULL
       )
-    GROUP BY t.id, t.team_name, t.team_type, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope
+    GROUP BY t.id, t.team_name, t.team_type, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
     LIMIT 1
   </select>
 
@@ -125,20 +237,19 @@
       m.id AS memberId,
       m.display_name AS displayName,
       m.job_title AS jobTitle,
-      COALESCE(pr.role_code, '') AS roleCode,
+      tr.role_code AS roleCode,
       m.bio AS bio,
       m.special_countries AS specialCountries,
       m.special_directions AS specialDirections,
       m.years_of_experience AS yearsOfExperience,
       m.education_level AS educationLevel
-    FROM agency_team_member_rel tm
-    JOIN agency_member_profile m ON m.id = tm.member_id
+    FROM agency_team_publisher_rel tr
+    JOIN agency_member_profile m ON m.id = tr.member_id
     JOIN user_account ua ON ua.id = m.user_id
-    LEFT JOIN agency_member_role_rel pr ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
     LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
     LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
-    WHERE tm.team_id = #{teamId}
-      AND tm.status = 'ACTIVE'
+    WHERE tr.team_id = #{teamId}
+      AND tr.status = 'ACTIVE'
       AND m.status = 'ACTIVE'
       AND m.public_status = 'PUBLIC'
       AND ua.status = 'ACTIVE'
@@ -147,7 +258,7 @@
         OR m.verified_badge_status = 'APPROVED'
       )
     ORDER BY
-      CASE roleCode
+      CASE tr.role_code
         WHEN 'CONSULTANT' THEN 1
         WHEN 'PLANNER' THEN 2
         WHEN 'WRITER' THEN 3

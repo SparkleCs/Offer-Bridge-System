@@ -22,6 +22,12 @@ public interface AgencyService {
   AgencyDtos.MemberWorkbenchAccessView getMyWorkbenchAccess(Long userId);
   AgencyDtos.TeamView createTeam(Long userId, AgencyDtos.TeamCreateRequest request);
   List<AgencyDtos.TeamView> listTeams(Long userId);
+  List<AgencyDtos.TeamProductSummaryItem> listTeamProducts(Long userId);
+  AgencyDtos.TeamProductDetailView getTeamProduct(Long userId, Long teamId);
+  AgencyDtos.TeamProductDetailView createTeamProduct(Long userId, AgencyDtos.TeamProductUpsertRequest request);
+  AgencyDtos.TeamProductDetailView updateTeamProduct(Long userId, Long teamId, AgencyDtos.TeamProductUpsertRequest request);
+  void publishTeamProduct(Long userId, Long teamId);
+  List<AgencyDtos.TeamProductOrgMemberItem> listTeamProductOrgMembers(Long userId, String keyword);
   AgencyDtos.InvitationView createInvitation(Long userId, AgencyDtos.InvitationCreateRequest request);
   void acceptInvitation(Long userId, String token);
   AgencyDtos.MemberSelfProfileView getMyProfile(Long userId);

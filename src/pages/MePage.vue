@@ -15,8 +15,20 @@
 
     <main ref="centerPaneRef" class="center-pane" @scroll="onCenterScroll">
       <section id="basic" class="page-card section-card">
-        <h2>基础信息</h2>
-        <el-form label-position="top">
+        <div class="section-head-inline section-head-edit">
+          <h2>基础信息</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.basic">
+              <el-button class="ghost-btn" @click="beginEdit('basic')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button class="ghost-btn" @click="cancelEdit('basic')">取消</el-button>
+              <el-button type="primary" :loading="savingBasic" @click="saveBasic">保存</el-button>
+            </template>
+          </div>
+        </div>
+
+        <el-form v-if="editingMap.basic" label-position="top">
           <el-row :gutter="12">
             <el-col :span="12"><el-form-item label="姓名"><el-input v-model="basicForm.name" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="邮箱"><el-input v-model="basicForm.email" /></el-form-item></el-col>
@@ -54,10 +66,17 @@
           </el-form-item>
           <el-form-item label="预算备注（仅自己可见）"><el-input v-model="basicForm.budgetNote" type="textarea" :rows="2" /></el-form-item>
         </el-form>
-
-        <div class="section-footer">
-          <div class="footer-left"></div>
-          <el-button type="primary" :loading="savingBasic" @click="saveBasic">保存基础信息</el-button>
+        <div v-else class="display-grid">
+          <div class="display-item"><span class="k">姓名</span><span class="v">{{ basicForm.name || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">邮箱</span><span class="v">{{ basicForm.email || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">学历层次</span><span class="v">{{ educationLabelMap[basicForm.educationLevel] || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">学校</span><span class="v">{{ basicForm.schoolName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">当前专业</span><span class="v">{{ basicForm.major || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">意向专业</span><span class="v">{{ basicForm.targetMajorText || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">入学季</span><span class="v">{{ basicForm.intakeTerm || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">目标国家</span><span class="v">{{ selectedCountryNames.length ? selectedCountryNames.join('、') : '未填写' }}</span></div>
+          <div class="display-item"><span class="k">预算</span><span class="v">{{ budgetSummaryText }}</span></div>
+          <div class="display-item full"><span class="k">预算备注</span><span class="v">{{ basicForm.budgetNote || '未填写' }}</span></div>
         </div>
       </section>
 
@@ -69,48 +88,62 @@
 
         <el-empty v-if="applicationList.items.length === 0 && !loadingApplicationList" description="暂无申请清单，请先从院校项目页添加" />
 
-        <el-table v-else :data="applicationList.items" v-loading="loadingApplicationList" stripe>
-          <el-table-column label="项目" min-width="230">
-            <template #default="{ row }">
-              <div class="program-cell-title">{{ row.program.programName }}</div>
-              <div class="program-cell-sub">{{ row.program.schoolNameCn }} · {{ row.program.directionName }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column label="匹配" width="120">
-            <template #default="{ row }">
-              <div class="match-mini-score">{{ row.matchResult.matchScore }}</div>
-              <div class="match-mini-tier">{{ row.matchResult.matchTier }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column label="状态" width="180">
-            <template #default="{ row }">
-              <el-select
-                :model-value="row.statusCode"
-                :disabled="updatingApplicationId === row.id"
-                @update:model-value="(value: string) => changeApplicationStatus(row.id, String(value))"
-              >
-                <el-option v-for="option in applicationStatusOptions" :key="option.code" :label="option.name" :value="option.code" />
-              </el-select>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="110">
-            <template #default="{ row }">
-              <el-button
-                link
-                type="danger"
-                :loading="removingApplicationId === row.id"
-                @click="removeApplicationItem(row.id)"
-              >
-                移除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
+        <div v-else class="table-scroll-wrap">
+          <el-table :data="applicationList.items" v-loading="loadingApplicationList" stripe>
+            <el-table-column label="项目" min-width="230">
+              <template #default="{ row }">
+                <div class="program-cell-title">{{ row.program.programName }}</div>
+                <div class="program-cell-sub">{{ row.program.schoolNameCn }} · {{ row.program.directionName }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="匹配" width="120">
+              <template #default="{ row }">
+                <div class="match-mini-score">{{ row.matchResult.matchScore }}</div>
+                <div class="match-mini-tier">{{ row.matchResult.matchTier }}</div>
+              </template>
+            </el-table-column>
+            <el-table-column label="状态" width="180">
+              <template #default="{ row }">
+                <el-select
+                  :model-value="row.statusCode"
+                  :disabled="updatingApplicationId === row.id"
+                  @update:model-value="(value: string) => changeApplicationStatus(row.id, String(value))"
+                >
+                  <el-option v-for="option in applicationStatusOptions" :key="option.code" :label="option.name" :value="option.code" />
+                </el-select>
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="110">
+              <template #default="{ row }">
+                <el-button
+                  link
+                  type="danger"
+                  :loading="removingApplicationId === row.id"
+                  @click="removeApplicationItem(row.id)"
+                >
+                  移除
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+        </div>
       </section>
 
       <section id="academic" class="page-card section-card">
-        <h2>学术背景</h2>
-        <el-form label-position="top">
+        <div class="section-head-inline section-head-edit">
+          <h2>学术背景</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.academic">
+              <el-button class="ghost-btn" @click="beginEdit('academic')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button class="ghost-btn" @click="cancelEdit('academic')">取消</el-button>
+              <el-button type="primary" :loading="savingAcademic" @click="saveAcademic">保存</el-button>
+            </template>
+          </div>
+        </div>
+
+        <el-form v-if="editingMap.academic" label-position="top">
           <el-row :gutter="12">
             <el-col :span="8">
               <el-form-item label="GPA 制式">
@@ -163,16 +196,37 @@
             <el-button text type="danger" @click="removeLanguageScore(index)">删除</el-button>
           </div>
         </el-form>
-
-        <div class="section-footer">
-          <div class="footer-left"></div>
-          <el-button type="primary" :loading="savingAcademic" @click="saveAcademic">保存学术背景</el-button>
+        <div v-else class="display-grid">
+          <div class="display-item"><span class="k">GPA 制式</span><span class="v">{{ academicForm.gpaScale === 'PERCENTAGE' ? '百分制' : '4.0 制' }}</span></div>
+          <div class="display-item"><span class="k">GPA 分数</span><span class="v">{{ academicForm.gpaValue ?? '未填写' }}</span></div>
+          <div class="display-item"><span class="k">排名百分位</span><span class="v">{{ academicForm.rankValue ? `前 ${academicForm.rankValue}%` : '未填写' }}</span></div>
+          <div class="display-item full">
+            <span class="k">语言成绩</span>
+            <span class="v">
+              <el-tag v-for="(item, index) in academicForm.languageScores" :key="`${item.languageType}-${index}`" class="lang-tag" size="small">
+                {{ item.languageType }} {{ item.score }}
+              </el-tag>
+              <span v-if="!academicForm.languageScores.length">未填写</span>
+            </span>
+          </div>
         </div>
       </section>
 
       <section id="exchange" class="page-card section-card">
-        <h2>交换经历</h2>
-        <el-form label-position="top">
+        <div class="section-head-inline section-head-edit">
+          <h2>交换经历</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.exchange">
+              <el-button class="ghost-btn" @click="beginEdit('exchange')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button class="ghost-btn" @click="cancelEdit('exchange')">取消</el-button>
+              <el-button type="primary" :loading="savingExchange" @click="saveExchange">保存</el-button>
+            </template>
+          </div>
+        </div>
+
+        <el-form v-if="editingMap.exchange" label-position="top">
           <el-row :gutter="12">
             <el-col :span="12">
               <el-form-item label="国家">
@@ -205,104 +259,175 @@
             />
           </el-form-item>
         </el-form>
-
-        <div class="section-footer">
-          <div class="footer-left"></div>
-          <el-button type="primary" :loading="savingExchange" @click="saveExchange">保存交换经历</el-button>
+        <div v-else class="display-grid">
+          <div class="display-item"><span class="k">国家</span><span class="v">{{ exchangeForm.countryName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">大学</span><span class="v">{{ exchangeForm.universityName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">GPA</span><span class="v">{{ exchangeForm.gpaValue ?? '未填写' }}</span></div>
+          <div class="display-item"><span class="k">开始时间</span><span class="v">{{ exchangeForm.startDate || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">结束时间</span><span class="v">{{ exchangeForm.endDate || '未填写' }}</span></div>
+          <div class="display-item full"><span class="k">主修课程</span><span class="v">{{ exchangeForm.majorCourses || '未填写' }}</span></div>
         </div>
       </section>
 
       <section id="research" class="page-card section-card">
-        <h2>科研经历</h2>
-        <div v-for="(item, index) in researchForm.items" :key="index" class="list-card">
-          <div class="section-head-inline">
-            <strong>科研经历 {{ index + 1 }}</strong>
-            <el-button text type="danger" @click="removeResearch(index)">删除</el-button>
-          </div>
-          <el-row :gutter="12">
-            <el-col :span="12"><el-input v-model="item.projectName" placeholder="项目名称" /></el-col>
-            <el-col :span="6"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
-            <el-col :span="6"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
-          </el-row>
-          <el-input v-model="item.contentSummary" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="科研内容" class="mt8" />
-          <el-switch v-model="item.hasPublication" active-text="有发表论文" inactive-text="无发表论文" class="mt8" />
-
-          <div v-if="item.hasPublication" class="mt8">
-            <div class="section-head-inline">
-              <span>论文发表</span>
-              <el-button size="small" @click="addPublication(index)">新增论文</el-button>
-            </div>
-            <div v-for="(pub, pubIndex) in item.publications" :key="pubIndex" class="pub-row">
-              <el-input v-model="pub.title" placeholder="论文标题" />
-              <el-input v-model="pub.authorRole" placeholder="作者身份" />
-              <el-input v-model="pub.journalName" placeholder="期刊/会议" />
-              <el-input-number v-model="pub.publishedYear" :min="1900" :max="2100" controls-position="right" />
-              <el-button text type="danger" @click="removePublication(index, pubIndex)">删除</el-button>
-            </div>
+        <div class="section-head-inline section-head-edit">
+          <h2>科研经历</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.research">
+              <el-button class="ghost-btn" @click="beginEdit('research')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button @click="addResearch">新增</el-button>
+              <el-button class="ghost-btn" @click="cancelEdit('research')">取消</el-button>
+              <el-button type="primary" :loading="savingResearch" @click="saveResearch">保存</el-button>
+            </template>
           </div>
         </div>
 
-        <div class="section-footer">
-          <el-button @click="addResearch">新增</el-button>
-          <el-button type="primary" :loading="savingResearch" @click="saveResearch">保存</el-button>
+        <template v-if="editingMap.research">
+          <div v-for="(item, index) in researchForm.items" :key="index" class="list-card">
+            <div class="section-head-inline">
+              <strong>科研经历 {{ index + 1 }}</strong>
+              <el-button text type="danger" @click="removeResearch(index)">删除</el-button>
+            </div>
+            <el-row :gutter="12">
+              <el-col :span="12"><el-input v-model="item.projectName" placeholder="项目名称" /></el-col>
+              <el-col :span="6"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
+              <el-col :span="6"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
+            </el-row>
+            <el-input v-model="item.contentSummary" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="科研内容" class="mt8" />
+            <el-switch v-model="item.hasPublication" active-text="有发表论文" inactive-text="无发表论文" class="mt8" />
+
+            <div v-if="item.hasPublication" class="mt8">
+              <div class="section-head-inline">
+                <span>论文发表</span>
+                <el-button size="small" @click="addPublication(index)">新增论文</el-button>
+              </div>
+              <div v-for="(pub, pubIndex) in item.publications" :key="pubIndex" class="pub-row">
+                <el-input v-model="pub.title" placeholder="论文标题" />
+                <el-input v-model="pub.authorRole" placeholder="作者身份" />
+                <el-input v-model="pub.journalName" placeholder="期刊/会议" />
+                <el-input-number v-model="pub.publishedYear" :min="1900" :max="2100" controls-position="right" />
+                <el-button text type="danger" @click="removePublication(index, pubIndex)">删除</el-button>
+              </div>
+            </div>
+          </div>
+        </template>
+        <div v-else class="summary-stack">
+          <el-empty v-if="!researchForm.items.length" description="暂无科研经历" />
+          <article v-for="(item, index) in researchForm.items" :key="`r-${index}`" class="summary-card">
+            <div class="summary-title">{{ item.projectName || `科研经历 ${index + 1}` }}</div>
+            <div class="summary-meta">{{ item.startDate || '开始时间待补充' }} - {{ item.endDate || '结束时间待补充' }}</div>
+            <p class="summary-desc">{{ item.contentSummary || '暂无内容摘要' }}</p>
+            <div class="summary-meta">论文发表：{{ item.hasPublication ? `有（${item.publications?.length || 0} 篇）` : '无' }}</div>
+          </article>
         </div>
       </section>
 
       <section id="competition" class="page-card section-card">
-        <h2>竞赛经历</h2>
-        <div v-for="(item, index) in competitionForm.items" :key="index" class="list-card">
-          <div class="section-head-inline">
-            <strong>竞赛 {{ index + 1 }}</strong>
-            <el-button text type="danger" @click="removeCompetition(index)">删除</el-button>
+        <div class="section-head-inline section-head-edit">
+          <h2>竞赛经历</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.competition">
+              <el-button class="ghost-btn" @click="beginEdit('competition')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button @click="addCompetition">新增</el-button>
+              <el-button class="ghost-btn" @click="cancelEdit('competition')">取消</el-button>
+              <el-button type="primary" :loading="savingCompetition" @click="saveCompetition">保存</el-button>
+            </template>
           </div>
-          <el-row :gutter="12">
-            <el-col :span="8"><el-input v-model="item.competitionName" placeholder="竞赛名称" /></el-col>
-            <el-col :span="6"><el-input v-model="item.competitionLevel" placeholder="级别" /></el-col>
-            <el-col :span="6"><el-input v-model="item.award" placeholder="奖项" /></el-col>
-            <el-col :span="4"><el-input v-model="item.eventDate" placeholder="时间" /></el-col>
-          </el-row>
-          <el-input v-model="item.roleDesc" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="职责说明" class="mt8" />
         </div>
 
-        <div class="section-footer">
-          <el-button @click="addCompetition">新增</el-button>
-          <el-button type="primary" :loading="savingCompetition" @click="saveCompetition">保存</el-button>
+        <template v-if="editingMap.competition">
+          <div v-for="(item, index) in competitionForm.items" :key="index" class="list-card">
+            <div class="section-head-inline">
+              <strong>竞赛 {{ index + 1 }}</strong>
+              <el-button text type="danger" @click="removeCompetition(index)">删除</el-button>
+            </div>
+            <el-row :gutter="12">
+              <el-col :span="8"><el-input v-model="item.competitionName" placeholder="竞赛名称" /></el-col>
+              <el-col :span="6"><el-input v-model="item.competitionLevel" placeholder="级别" /></el-col>
+              <el-col :span="6"><el-input v-model="item.award" placeholder="奖项" /></el-col>
+              <el-col :span="4"><el-input v-model="item.eventDate" placeholder="时间" /></el-col>
+            </el-row>
+            <el-input v-model="item.roleDesc" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="职责说明" class="mt8" />
+          </div>
+        </template>
+        <div v-else class="summary-stack">
+          <el-empty v-if="!competitionForm.items.length" description="暂无竞赛经历" />
+          <article v-for="(item, index) in competitionForm.items" :key="`c-${index}`" class="summary-card">
+            <div class="summary-title">{{ item.competitionName || `竞赛 ${index + 1}` }}</div>
+            <div class="summary-meta">{{ item.eventDate || '时间待补充' }} · {{ item.competitionLevel || '级别待补充' }} · {{ item.award || '奖项待补充' }}</div>
+            <p class="summary-desc">{{ item.roleDesc || '暂无职责说明' }}</p>
+          </article>
         </div>
       </section>
 
       <section id="work" class="page-card section-card">
-        <h2>工作/实习经历</h2>
-        <div v-for="(item, index) in workForm.items" :key="index" class="list-card">
-          <div class="section-head-inline">
-            <strong>工作经历 {{ index + 1 }}</strong>
-            <el-button text type="danger" @click="removeWork(index)">删除</el-button>
+        <div class="section-head-inline section-head-edit">
+          <h2>工作/实习经历</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.work">
+              <el-button class="ghost-btn" @click="beginEdit('work')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button @click="addWork">新增</el-button>
+              <el-button class="ghost-btn" @click="cancelEdit('work')">取消</el-button>
+              <el-button type="primary" :loading="savingWork" @click="saveWork">保存</el-button>
+            </template>
           </div>
-          <el-row :gutter="12">
-            <el-col :span="8"><el-input v-model="item.companyName" placeholder="公司名称" /></el-col>
-            <el-col :span="6"><el-input v-model="item.positionName" placeholder="岗位" /></el-col>
-            <el-col :span="5"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
-            <el-col :span="5"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
-          </el-row>
-          <el-input v-model="item.keywords" placeholder="关键词（逗号分隔）" class="mt8" />
-          <el-input
-            v-model="item.contentSummary"
-            type="textarea"
-            :autosize="{ minRows: 2, maxRows: 10 }"
-            placeholder="工作内容"
-            class="mt8"
-          />
         </div>
 
-        <div class="section-footer">
-          <el-button @click="addWork">新增</el-button>
-          <el-button type="primary" :loading="savingWork" @click="saveWork">保存</el-button>
+        <template v-if="editingMap.work">
+          <div v-for="(item, index) in workForm.items" :key="index" class="list-card">
+            <div class="section-head-inline">
+              <strong>工作经历 {{ index + 1 }}</strong>
+              <el-button text type="danger" @click="removeWork(index)">删除</el-button>
+            </div>
+            <el-row :gutter="12">
+              <el-col :span="8"><el-input v-model="item.companyName" placeholder="公司名称" /></el-col>
+              <el-col :span="6"><el-input v-model="item.positionName" placeholder="岗位" /></el-col>
+              <el-col :span="5"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
+              <el-col :span="5"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
+            </el-row>
+            <el-input v-model="item.keywords" placeholder="关键词（逗号分隔）" class="mt8" />
+            <el-input
+              v-model="item.contentSummary"
+              type="textarea"
+              :autosize="{ minRows: 2, maxRows: 10 }"
+              placeholder="工作内容"
+              class="mt8"
+            />
+          </div>
+        </template>
+        <div v-else class="summary-stack">
+          <el-empty v-if="!workForm.items.length" description="暂无工作/实习经历" />
+          <article v-for="(item, index) in workForm.items" :key="`w-${index}`" class="summary-card">
+            <div class="summary-title">{{ item.companyName || `工作经历 ${index + 1}` }} · {{ item.positionName || '岗位待补充' }}</div>
+            <div class="summary-meta">{{ item.startDate || '开始时间待补充' }} - {{ item.endDate || '结束时间待补充' }}</div>
+            <div class="summary-meta">关键词：{{ item.keywords || '未填写' }}</div>
+            <p class="summary-desc">{{ item.contentSummary || '暂无内容摘要' }}</p>
+          </article>
         </div>
       </section>
 
       <section id="verification" class="page-card section-card">
-        <h2>身份认证</h2>
+        <div class="section-head-inline section-head-edit">
+          <h2>身份认证</h2>
+          <div class="section-actions">
+            <template v-if="!editingMap.verification">
+              <el-button class="ghost-btn" @click="beginEdit('verification')">编辑</el-button>
+            </template>
+            <template v-else>
+              <el-button class="ghost-btn" @click="cancelEdit('verification')">取消</el-button>
+              <el-button type="primary" :loading="savingVerification" @click="submitVerification">保存</el-button>
+            </template>
+          </div>
+        </div>
         <p class="muted">当前状态：实名 {{ verificationStatus.realNameStatus }} / 学籍 {{ verificationStatus.educationStatus }}</p>
-        <el-form label-position="top">
+
+        <el-form v-if="editingMap.verification" label-position="top">
           <el-row :gutter="12">
             <el-col :span="12"><el-form-item label="真实姓名"><el-input v-model="verifyForm.realName" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="身份证号"><el-input v-model="verifyForm.idNo" /></el-form-item></el-col>
@@ -326,10 +451,13 @@
             </el-col>
           </el-row>
         </el-form>
-
-        <div class="section-footer">
-          <div class="footer-left"></div>
-          <el-button type="primary" :loading="savingVerification" @click="submitVerification">保存</el-button>
+        <div v-else class="display-grid">
+          <div class="display-item"><span class="k">真实姓名</span><span class="v">{{ verifyForm.realName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">身份证号</span><span class="v">{{ verifyForm.idNo || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">实名状态</span><span class="v">{{ verificationStatus.realNameStatus }}</span></div>
+          <div class="display-item"><span class="k">学籍状态</span><span class="v">{{ verificationStatus.educationStatus }}</span></div>
+          <div class="display-item full"><span class="k">身份证图片</span><span class="v">{{ verifyForm.idCardImageUrl || '未上传' }}</span></div>
+          <div class="display-item full"><span class="k">学生证图片</span><span class="v">{{ verifyForm.studentCardImageUrl || '未上传' }}</span></div>
         </div>
       </section>
     </main>
@@ -401,11 +529,23 @@ interface LoadErrorItem {
   traceId?: string | null
 }
 
+type EditableSection = 'basic' | 'academic' | 'exchange' | 'research' | 'competition' | 'work' | 'verification'
+
 const authStore = useAuthStore()
 const centerPaneRef = ref<HTMLElement | null>(null)
 const activeSection = ref('basic')
 const rankInputText = ref('')
 const loadErrors = ref<LoadErrorItem[]>([])
+const editingMap = reactive<Record<EditableSection, boolean>>({
+  basic: false,
+  academic: false,
+  exchange: false,
+  research: false,
+  competition: false,
+  work: false,
+  verification: false
+})
+const sectionSnapshots = reactive<Partial<Record<EditableSection, unknown>>>({})
 
 const navItems = [
   { id: 'basic', label: '基础信息' },
@@ -512,6 +652,23 @@ const selectedCountryNames = computed({
   }
 })
 
+const educationLabelMap = computed<Record<EducationLevel, string>>(() =>
+  educationOptions.reduce((acc, item) => {
+    acc[item.value] = item.label
+    return acc
+  }, {} as Record<EducationLevel, string>)
+)
+
+const budgetSummaryText = computed(() => {
+  const min = basicForm.budgetMin
+  const max = basicForm.budgetMax
+  const currency = basicForm.budgetCurrency || 'CNY'
+  if (min === null && max === null) return '未填写'
+  if (min !== null && max !== null) return `${currency} ${min} - ${max}`
+  if (min !== null) return `${currency} ${min} 起`
+  return `${currency} 至 ${max}`
+})
+
 const gpaStep = computed(() => (academicForm.gpaScale === 'PERCENTAGE' ? 1 : 0.01))
 const gpaMax = computed(() => (academicForm.gpaScale === 'PERCENTAGE' ? 100 : 4))
 
@@ -541,6 +698,65 @@ function onRankChange(value: string) {
   }
   const num = Number(value)
   academicForm.rankValue = Number.isFinite(num) ? num : null
+}
+
+function cloneData<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value))
+}
+
+function captureSectionData(section: EditableSection) {
+  if (section === 'basic') return cloneData(basicForm)
+  if (section === 'academic') return cloneData({ ...academicForm, rankInputText: rankInputText.value })
+  if (section === 'exchange') return cloneData(exchangeForm)
+  if (section === 'research') return cloneData(researchForm)
+  if (section === 'competition') return cloneData(competitionForm)
+  if (section === 'work') return cloneData(workForm)
+  return cloneData(verifyForm)
+}
+
+function applySectionData(section: EditableSection, snapshot: any) {
+  if (!snapshot) return
+  if (section === 'basic') {
+    Object.assign(basicForm, snapshot)
+    return
+  }
+  if (section === 'academic') {
+    Object.assign(academicForm, snapshot)
+    rankInputText.value = snapshot.rankInputText ?? ''
+    return
+  }
+  if (section === 'exchange') {
+    Object.assign(exchangeForm, snapshot)
+    return
+  }
+  if (section === 'research') {
+    researchForm.items = snapshot.items || []
+    return
+  }
+  if (section === 'competition') {
+    competitionForm.items = snapshot.items || []
+    return
+  }
+  if (section === 'work') {
+    workForm.items = snapshot.items || []
+    return
+  }
+  Object.assign(verifyForm, snapshot)
+}
+
+function beginEdit(section: EditableSection) {
+  sectionSnapshots[section] = captureSectionData(section)
+  editingMap[section] = true
+}
+
+function cancelEdit(section: EditableSection) {
+  applySectionData(section, sectionSnapshots[section])
+  editingMap[section] = false
+}
+
+function finishEdit(section: EditableSection) {
+  editingMap[section] = false
+  sectionSnapshots[section] = undefined
 }
 
 function scrollToSection(id: string) {
@@ -862,6 +1078,7 @@ async function saveBasic() {
     })
     authStore.profile = profile
     ElMessage.success('基础信息已保存')
+    finishEdit('basic')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -881,6 +1098,7 @@ async function saveAcademic() {
     })
     authStore.profile = profile
     ElMessage.success('学术背景已保存')
+    finishEdit('academic')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -919,6 +1137,7 @@ async function saveExchange() {
     exchangeForm.startDate = result.startDate || ''
     exchangeForm.endDate = result.endDate || ''
     ElMessage.success('交换经历已保存')
+    finishEdit('exchange')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -932,6 +1151,7 @@ async function saveResearch() {
     const result = await saveStudentResearch({ items: researchForm.items })
     researchForm.items = result.items || []
     ElMessage.success('科研经历已保存')
+    finishEdit('research')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -945,6 +1165,7 @@ async function saveCompetition() {
     const result = await saveStudentCompetition({ items: competitionForm.items })
     competitionForm.items = result.items || []
     ElMessage.success('竞赛经历已保存')
+    finishEdit('competition')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -958,6 +1179,7 @@ async function saveWork() {
     const result = await saveStudentWork({ items: workForm.items })
     workForm.items = result.items || []
     ElMessage.success('工作经历已保存')
+    finishEdit('work')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '保存失败')
   } finally {
@@ -1016,6 +1238,7 @@ async function submitVerification() {
     verificationStatus.realNameStatus = verify.realNameStatus
     verificationStatus.educationStatus = verify.educationStatus
     ElMessage.success('认证已提交，等待审核')
+    finishEdit('verification')
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '提交失败')
   } finally {
@@ -1089,9 +1312,36 @@ onMounted(() => {
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: 220px minmax(0, 1fr) 240px;
+  grid-template-columns: 210px minmax(0, 1fr) 230px;
   gap: 14px;
   align-items: stretch;
+  position: relative;
+  isolation: isolate;
+}
+
+.me-layout::before,
+.me-layout::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 999px;
+}
+
+.me-layout::before {
+  width: 520px;
+  height: 520px;
+  top: -220px;
+  right: 18%;
+  background: radial-gradient(circle, rgba(120, 171, 255, 0.22), rgba(120, 171, 255, 0));
+}
+
+.me-layout::after {
+  width: 460px;
+  height: 460px;
+  left: -170px;
+  bottom: -170px;
+  background: radial-gradient(circle, rgba(153, 215, 255, 0.2), rgba(153, 215, 255, 0));
 }
 
 .left-nav,
@@ -1116,10 +1366,14 @@ onMounted(() => {
 }
 
 .center-pane {
-  overflow: auto;
+  width: clamp(560px, 64vw, 750px);
+  max-width: 100%;
+  justify-self: center;
+  overflow-y: auto;
+  overflow-x: visible;
   display: grid;
   gap: 14px;
-  padding-right: 6px;
+  padding-right: 2px;
 }
 
 .nav-item {
@@ -1144,6 +1398,10 @@ onMounted(() => {
 
 .section-card {
   padding: 18px;
+  border: 1px solid rgba(170, 197, 236, 0.5);
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.9), rgba(243, 249, 255, 0.76));
+  box-shadow: 0 16px 28px rgba(32, 72, 132, 0.11), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(4px);
 }
 
 .section-card h2 {
@@ -1159,6 +1417,104 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.section-head-edit {
+  margin-top: 0;
+  margin-bottom: 10px;
+}
+
+.section-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ghost-btn {
+  border-radius: 10px;
+  border: 1px solid rgba(113, 158, 222, 0.48);
+  background: rgba(245, 250, 255, 0.75);
+  color: #3868aa;
+}
+
+.display-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 14px;
+}
+
+.display-item {
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(176, 202, 236, 0.5);
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(245, 251, 255, 0.8));
+}
+
+.display-item.full {
+  grid-column: 1 / -1;
+}
+
+.display-item .k {
+  font-size: 12px;
+  color: #6b83a5;
+  margin-bottom: 4px;
+}
+
+.display-item .v {
+  color: #2b4467;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.summary-stack {
+  display: grid;
+  gap: 10px;
+}
+
+.summary-card {
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(176, 202, 236, 0.48);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.9), rgba(246, 251, 255, 0.82));
+}
+
+.summary-title {
+  font-weight: 700;
+  color: #2a4265;
+}
+
+.summary-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #7088a9;
+}
+
+.summary-desc {
+  margin: 6px 0 0;
+  color: #496384;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+
+.table-scroll-wrap {
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.table-scroll-wrap :deep(.el-table) {
+  min-width: 660px;
+}
+
+.lang-tag {
+  margin-right: 6px;
+  margin-bottom: 6px;
 }
 
 .section-footer {
@@ -1210,6 +1566,28 @@ onMounted(() => {
   padding: 12px;
   margin-bottom: 10px;
   background: #fafcff;
+}
+
+.section-card :deep(.el-button--primary) {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #2f79ff, #4f96ff 55%, #2ca7ff);
+  box-shadow: 0 8px 18px rgba(47, 121, 255, 0.24);
+}
+
+.section-card :deep(.el-input__wrapper),
+.section-card :deep(.el-select__wrapper),
+.section-card :deep(.el-textarea__inner),
+.section-card :deep(.el-input-number__decrease),
+.section-card :deep(.el-input-number__increase) {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(162, 188, 223, 0.58) inset;
+}
+
+.section-card :deep(.el-input__wrapper.is-focus),
+.section-card :deep(.el-select__wrapper.is-focused),
+.section-card :deep(.el-textarea__inner:focus) {
+  box-shadow: 0 0 0 1px rgba(67, 131, 251, 0.9) inset, 0 0 0 4px rgba(67, 131, 251, 0.14);
 }
 
 .pub-row {
@@ -1310,7 +1688,7 @@ onMounted(() => {
 
 @media (max-width: 1400px) {
   .me-layout {
-    grid-template-columns: 200px minmax(0, 1fr) 220px;
+    grid-template-columns: 188px minmax(0, 1fr) 208px;
   }
 }
 
@@ -1327,6 +1705,16 @@ onMounted(() => {
   .right-progress {
     height: auto;
     max-height: none;
+  }
+
+  .center-pane {
+    width: 100%;
+    justify-self: stretch;
+    overflow: visible;
+  }
+
+  .display-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

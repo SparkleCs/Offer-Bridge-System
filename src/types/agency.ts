@@ -57,6 +57,10 @@ export interface AgencyTeam {
   teamIntro?: string | null
   serviceCountryScope: string
   serviceMajorScope: string
+  priceMin?: number
+  priceMax?: number
+  publishStatus?: 'DRAFT' | 'PUBLISHED' | string
+  updatedAt?: string
 }
 
 export interface CreateTeamPayload {
@@ -65,6 +69,63 @@ export interface CreateTeamPayload {
   teamIntro?: string
   serviceCountryScope: string
   serviceMajorScope: string
+}
+
+export interface TeamProductUpsertPayload {
+  teamName: string
+  teamType?: string
+  teamIntro?: string
+  serviceCountryScope: string
+  serviceMajorScope: string
+  priceMin: number
+  priceMax: number
+  publisherMemberIds: number[]
+}
+
+export interface TeamProductSummaryItem {
+  teamId: number
+  teamName: string
+  teamType?: string | null
+  publishStatus: 'DRAFT' | 'PUBLISHED' | string
+  priceMin: number
+  priceMax: number
+  updatedAt?: string
+}
+
+export interface TeamProductOrgMemberItem {
+  memberId: number
+  displayName: string
+  avatarUrl?: string | null
+  jobTitle?: string | null
+  roleCode?: string | null
+  verifiedBadgeStatus?: string
+}
+
+export interface TeamProductPublisherItem {
+  memberId: number
+  displayName: string
+  avatarUrl?: string | null
+  jobTitle?: string | null
+  roleCode?: string | null
+  bio?: string | null
+  yearsOfExperience?: number
+  educationLevel?: string | null
+  specialCountries?: string | null
+  specialDirections?: string | null
+}
+
+export interface TeamProductDetailView {
+  teamId: number
+  teamName: string
+  teamType?: string | null
+  teamIntro?: string | null
+  serviceCountryScope: string
+  serviceMajorScope: string
+  priceMin: number
+  priceMax: number
+  publishStatus: 'DRAFT' | 'PUBLISHED' | string
+  updatedAt?: string
+  publisherMembers: TeamProductPublisherItem[]
 }
 
 export interface InvitationPayload {
@@ -119,7 +180,17 @@ export interface MemberSelfProfile {
   displayName: string
   avatarUrl?: string | null
   jobTitle: string
+  educationLevel: string
+  graduatedSchool: string
+  major?: string | null
+  yearsOfExperience: number
+  specialCountries: string
+  specialDirections: string
+  bio: string
+  serviceStyleTags?: string | null
+  publicStatus: 'PUBLIC' | 'PRIVATE'
   profileAuditStatus?: string
+  roleCodes?: string[]
 }
 
 export interface MemberAvatarUpdatePayload {

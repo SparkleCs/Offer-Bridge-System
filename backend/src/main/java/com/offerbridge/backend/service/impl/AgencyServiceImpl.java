@@ -19,13 +19,17 @@ import com.offerbridge.backend.mapper.AgencyMemberRoleRelMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMemberRelMapper;
+import com.offerbridge.backend.mapper.AgencyTeamPublisherRelMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
 import com.offerbridge.backend.service.AgencyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.time.LocalDateTime;
@@ -37,12 +41,14 @@ import java.util.UUID;
 
 @Service
 public class AgencyServiceImpl implements AgencyService {
+  private static final Logger log = LoggerFactory.getLogger(AgencyServiceImpl.class);
   private final AgencyOrgMapper agencyOrgMapper;
   private final AgencyTeamMapper agencyTeamMapper;
   private final AgencyInvitationMapper agencyInvitationMapper;
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
   private final AgencyMemberVerificationMaterialMapper agencyMemberVerificationMaterialMapper;
   private final AgencyTeamMemberRelMapper agencyTeamMemberRelMapper;
+  private final AgencyTeamPublisherRelMapper agencyTeamPublisherRelMapper;
   private final AgencyMemberRoleRelMapper agencyMemberRoleRelMapper;
   private final AgencyMemberMetricsMapper agencyMemberMetricsMapper;
   private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
@@ -56,6 +62,7 @@ public class AgencyServiceImpl implements AgencyService {
                            AgencyMemberProfileMapper agencyMemberProfileMapper,
                            AgencyMemberVerificationMaterialMapper agencyMemberVerificationMaterialMapper,
                            AgencyTeamMemberRelMapper agencyTeamMemberRelMapper,
+                           AgencyTeamPublisherRelMapper agencyTeamPublisherRelMapper,
                            AgencyMemberRoleRelMapper agencyMemberRoleRelMapper,
                            AgencyMemberMetricsMapper agencyMemberMetricsMapper,
                            AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
@@ -68,6 +75,7 @@ public class AgencyServiceImpl implements AgencyService {
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
     this.agencyMemberVerificationMaterialMapper = agencyMemberVerificationMaterialMapper;
     this.agencyTeamMemberRelMapper = agencyTeamMemberRelMapper;
+    this.agencyTeamPublisherRelMapper = agencyTeamPublisherRelMapper;
     this.agencyMemberRoleRelMapper = agencyMemberRoleRelMapper;
     this.agencyMemberMetricsMapper = agencyMemberMetricsMapper;
     this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
@@ -320,6 +328,9 @@ public class AgencyServiceImpl implements AgencyService {
     team.setTeamIntro(request.getTeamIntro());
     team.setServiceCountryScope(request.getServiceCountryScope());
     team.setServiceMajorScope(request.getServiceMajorScope());
+    team.setPriceMin(BigDecimal.ZERO);
+    team.setPriceMax(BigDecimal.ZERO);
+    team.setPublishStatus("DRAFT");
     agencyTeamMapper.insertOne(team);
     return toTeamView(team);
   }
@@ -329,6 +340,88 @@ public class AgencyServiceImpl implements AgencyService {
     AgencyOrg org = resolveOrgForUser(userId);
     if (org == null) return List.of();
     return agencyTeamMapper.listByOrgId(org.getId()).stream().map(this::toTeamView).toList();
+  }
+
+  @Override
+  public List<AgencyDtos.TeamProductSummaryItem> listTeamProducts(Long userId) {
+    PublisherContext context = requirePublishPermission(userId);
+    return agencyTeamMapper.listTeamProductsByOrgId(context.org().getId());
+  }
+
+  @Override
+  public AgencyDtos.TeamProductDetailView getTeamProduct(Long userId, Long teamId) {
+    PublisherContext context = requirePublishPermission(userId);
+    AgencyDtos.TeamProductDetailView detail = agencyTeamMapper.findTeamProductDetail(teamId, context.org().getId());
+    if (detail == null) {
+      throw new BizException("BIZ_NOT_FOUND", "团队产品不存在");
+    }
+    detail.setPublisherMembers(agencyTeamMapper.listActivePublisherMembers(teamId));
+    return detail;
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.TeamProductDetailView createTeamProduct(Long userId, AgencyDtos.TeamProductUpsertRequest request) {
+    PublisherContext context = requirePublishPermission(userId);
+    validatePriceRange(request.getPriceMin(), request.getPriceMax());
+    AgencyTeam team = new AgencyTeam();
+    team.setOrgId(context.org().getId());
+    team.setTeamName(request.getTeamName().trim());
+    team.setTeamType(request.getTeamType());
+    team.setTeamIntro(request.getTeamIntro());
+    team.setServiceCountryScope(request.getServiceCountryScope().trim());
+    team.setServiceMajorScope(request.getServiceMajorScope().trim());
+    team.setPriceMin(request.getPriceMin());
+    team.setPriceMax(request.getPriceMax());
+    team.setPublishStatus("DRAFT");
+    agencyTeamMapper.insertOne(team);
+    savePublisherMembers(team.getId(), context.org().getId(), request.getPublisherMemberIds());
+    return getTeamProduct(userId, team.getId());
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.TeamProductDetailView updateTeamProduct(Long userId, Long teamId, AgencyDtos.TeamProductUpsertRequest request) {
+    PublisherContext context = requirePublishPermission(userId);
+    AgencyTeam existing = requireTeamProduct(teamId, context.org().getId());
+    validatePriceRange(request.getPriceMin(), request.getPriceMax());
+    existing.setTeamName(request.getTeamName().trim());
+    existing.setTeamType(request.getTeamType());
+    existing.setTeamIntro(request.getTeamIntro());
+    existing.setServiceCountryScope(request.getServiceCountryScope().trim());
+    existing.setServiceMajorScope(request.getServiceMajorScope().trim());
+    existing.setPriceMin(request.getPriceMin());
+    existing.setPriceMax(request.getPriceMax());
+    agencyTeamMapper.updateTeamProductById(existing);
+    savePublisherMembers(teamId, context.org().getId(), request.getPublisherMemberIds());
+    return getTeamProduct(userId, teamId);
+  }
+
+  @Override
+  @Transactional
+  public void publishTeamProduct(Long userId, Long teamId) {
+    PublisherContext context = requirePublishPermission(userId);
+    AgencyTeam existing = requireTeamProduct(teamId, context.org().getId());
+    if (existing.getPriceMin() == null || existing.getPriceMax() == null) {
+      throw new BizException("BIZ_BAD_REQUEST", "请先完善价格区间");
+    }
+    validatePriceRange(existing.getPriceMin(), existing.getPriceMax());
+    List<Long> publisherMemberIds = agencyTeamPublisherRelMapper.listActiveMemberIds(teamId);
+    if (publisherMemberIds.isEmpty()) {
+      throw new BizException("BIZ_BAD_REQUEST", "发布前请至少选择 1 位负责成员");
+    }
+    int updated = agencyTeamMapper.publishTeamProduct(teamId, context.org().getId(), context.member().getId());
+    if (updated == 0) {
+      throw new BizException("BIZ_NOT_FOUND", "团队产品不存在");
+    }
+  }
+
+  @Override
+  public List<AgencyDtos.TeamProductOrgMemberItem> listTeamProductOrgMembers(Long userId, String keyword) {
+    PublisherContext context = requirePublishPermission(userId);
+    List<AgencyDtos.TeamProductOrgMemberItem> members = agencyMemberProfileMapper.listOrgProductMembers(context.org().getId(), keyword);
+    log.debug("listTeamProductOrgMembers orgId={}, keyword='{}', count={}", context.org().getId(), keyword, members.size());
+    return members;
   }
 
   @Override
@@ -400,11 +493,9 @@ public class AgencyServiceImpl implements AgencyService {
       throw new BizException("BIZ_FORBIDDEN", "当前账号已归属其他机构");
     }
 
-    Long existingTeamId = agencyTeamMemberRelMapper.findTeamIdByMemberId(member.getId());
-    if (existingTeamId == null) {
+    int activated = agencyTeamMemberRelMapper.activateRelation(invitation.getTeamId(), member.getId());
+    if (activated == 0) {
       agencyTeamMemberRelMapper.insertOne(invitation.getTeamId(), member.getId());
-    } else {
-      agencyTeamMemberRelMapper.updateTeamByMemberId(invitation.getTeamId(), member.getId());
     }
 
     if (invitation.getRoleHint() != null && !invitation.getRoleHint().isBlank()) {
@@ -628,6 +719,66 @@ public class AgencyServiceImpl implements AgencyService {
     detail.setMembers(agencyTeamMapper.listDiscoveryTeamMembers(teamId));
     return detail;
   }
+
+  private void savePublisherMembers(Long teamId, Long orgId, List<Long> publisherMemberIds) {
+    agencyTeamPublisherRelMapper.deactivateByTeamId(teamId);
+    if (publisherMemberIds == null || publisherMemberIds.isEmpty()) {
+      return;
+    }
+    LinkedHashSet<Long> dedup = new LinkedHashSet<>(publisherMemberIds);
+    for (Long memberId : dedup) {
+      if (memberId == null) continue;
+      AgencyMemberProfile member = requireOrgMember(orgId, memberId);
+      String roleCode = agencyMemberRoleRelMapper.listRoleCodesByMemberId(memberId).stream().findFirst().orElse("CONSULTANT");
+      agencyTeamPublisherRelMapper.upsert(teamId, member.getId(), roleCode);
+    }
+  }
+
+  private void validatePriceRange(BigDecimal priceMin, BigDecimal priceMax) {
+    if (priceMin == null || priceMax == null) {
+      throw new BizException("BIZ_BAD_REQUEST", "价格区间不能为空");
+    }
+    if (priceMin.compareTo(BigDecimal.ZERO) < 0 || priceMax.compareTo(BigDecimal.ZERO) < 0) {
+      throw new BizException("BIZ_BAD_REQUEST", "价格不能小于 0");
+    }
+    if (priceMin.compareTo(priceMax) > 0) {
+      throw new BizException("BIZ_BAD_REQUEST", "最低价不能高于最高价");
+    }
+  }
+
+  private AgencyTeam requireTeamProduct(Long teamId, Long orgId) {
+    AgencyTeam team = agencyTeamMapper.findById(teamId);
+    if (team == null || !orgId.equals(team.getOrgId())) {
+      throw new BizException("BIZ_NOT_FOUND", "团队产品不存在");
+    }
+    return team;
+  }
+
+  private PublisherContext requirePublishPermission(Long userId) {
+    UserAccount user = requireUser(userId);
+    requireRole(user, "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null || !"ACTIVE".equals(member.getStatus())) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
+    if (org == null) {
+      throw new BizException("BIZ_NOT_FOUND", "机构档案不存在");
+    }
+    requireOrgApproved(org);
+    VerificationRecord cert = verificationRecordMapper.findOne(userId, "AGENT_MEMBER_CERT");
+    if (cert == null || !"APPROVED".equals(cert.getStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "员工认证未通过，暂不可执行该操作");
+    }
+    List<String> permissions = agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(member.getId());
+    LinkedHashSet<String> permissionSet = new LinkedHashSet<>(permissions);
+    if (!permissionSet.contains("CAN_PUBLISH_PACKAGE")) {
+      throw new BizException("BIZ_FORBIDDEN", "你当前没有发布套餐权限，请联系管理员");
+    }
+    return new PublisherContext(org, member);
+  }
+
+  private record PublisherContext(AgencyOrg org, AgencyMemberProfile member) {}
 
   private AgencyDtos.OrgVerificationView upsertOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request) {
     AgencyOrg org = requireOrgByAdmin(userId);
@@ -867,6 +1018,10 @@ public class AgencyServiceImpl implements AgencyService {
     view.setTeamIntro(team.getTeamIntro());
     view.setServiceCountryScope(team.getServiceCountryScope());
     view.setServiceMajorScope(team.getServiceMajorScope());
+    view.setPriceMin(team.getPriceMin());
+    view.setPriceMax(team.getPriceMax());
+    view.setPublishStatus(team.getPublishStatus());
+    view.setUpdatedAt(team.getPublishedAt() == null ? null : team.getPublishedAt().toString());
     return view;
   }
 
@@ -877,7 +1032,17 @@ public class AgencyServiceImpl implements AgencyService {
     view.setDisplayName(member.getDisplayName());
     view.setAvatarUrl(member.getAvatarUrl());
     view.setJobTitle(member.getJobTitle());
+    view.setEducationLevel(member.getEducationLevel());
+    view.setGraduatedSchool(member.getGraduatedSchool());
+    view.setMajor(member.getMajor());
+    view.setYearsOfExperience(member.getYearsOfExperience());
+    view.setSpecialCountries(member.getSpecialCountries());
+    view.setSpecialDirections(member.getSpecialDirections());
+    view.setBio(member.getBio());
+    view.setServiceStyleTags(member.getServiceStyleTags());
+    view.setPublicStatus(member.getPublicStatus());
     view.setProfileAuditStatus(member.getProfileAuditStatus());
+    view.setRoleCodes(agencyMemberRoleRelMapper.listRoleCodesByMemberId(member.getId()));
     return view;
   }
 

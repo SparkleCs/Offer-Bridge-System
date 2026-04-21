@@ -80,6 +80,35 @@
     ORDER BY m.id DESC
   </select>
 
+  <select id="listOrgProductMembers" resultType="com.offerbridge.backend.dto.AgencyDtos$TeamProductOrgMemberItem">
+    SELECT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.avatar_url AS avatarUrl,
+      m.job_title AS jobTitle,
+      COALESCE(pr.role_code, '') AS roleCode,
+      m.verified_badge_status AS verifiedBadgeStatus
+    FROM agency_member_profile m
+    LEFT JOIN agency_member_role_rel pr
+      ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    WHERE m.org_id = #{orgId}
+      AND m.status = 'ACTIVE'
+      AND EXISTS (
+        SELECT 1
+        FROM verification_record vr
+        WHERE vr.user_id = m.user_id
+          AND vr.verify_type = 'AGENT_MEMBER_CERT'
+          AND vr.status = 'APPROVED'
+      )
+      <if test="keyword != null and keyword != ''">
+        AND (
+          m.display_name LIKE CONCAT('%', #{keyword}, '%')
+          OR m.job_title LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+    ORDER BY m.id DESC
+  </select>
+
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO agency_member_profile(
       user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,

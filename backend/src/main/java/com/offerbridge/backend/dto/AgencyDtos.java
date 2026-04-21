@@ -2,6 +2,7 @@ package com.offerbridge.backend.dto;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -167,6 +168,10 @@ public class AgencyDtos {
     private String teamIntro;
     private String serviceCountryScope;
     private String serviceMajorScope;
+    private BigDecimal priceMin;
+    private BigDecimal priceMax;
+    private String publishStatus;
+    private String updatedAt;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -180,6 +185,160 @@ public class AgencyDtos {
     public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
     public String getServiceMajorScope() { return serviceMajorScope; }
     public void setServiceMajorScope(String serviceMajorScope) { this.serviceMajorScope = serviceMajorScope; }
+    public BigDecimal getPriceMin() { return priceMin; }
+    public void setPriceMin(BigDecimal priceMin) { this.priceMin = priceMin; }
+    public BigDecimal getPriceMax() { return priceMax; }
+    public void setPriceMax(BigDecimal priceMax) { this.priceMax = priceMax; }
+    public String getPublishStatus() { return publishStatus; }
+    public void setPublishStatus(String publishStatus) { this.publishStatus = publishStatus; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+  }
+
+  public static class TeamProductUpsertRequest {
+    @NotBlank private String teamName;
+    private String teamType;
+    private String teamIntro;
+    @NotBlank private String serviceCountryScope;
+    @NotBlank private String serviceMajorScope;
+    @NotNull @DecimalMin(value = "0", inclusive = true) private BigDecimal priceMin;
+    @NotNull @DecimalMin(value = "0", inclusive = true) private BigDecimal priceMax;
+    private List<@NotNull Long> publisherMemberIds;
+
+    public String getTeamName() { return teamName; }
+    public void setTeamName(String teamName) { this.teamName = teamName; }
+    public String getTeamType() { return teamType; }
+    public void setTeamType(String teamType) { this.teamType = teamType; }
+    public String getTeamIntro() { return teamIntro; }
+    public void setTeamIntro(String teamIntro) { this.teamIntro = teamIntro; }
+    public String getServiceCountryScope() { return serviceCountryScope; }
+    public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
+    public String getServiceMajorScope() { return serviceMajorScope; }
+    public void setServiceMajorScope(String serviceMajorScope) { this.serviceMajorScope = serviceMajorScope; }
+    public BigDecimal getPriceMin() { return priceMin; }
+    public void setPriceMin(BigDecimal priceMin) { this.priceMin = priceMin; }
+    public BigDecimal getPriceMax() { return priceMax; }
+    public void setPriceMax(BigDecimal priceMax) { this.priceMax = priceMax; }
+    public List<Long> getPublisherMemberIds() { return publisherMemberIds; }
+    public void setPublisherMemberIds(List<Long> publisherMemberIds) { this.publisherMemberIds = publisherMemberIds; }
+  }
+
+  public static class TeamProductSummaryItem {
+    private Long teamId;
+    private String teamName;
+    private String teamType;
+    private String publishStatus;
+    private BigDecimal priceMin;
+    private BigDecimal priceMax;
+    private String updatedAt;
+
+    public Long getTeamId() { return teamId; }
+    public void setTeamId(Long teamId) { this.teamId = teamId; }
+    public String getTeamName() { return teamName; }
+    public void setTeamName(String teamName) { this.teamName = teamName; }
+    public String getTeamType() { return teamType; }
+    public void setTeamType(String teamType) { this.teamType = teamType; }
+    public String getPublishStatus() { return publishStatus; }
+    public void setPublishStatus(String publishStatus) { this.publishStatus = publishStatus; }
+    public BigDecimal getPriceMin() { return priceMin; }
+    public void setPriceMin(BigDecimal priceMin) { this.priceMin = priceMin; }
+    public BigDecimal getPriceMax() { return priceMax; }
+    public void setPriceMax(BigDecimal priceMax) { this.priceMax = priceMax; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+  }
+
+  public static class TeamProductOrgMemberItem {
+    private Long memberId;
+    private String displayName;
+    private String avatarUrl;
+    private String jobTitle;
+    private String roleCode;
+    private String verifiedBadgeStatus;
+
+    public Long getMemberId() { return memberId; }
+    public void setMemberId(Long memberId) { this.memberId = memberId; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getRoleCode() { return roleCode; }
+    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
+    public String getVerifiedBadgeStatus() { return verifiedBadgeStatus; }
+    public void setVerifiedBadgeStatus(String verifiedBadgeStatus) { this.verifiedBadgeStatus = verifiedBadgeStatus; }
+  }
+
+  public static class TeamProductPublisherItem {
+    private Long memberId;
+    private String displayName;
+    private String avatarUrl;
+    private String jobTitle;
+    private String roleCode;
+    private String bio;
+    private Integer yearsOfExperience;
+    private String educationLevel;
+    private String specialCountries;
+    private String specialDirections;
+
+    public Long getMemberId() { return memberId; }
+    public void setMemberId(Long memberId) { this.memberId = memberId; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getAvatarUrl() { return avatarUrl; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getJobTitle() { return jobTitle; }
+    public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getRoleCode() { return roleCode; }
+    public void setRoleCode(String roleCode) { this.roleCode = roleCode; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+    public Integer getYearsOfExperience() { return yearsOfExperience; }
+    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getSpecialCountries() { return specialCountries; }
+    public void setSpecialCountries(String specialCountries) { this.specialCountries = specialCountries; }
+    public String getSpecialDirections() { return specialDirections; }
+    public void setSpecialDirections(String specialDirections) { this.specialDirections = specialDirections; }
+  }
+
+  public static class TeamProductDetailView {
+    private Long teamId;
+    private String teamName;
+    private String teamType;
+    private String teamIntro;
+    private String serviceCountryScope;
+    private String serviceMajorScope;
+    private BigDecimal priceMin;
+    private BigDecimal priceMax;
+    private String publishStatus;
+    private String updatedAt;
+    private List<TeamProductPublisherItem> publisherMembers;
+
+    public Long getTeamId() { return teamId; }
+    public void setTeamId(Long teamId) { this.teamId = teamId; }
+    public String getTeamName() { return teamName; }
+    public void setTeamName(String teamName) { this.teamName = teamName; }
+    public String getTeamType() { return teamType; }
+    public void setTeamType(String teamType) { this.teamType = teamType; }
+    public String getTeamIntro() { return teamIntro; }
+    public void setTeamIntro(String teamIntro) { this.teamIntro = teamIntro; }
+    public String getServiceCountryScope() { return serviceCountryScope; }
+    public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
+    public String getServiceMajorScope() { return serviceMajorScope; }
+    public void setServiceMajorScope(String serviceMajorScope) { this.serviceMajorScope = serviceMajorScope; }
+    public BigDecimal getPriceMin() { return priceMin; }
+    public void setPriceMin(BigDecimal priceMin) { this.priceMin = priceMin; }
+    public BigDecimal getPriceMax() { return priceMax; }
+    public void setPriceMax(BigDecimal priceMax) { this.priceMax = priceMax; }
+    public String getPublishStatus() { return publishStatus; }
+    public void setPublishStatus(String publishStatus) { this.publishStatus = publishStatus; }
+    public String getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(String updatedAt) { this.updatedAt = updatedAt; }
+    public List<TeamProductPublisherItem> getPublisherMembers() { return publisherMembers; }
+    public void setPublisherMembers(List<TeamProductPublisherItem> publisherMembers) { this.publisherMembers = publisherMembers; }
   }
 
   public static class InvitationCreateRequest {
@@ -257,7 +416,17 @@ public class AgencyDtos {
     private String displayName;
     private String avatarUrl;
     private String jobTitle;
+    private String educationLevel;
+    private String graduatedSchool;
+    private String major;
+    private Integer yearsOfExperience;
+    private String specialCountries;
+    private String specialDirections;
+    private String bio;
+    private String serviceStyleTags;
+    private String publicStatus;
     private String profileAuditStatus;
+    private List<String> roleCodes;
 
     public Long getMemberId() { return memberId; }
     public void setMemberId(Long memberId) { this.memberId = memberId; }
@@ -269,8 +438,28 @@ public class AgencyDtos {
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public String getJobTitle() { return jobTitle; }
     public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getGraduatedSchool() { return graduatedSchool; }
+    public void setGraduatedSchool(String graduatedSchool) { this.graduatedSchool = graduatedSchool; }
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+    public Integer getYearsOfExperience() { return yearsOfExperience; }
+    public void setYearsOfExperience(Integer yearsOfExperience) { this.yearsOfExperience = yearsOfExperience; }
+    public String getSpecialCountries() { return specialCountries; }
+    public void setSpecialCountries(String specialCountries) { this.specialCountries = specialCountries; }
+    public String getSpecialDirections() { return specialDirections; }
+    public void setSpecialDirections(String specialDirections) { this.specialDirections = specialDirections; }
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
+    public String getServiceStyleTags() { return serviceStyleTags; }
+    public void setServiceStyleTags(String serviceStyleTags) { this.serviceStyleTags = serviceStyleTags; }
+    public String getPublicStatus() { return publicStatus; }
+    public void setPublicStatus(String publicStatus) { this.publicStatus = publicStatus; }
     public String getProfileAuditStatus() { return profileAuditStatus; }
     public void setProfileAuditStatus(String profileAuditStatus) { this.profileAuditStatus = profileAuditStatus; }
+    public List<String> getRoleCodes() { return roleCodes; }
+    public void setRoleCodes(List<String> roleCodes) { this.roleCodes = roleCodes; }
   }
 
   public static class MemberAvatarUpdateRequest {

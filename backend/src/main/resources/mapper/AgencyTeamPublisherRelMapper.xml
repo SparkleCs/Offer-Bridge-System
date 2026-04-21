@@ -9,6 +9,22 @@
       updated_at = CURRENT_TIMESTAMP
   </insert>
 
+  <update id="deactivateByTeamId">
+    UPDATE agency_team_publisher_rel
+    SET status = 'INACTIVE',
+        updated_at = CURRENT_TIMESTAMP
+    WHERE team_id = #{teamId}
+      AND status = 'ACTIVE'
+  </update>
+
+  <select id="listActiveMemberIds" resultType="long">
+    SELECT DISTINCT member_id
+    FROM agency_team_publisher_rel
+    WHERE team_id = #{teamId}
+      AND status = 'ACTIVE'
+    ORDER BY member_id ASC
+  </select>
+
   <select id="countActivePublisher" resultType="int">
     SELECT COUNT(1)
     FROM agency_team_publisher_rel
