@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ServiceStageMapper">
+  <insert id="insertStage">
+    INSERT IGNORE INTO service_stage(case_id, stage_key, stage_name, stage_order, status, assigned_member_id, started_at)
+    VALUES(
+      #{caseId}, #{stageKey}, #{stageName}, #{stageOrder}, #{status}, #{assignedMemberId},
+      CASE WHEN #{status} = 'IN_PROGRESS' THEN CURRENT_TIMESTAMP ELSE NULL END
+    )
+  </insert>
+
+  <select id="listByOrderId" resultType="com.offerbridge.backend.dto.OrderDtos$StageItem">
+    SELECT
+      s.id AS id,
+      s.case_id AS caseId,
+      s.stage_key AS stageKey,
+      s.stage_name AS stageName,
+      s.stage_order AS stageOrder,
+      s.status AS status,
+      s.deliverable_text AS deliverableText,
+      s.deliverable_url AS deliverableUrl,
+      s.student_feedback AS studentFeedback,
+      DATE_FORMAT(s.submitted_at, '%Y-%m-%d %H:%i:%s') AS submittedAt,
+      DATE_FORMAT(s.completed_at, '%Y-%m-%d %H:%i:%s') AS completedAt
+    FROM service_stage s
+    JOIN student_service_case c ON c.id = s.case_id
+    WHERE c.order_id = #{orderId}
+    ORDER BY s.stage_order ASC
+  </select>
+
+  <select id="findById" resultType="com.offerbridge.backend.dto.OrderDtos$StageItem">
+    SELECT id, case_id AS caseId, stage_key AS stageKey, stage_name AS stageName,
+           stage_order AS stageOrder, status, deliverable_text AS deliverableText,
+           deliverable_url AS deliverableUrl, student_feedback AS studentFeedback
+    FROM service_stage WHERE id = #{id} LIMIT 1
+  </select>
+
+  <update id="submitStage">
+    UPDATE service_stage
+    SET status = 'WAITING_CONFIRMATION',
+        deliverable_text = #{deliverableText},
+        deliverable_url = #{deliverableUrl},
+        student_feedback = NULL,
+        submitted_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+      AND case_id = #{caseId}
+      AND status IN ('IN_PROGRESS', 'WAITING_AGENT')
+  </update>
+
+  <update id="completeStage">
+    UPDATE service_stage
+    SET status = 'COMPLETED',
+        completed_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+      AND case_id = #{caseId}
+      AND status = 'WAITING_CONFIRMATION'
+  </update>
+
+  <update id="rejectStage">
+    UPDATE service_stage
+    SET status = 'WAITING_AGENT',
+        student_feedback = #{feedback}
+    WHERE id = #{id}
+      AND case_id = #{caseId}
+      AND status = 'WAITING_CONFIRMATION'
+  </update>
+
+  <update id="startNextStage">
+    UPDATE service_stage
+    SET status = 'IN_PROGRESS',
+        started_at = COALESCE(started_at, CURRENT_TIMESTAMP)
+    WHERE case_id = #{caseId}
+      AND stage_order = #{stageOrder}
+      AND status = 'NOT_STARTED'
+  </update>
+</mapper>

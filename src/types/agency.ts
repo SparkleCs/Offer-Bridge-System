@@ -25,7 +25,7 @@ export interface AgencyOrgProfile {
 export type OrgVerificationStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 export type AgentPermissionCode = 'CAN_CHAT_STUDENT' | 'CAN_PUBLISH_PACKAGE' | string
 export type OrgAdminMenuKey = 'verification' | 'members' | 'permissions' | 'company'
-export type AgentWorkbenchMenuKey = 'team-products' | 'recommend' | 'search' | 'communication' | 'profile' | 'data'
+export type AgentWorkbenchMenuKey = 'team-products' | 'students' | 'recommend' | 'search' | 'communication' | 'profile' | 'data'
 
 export interface OrgVerificationPayload {
   licenseNo: string

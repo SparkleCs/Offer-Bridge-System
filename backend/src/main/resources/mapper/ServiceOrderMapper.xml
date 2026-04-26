@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ServiceOrderMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.ServiceOrder">
+    <id column="id" property="id"/>
+    <result column="order_no" property="orderNo"/>
+    <result column="student_user_id" property="studentUserId"/>
+    <result column="org_id" property="orgId"/>
+    <result column="team_id" property="teamId"/>
+    <result column="assigned_member_id" property="assignedMemberId"/>
+    <result column="team_name_snapshot" property="teamNameSnapshot"/>
+    <result column="org_name_snapshot" property="orgNameSnapshot"/>
+    <result column="service_title" property="serviceTitle"/>
+    <result column="quote_desc" property="quoteDesc"/>
+    <result column="final_amount" property="finalAmount"/>
+    <result column="currency" property="currency"/>
+    <result column="order_status" property="orderStatus"/>
+    <result column="payment_status" property="paymentStatus"/>
+    <result column="paid_at" property="paidAt"/>
+  </resultMap>
+
+  <sql id="SummaryColumns">
+    o.id AS id,
+    o.order_no AS orderNo,
+    o.team_id AS teamId,
+    o.team_name_snapshot AS teamNameSnapshot,
+    o.org_name_snapshot AS orgNameSnapshot,
+    o.service_title AS serviceTitle,
+    o.quote_desc AS quoteDesc,
+    o.final_amount AS finalAmount,
+    o.currency AS currency,
+    o.order_status AS orderStatus,
+    o.payment_status AS paymentStatus,
+    DATE_FORMAT(o.created_at, '%Y-%m-%d %H:%i:%s') AS createdAt,
+    DATE_FORMAT(o.updated_at, '%Y-%m-%d %H:%i:%s') AS updatedAt,
+    c.id AS caseId
+  </sql>
+
+  <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
+    INSERT INTO service_order(
+      order_no, student_user_id, org_id, team_id, assigned_member_id,
+      team_name_snapshot, org_name_snapshot, service_title, quote_desc,
+      final_amount, currency, order_status, payment_status
+    )
+    VALUES(
+      #{orderNo}, #{studentUserId}, #{orgId}, #{teamId}, #{assignedMemberId},
+      #{teamNameSnapshot}, #{orgNameSnapshot}, #{serviceTitle}, #{quoteDesc},
+      #{finalAmount}, #{currency}, #{orderStatus}, #{paymentStatus}
+    )
+  </insert>
+
+  <select id="findById" resultMap="BaseMap">
+    SELECT * FROM service_order WHERE id = #{id} LIMIT 1
+  </select>
+
+  <select id="findByIdForUpdate" resultMap="BaseMap">
+    SELECT * FROM service_order WHERE id = #{id} LIMIT 1 FOR UPDATE
+  </select>
+
+  <select id="findStudentSummary" resultType="com.offerbridge.backend.dto.OrderDtos$OrderSummary">
+    SELECT <include refid="SummaryColumns"/>
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    WHERE o.id = #{id} AND o.student_user_id = #{studentUserId}
+    LIMIT 1
+  </select>
+
+  <select id="findSummaryById" resultType="com.offerbridge.backend.dto.OrderDtos$OrderSummary">
+    SELECT <include refid="SummaryColumns"/>
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    WHERE o.id = #{id}
+    LIMIT 1
+  </select>
+
+  <select id="listByStudent" resultType="com.offerbridge.backend.dto.OrderDtos$OrderSummary">
+    SELECT <include refid="SummaryColumns"/>
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    WHERE o.student_user_id = #{studentUserId}
+    ORDER BY o.updated_at DESC, o.id DESC
+  </select>
+
+  <select id="listByOrg" resultType="com.offerbridge.backend.dto.OrderDtos$AgentOrderSummary">
+    SELECT
+      <include refid="SummaryColumns"/>,
+      o.student_user_id AS studentUserId,
+      ua.phone AS studentPhone,
+      sp.name AS studentName
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    LEFT JOIN user_account ua ON ua.id = o.student_user_id
+    LEFT JOIN student_profile sp ON sp.user_id = o.student_user_id
+    WHERE o.org_id = #{orgId}
+    ORDER BY o.updated_at DESC, o.id DESC
+  </select>
+
+  <update id="quoteOrder">
+    UPDATE service_order
+    SET service_title = #{serviceTitle},
+        quote_desc = #{quoteDesc},
+        final_amount = #{finalAmount},
+        assigned_member_id = #{assignedMemberId},
+        order_status = 'WAITING_PAYMENT',
+        payment_status = 'UNPAID'
+    WHERE id = #{id}
+      AND org_id = #{orgId}
+      AND order_status = 'PENDING_QUOTE'
+  </update>
+
+  <update id="closeStudentOrder">
+    UPDATE service_order
+    SET order_status = 'CLOSED',
+        closed_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+      AND student_user_id = #{studentUserId}
+      AND order_status IN ('PENDING_QUOTE', 'WAITING_PAYMENT')
+  </update>
+
+  <update id="markPaid">
+    UPDATE service_order
+    SET order_status = 'PAID',
+        payment_status = 'PAID',
+        paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP)
+    WHERE id = #{id}
+      AND payment_status != 'PAID'
+  </update>
+
+  <update id="markInService">
+    UPDATE service_order
+    SET order_status = 'IN_SERVICE'
+    WHERE id = #{id}
+      AND order_status IN ('PAID', 'IN_SERVICE')
+  </update>
+
+  <update id="requestRefund">
+    UPDATE service_order
+    SET order_status = 'REFUND_REQUESTED'
+    WHERE id = #{id}
+      AND student_user_id = #{studentUserId}
+      AND order_status IN ('IN_SERVICE', 'COMPLETED')
+  </update>
+</mapper>

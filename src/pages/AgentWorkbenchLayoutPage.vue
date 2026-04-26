@@ -19,6 +19,10 @@
           <el-icon class="menu-icon"><Grid /></el-icon>
           <span>团队产品管理</span>
         </el-menu-item>
+        <el-menu-item index="/agent-workbench/students">
+          <el-icon class="menu-icon"><Tickets /></el-icon>
+          <span>学生服务管理</span>
+        </el-menu-item>
         <el-menu-item index="/agent-workbench/recommend">
           <el-icon class="menu-icon"><Star /></el-icon>
           <span>推荐学生</span>
@@ -53,7 +57,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
-import { ChatDotRound, DataAnalysis, Grid, Search, Star, UserFilled } from '@element-plus/icons-vue'
+import { ChatDotRound, DataAnalysis, Grid, Search, Star, Tickets, UserFilled } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getMyAgencyProfile, updateMyAvatar, uploadFile } from '../services/agency'

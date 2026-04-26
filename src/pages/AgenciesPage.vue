@@ -101,6 +101,7 @@
               </div>
               <div class="head-actions">
                 <el-button size="large" class="ghost-btn">收藏</el-button>
+                <el-button size="large" type="success" :loading="creatingOrder" @click="createOrderFromDetail">创建订单</el-button>
                 <el-button size="large" type="primary" @click="openGreetingDialog(detail)">立即沟通</el-button>
               </div>
             </div>
@@ -173,6 +174,7 @@ import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
 import { startChat } from '../services/message'
+import { createServiceOrder } from '../services/order'
 import { getStudentVerificationStatus } from '../services/student'
 import { useAuthStore } from '../stores/auth'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
@@ -191,6 +193,7 @@ const greetingDialogVisible = ref(false)
 const greetingText = ref('您好，想咨询一下留学申请相关问题。')
 const pendingChatTeam = ref<{ teamId: number; teamName: string } | null>(null)
 const startingChat = ref(false)
+const creatingOrder = ref(false)
 
 const roleOptions = [
   { label: '咨询顾问', value: 'CONSULTANT' },
@@ -311,6 +314,27 @@ async function continueChat() {
     ElMessage.error(error?.message || '发起沟通失败')
   } finally {
     startingChat.value = false
+  }
+}
+
+async function createOrderFromDetail() {
+  if (!detail.value) return
+  if (!authStore.isLoggedIn) {
+    await confirmLoginRequired(router, '创建服务订单')
+    return
+  }
+  creatingOrder.value = true
+  try {
+    const order = await createServiceOrder({
+      teamId: detail.value.teamId,
+      remark: `学生从套餐页创建订单：${detail.value.teamName}`
+    })
+    ElMessage.success('订单已创建，等待中介报价')
+    router.push({ path: '/orders', query: { orderId: order.id } })
+  } catch (error: any) {
+    ElMessage.error(error?.message || '创建订单失败')
+  } finally {
+    creatingOrder.value = false
   }
 }
 

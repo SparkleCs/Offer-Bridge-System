@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.PaymentRecordMapper">
+  <insert id="insertCreated">
+    INSERT INTO payment_record(order_id, payment_no, channel, status, amount)
+    VALUES(#{orderId}, #{paymentNo}, 'ALIPAY_SANDBOX', 'CREATED', #{amount})
+  </insert>
+
+  <update id="markPaid">
+    UPDATE payment_record
+    SET status = 'PAID',
+        gateway_trade_no = #{gatewayTradeNo},
+        notify_payload = #{payload},
+        verified = 1,
+        paid_at = COALESCE(paid_at, CURRENT_TIMESTAMP)
+    WHERE payment_no = #{paymentNo}
+  </update>
+
+  <select id="countPaidByOrderId" resultType="int">
+    SELECT COUNT(1) FROM payment_record WHERE order_id = #{orderId} AND status = 'PAID'
+  </select>
+</mapper>

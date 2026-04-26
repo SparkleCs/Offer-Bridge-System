@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ServiceTodoMapper">
+  <insert id="insertTodo">
+    INSERT INTO service_todo(case_id, stage_id, title, description, owner_role, status)
+    VALUES(#{caseId}, #{stageId}, #{title}, #{description}, #{ownerRole}, 'OPEN')
+  </insert>
+
+  <select id="listByOrderId" resultType="com.offerbridge.backend.dto.OrderDtos$TodoItem">
+    SELECT
+      t.id AS id,
+      t.case_id AS caseId,
+      t.stage_id AS stageId,
+      t.title AS title,
+      t.description AS description,
+      t.owner_role AS ownerRole,
+      t.status AS status,
+      DATE_FORMAT(t.completed_at, '%Y-%m-%d %H:%i:%s') AS completedAt,
+      DATE_FORMAT(t.confirmed_at, '%Y-%m-%d %H:%i:%s') AS confirmedAt
+    FROM service_todo t
+    JOIN student_service_case c ON c.id = t.case_id
+    WHERE c.order_id = #{orderId}
+    ORDER BY t.id ASC
+  </select>
+
+  <update id="markCompleted">
+    UPDATE service_todo
+    SET status = 'WAITING_CONFIRMATION',
+        completed_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+      AND case_id = #{caseId}
+      AND status = 'OPEN'
+  </update>
+
+  <update id="confirmCompleted">
+    UPDATE service_todo
+    SET status = 'COMPLETED',
+        confirmed_at = CURRENT_TIMESTAMP
+    WHERE id = #{id}
+      AND case_id = #{caseId}
+      AND status = 'WAITING_CONFIRMATION'
+  </update>
+</mapper>
