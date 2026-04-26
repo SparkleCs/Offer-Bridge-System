@@ -280,6 +280,13 @@ public class UniversityServiceImpl implements UniversityService {
   }
 
   private UniversityDtos.ProgramMatchResult computeAndPersistMatch(Long userId, Program program) {
+    if (userId == null) {
+      UniversityDtos.ProgramMatchResult result = new UniversityDtos.ProgramMatchResult();
+      result.setMatchScore(0);
+      result.setMatchTier("登录后查看匹配");
+      result.setReasonTags(List.of("登录后可基于个人背景生成匹配结果"));
+      return result;
+    }
     StudentProfile profile = studentProfileMapper.findByUserId(userId);
     List<StudentLanguageScore> languageScores = studentLanguageScoreMapper.listByUserId(userId);
     List<StudentTargetCountry> targetCountries = studentTargetCountryMapper.listByUserId(userId);

@@ -108,6 +108,15 @@ export async function apiRequest<T>(path: string, init: RequestInit = {}, withAu
   return doRequest<T>(path, init, withAuth, true)
 }
 
+export async function apiRequestOptionalAuth<T>(path: string, init: RequestInit = {}) {
+  const token = readAccessToken()
+  const headers = new Headers(init.headers || {})
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+  return doRequest<T>(path, { ...init, headers }, false, false)
+}
+
 export function clearLocalAuth() {
   localStorage.removeItem(ACCESS_TOKEN_KEY)
   localStorage.removeItem(REFRESH_TOKEN_KEY)

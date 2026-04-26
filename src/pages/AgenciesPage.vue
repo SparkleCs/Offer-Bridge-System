@@ -174,9 +174,12 @@ import { useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
 import { startChat } from '../services/message'
 import { getStudentVerificationStatus } from '../services/student'
+import { useAuthStore } from '../stores/auth'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
+import { confirmLoginRequired } from '../utils/authPrompt'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 const loadingList = ref(false)
 const loadingDetail = ref(false)
@@ -273,6 +276,10 @@ function clearFilters() {
 }
 
 async function openGreetingDialog(team: { teamId: number; teamName: string }) {
+  if (!authStore.isLoggedIn) {
+    await confirmLoginRequired(router, '和中介沟通')
+    return
+  }
   try {
     const verify = await getStudentVerificationStatus()
     if (!verify.verificationCompleted) {

@@ -585,11 +585,17 @@ public class ForumServiceImpl implements ForumService {
   }
 
   private boolean isStudent(Long userId) {
+    if (userId == null) {
+      return false;
+    }
     UserAccount user = userAccountMapper.findById(userId);
     return user != null && ROLE_STUDENT.equals(user.getRole());
   }
 
   private UserAccount requireUser(Long userId) {
+    if (userId == null) {
+      throw new BizException("BIZ_UNAUTHORIZED", "未登录或登录已过期");
+    }
     UserAccount user = userAccountMapper.findById(userId);
     if (user == null) {
       throw new BizException("BIZ_UNAUTHORIZED", "用户不存在");

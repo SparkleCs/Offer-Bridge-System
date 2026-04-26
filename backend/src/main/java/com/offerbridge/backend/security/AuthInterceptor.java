@@ -26,6 +26,17 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
 
     String auth = request.getHeader("Authorization");
+    if (isPublicReadEndpoint(request, uri)) {
+      if (auth != null && auth.startsWith("Bearer ")) {
+        try {
+          AuthContext.setUserId(jwtService.parseUserId(auth.substring(7)));
+        } catch (Exception ignored) {
+          AuthContext.clear();
+        }
+      }
+      return true;
+    }
+
     if (auth == null || !auth.startsWith("Bearer ")) {
       throw new BizException("BIZ_UNAUTHORIZED", "未登录或登录已过期");
     }
@@ -43,5 +54,20 @@ public class AuthInterceptor implements HandlerInterceptor {
   @Override
   public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
     AuthContext.clear();
+  }
+
+  private boolean isPublicReadEndpoint(HttpServletRequest request, String uri) {
+    if (!"GET".equalsIgnoreCase(request.getMethod()) || uri == null) {
+      return false;
+    }
+    if (uri.equals("/api/v1/universities/meta")) return true;
+    if (uri.startsWith("/api/v1/universities/schools")) return true;
+    if (uri.startsWith("/api/v1/universities/programs")) return true;
+    if (uri.equals("/api/v1/forum/posts")) {
+      String mode = request.getParameter("mode");
+      return mode == null || !"MINE".equalsIgnoreCase(mode);
+    }
+    if (uri.matches("^/api/v1/forum/posts/[^/]+$")) return true;
+    return uri.matches("^/api/v1/forum/posts/[^/]+/comments$");
   }
 }

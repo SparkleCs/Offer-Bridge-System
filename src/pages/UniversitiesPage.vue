@@ -142,11 +142,17 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { ApiError } from '../services/http'
 import { addApplication, getUniversityMeta, listPrograms, listSchools } from '../services/university'
+import { useAuthStore } from '../stores/auth'
 import type { FilterOption, ProgramListItem, SchoolListItem, UniversityMeta } from '../types/university'
+import { confirmLoginRequired } from '../utils/authPrompt'
 
 type RankPreset = 'ALL' | 'TOP20' | 'TOP50' | 'TOP100'
+
+const router = useRouter()
+const authStore = useAuthStore()
 
 const meta = reactive<UniversityMeta>({
   countries: [],
@@ -314,6 +320,10 @@ function toggleExpand(schoolId: number) {
 }
 
 async function addToList(programId: number) {
+  if (!authStore.isLoggedIn) {
+    await confirmLoginRequired(router, '加入申请清单')
+    return
+  }
   addingProgramId.value = programId
   try {
     await addApplication(programId)

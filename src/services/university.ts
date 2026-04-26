@@ -1,4 +1,4 @@
-import { apiRequest } from './http'
+import { apiRequest, apiRequestOptionalAuth } from './http'
 import type {
   ApplicationListView,
   ProgramDetail,
@@ -37,23 +37,23 @@ function toQuery(params: object) {
 }
 
 export function getUniversityMeta() {
-  return apiRequest<UniversityMeta>('/api/v1/universities/meta', { method: 'GET' }, true)
+  return apiRequestOptionalAuth<UniversityMeta>('/api/v1/universities/meta', { method: 'GET' })
 }
 
 export function listSchools(params: SchoolFilterParams) {
-  return apiRequest<SchoolListItem[]>(`/api/v1/universities/schools${toQuery(params)}`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<SchoolListItem[]>(`/api/v1/universities/schools${toQuery(params)}`, { method: 'GET' })
 }
 
 export function getSchoolDetail(schoolId: number) {
-  return apiRequest<SchoolDetail>(`/api/v1/universities/schools/${schoolId}`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<SchoolDetail>(`/api/v1/universities/schools/${schoolId}`, { method: 'GET' })
 }
 
 export function listPrograms(params: ProgramFilterParams) {
-  return apiRequest<ProgramListItem[]>(`/api/v1/universities/programs${toQuery(params)}`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<ProgramListItem[]>(`/api/v1/universities/programs${toQuery(params)}`, { method: 'GET' })
 }
 
 export function getProgramDetail(programId: number) {
-  return apiRequest<ProgramDetail>(`/api/v1/universities/programs/${programId}`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<ProgramDetail>(`/api/v1/universities/programs/${programId}`, { method: 'GET' })
 }
 
 export function getApplicationList() {

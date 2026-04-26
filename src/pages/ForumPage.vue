@@ -10,12 +10,12 @@
         <el-badge :value="unreadCount" :hidden="unreadCount === 0">
           <el-button plain class="jump-btn" @click="openNotificationDrawer">互动通知</el-button>
         </el-badge>
-        <el-button type="primary" class="jump-btn" :disabled="!isStudent" @click="goCreate">发布帖子</el-button>
+        <el-button type="primary" class="jump-btn" @click="goCreate">发布帖子</el-button>
       </div>
     </div>
 
     <el-alert
-      v-if="!isStudent"
+      v-if="isLoggedIn && !isStudent"
       title="当前账号不是学生角色，仅支持浏览；发帖与互动功能仅学生可用。"
       type="warning"
       :closable="false"
@@ -70,11 +70,11 @@
         </div>
 
         <div class="action-row">
-          <el-button text class="action-btn like" :class="{ active: item.viewerLiked }" :disabled="!isStudent" @click="toggleLike(item)">
+          <el-button text class="action-btn like" :class="{ active: item.viewerLiked }" @click="toggleLike(item)">
             <span class="heart-icon">❤</span>
             <span>{{ item.likeCount }}</span>
           </el-button>
-          <el-button text class="action-btn favorite" :class="{ active: item.viewerFavorited }" :disabled="!isStudent" @click="toggleFavorite(item)">
+          <el-button text class="action-btn favorite" :class="{ active: item.viewerFavorited }" @click="toggleFavorite(item)">
             <el-icon><Star /></el-icon>
             <span>{{ item.favoriteCount }}</span>
           </el-button>
@@ -98,10 +98,9 @@
             maxlength="5000"
             show-word-limit
             placeholder="写下你的看法..."
-            :disabled="!isStudent"
           />
           <div class="comment-send">
-            <el-button type="primary" :disabled="!isStudent" :loading="sendingCommentPostId === item.postId" @click="submitComment(item)">发送评论</el-button>
+            <el-button type="primary" :loading="sendingCommentPostId === item.postId" @click="submitComment(item)">发送评论</el-button>
           </div>
           <div class="comment-list">
             <el-empty v-if="!(commentsByPost[item.postId] || []).length" description="暂无评论" />
@@ -163,6 +162,7 @@ import {
 } from '../services/forum'
 import { useAuthStore } from '../stores/auth'
 import type { ForumChannel, ForumComment, ForumNotification, ForumNotificationType, ForumPost } from '../types/forum'
+import { confirmLoginRequired } from '../utils/authPrompt'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -189,6 +189,7 @@ const loadingNotifications = ref(false)
 const notifications = ref<ForumNotification[]>([])
 const unreadCount = ref(0)
 
+const isLoggedIn = computed(() => authStore.isLoggedIn)
 const isStudent = computed(() => authStore.authMeta?.role === 'STUDENT')
 const currentUserId = computed(() => authStore.authMeta?.userId || 0)
 
@@ -198,7 +199,9 @@ watch(channel, () => {
 
 onMounted(async () => {
   await reloadPosts(1)
-  await loadNotifications()
+  if (isLoggedIn.value) {
+    await loadNotifications()
+  }
 })
 
 function channelText(value: ForumChannel) {
@@ -236,11 +239,28 @@ function getPostContentHtml(post: ForumPost) {
   return detailContentByPost.value[post.postId] || post.contentHtml || `<p>${post.summary}</p>`
 }
 
-function goMine() {
+async function ensureForumAction(actionText: string) {
+  if (!isLoggedIn.value) {
+    await confirmLoginRequired(router, actionText)
+    return false
+  }
+  if (!isStudent.value) {
+    ElMessage.warning('当前账号不是学生角色，仅学生可执行该操作')
+    return false
+  }
+  return true
+}
+
+async function goMine() {
+  if (!isLoggedIn.value) {
+    await confirmLoginRequired(router, '查看我的论坛')
+    return
+  }
   router.push('/forum/mine')
 }
 
-function goCreate() {
+async function goCreate() {
+  if (!(await ensureForumAction('发布帖子'))) return
   router.push('/forum/new')
 }
 
@@ -345,7 +365,7 @@ function syncPostInList(postId: string, patch: Partial<ForumPost>) {
 }
 
 async function toggleLike(post: ForumPost) {
-  if (!isStudent.value) return
+  if (!(await ensureForumAction('点赞'))) return
   try {
     const state = post.viewerLiked ? await unlikeForumPost(post.postId) : await likeForumPost(post.postId)
     syncPostInList(post.postId, {
@@ -361,7 +381,7 @@ async function toggleLike(post: ForumPost) {
 }
 
 async function toggleFavorite(post: ForumPost) {
-  if (!isStudent.value) return
+  if (!(await ensureForumAction('收藏帖子'))) return
   try {
     const state = post.viewerFavorited ? await unfavoriteForumPost(post.postId) : await favoriteForumPost(post.postId)
     syncPostInList(post.postId, {
@@ -377,6 +397,7 @@ async function toggleFavorite(post: ForumPost) {
 }
 
 async function sharePost(post: ForumPost) {
+  if (!(await ensureForumAction('分享帖子'))) return
   try {
     const data = await shareForumPost(post.postId)
     await copyText(data.shareUrl)
@@ -396,7 +417,7 @@ function onCommentInput(postId: string, value: string | number | null | undefine
 }
 
 async function submitComment(post: ForumPost) {
-  if (!isStudent.value) return
+  if (!(await ensureForumAction('发表评论'))) return
   const content = (commentDraftByPost.value[post.postId] || '').trim()
   if (!content) {
     ElMessage.warning('评论内容不能为空')
@@ -419,12 +440,21 @@ async function submitComment(post: ForumPost) {
   }
 }
 
-function openNotificationDrawer() {
+async function openNotificationDrawer() {
+  if (!isLoggedIn.value) {
+    await confirmLoginRequired(router, '查看互动通知')
+    return
+  }
   notificationVisible.value = true
   loadNotifications()
 }
 
 async function loadNotifications() {
+  if (!isLoggedIn.value) {
+    notifications.value = []
+    unreadCount.value = 0
+    return
+  }
   loadingNotifications.value = true
   try {
     const data = await listForumNotifications({ page: 1, pageSize: 20 })

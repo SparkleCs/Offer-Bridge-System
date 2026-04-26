@@ -1,4 +1,4 @@
-import { apiRequest } from './http'
+import { apiRequest, apiRequestOptionalAuth } from './http'
 import type {
   ForumComment,
   CreateCommentPayload,
@@ -36,11 +36,15 @@ export function listForumPosts(params: ForumSearchParams = {}) {
   if (params.pageSize) search.append('pageSize', String(params.pageSize))
 
   const query = search.toString()
-  return apiRequest<ForumPostListView>(`/api/v1/forum/posts${query ? `?${query}` : ''}`, { method: 'GET' }, true)
+  const path = `/api/v1/forum/posts${query ? `?${query}` : ''}`
+  if (params.mode === 'MINE') {
+    return apiRequest<ForumPostListView>(path, { method: 'GET' }, true)
+  }
+  return apiRequestOptionalAuth<ForumPostListView>(path, { method: 'GET' })
 }
 
 export function getForumPostDetail(postId: string) {
-  return apiRequest<ForumPost>(`/api/v1/forum/posts/${postId}`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<ForumPost>(`/api/v1/forum/posts/${postId}`, { method: 'GET' })
 }
 
 export function updateForumPost(postId: string, payload: UpdatePostPayload) {
@@ -78,7 +82,7 @@ export function addForumComment(postId: string, payload: CreateCommentPayload) {
 }
 
 export function listForumComments(postId: string) {
-  return apiRequest<ForumCommentListView>(`/api/v1/forum/posts/${postId}/comments`, { method: 'GET' }, true)
+  return apiRequestOptionalAuth<ForumCommentListView>(`/api/v1/forum/posts/${postId}/comments`, { method: 'GET' })
 }
 
 export function shareForumPost(postId: string) {
