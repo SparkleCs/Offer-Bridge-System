@@ -6,33 +6,18 @@
     <el-alert v-if="blockedReason" :title="blockedReason" type="warning" :closable="false" show-icon />
 
     <template v-else>
-      <div class="chat-shell">
-        <div class="chat-list">
-          <div class="chat-item" v-for="item in mockChats" :key="item.id">
-            <div class="name">{{ item.name }}</div>
-            <div class="last">{{ item.last }}</div>
-          </div>
-        </div>
-        <div class="chat-main">
-          <h3>会话窗口（占位）</h3>
-          <p>后续接入真实 IM 消息流、未读计数与会话分配。</p>
-        </div>
-      </div>
+      <ChatPanel mode="agent" />
     </template>
   </section>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import ChatPanel from '../components/ChatPanel.vue'
 import { getMyWorkbenchAccess } from '../services/agency'
 import type { MemberWorkbenchAccess } from '../types/agency'
 
 const access = ref<MemberWorkbenchAccess | null>(null)
-
-const mockChats = [
-  { id: 1, name: '张同学', last: '老师您好，我想问一下文书修改。' },
-  { id: 2, name: '李同学', last: '我可以申请英港联申吗？' }
-]
 
 const blockedReason = computed(() => {
   if (!access.value) return '正在检查权限...'
@@ -47,42 +32,15 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.chat-shell {
-  margin-top: 14px;
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 12px;
+.page-card {
+  height: calc(100vh - 116px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.chat-list,
-.chat-main {
-  background: #fff;
-  border: 1px solid #dbe7f2;
-  border-radius: 12px;
-  padding: 12px;
-}
-
-.chat-item {
-  padding: 10px;
-  border-bottom: 1px dashed #dbe7f2;
-}
-
-.chat-item:last-child {
-  border-bottom: none;
-}
-
-.name {
-  font-weight: 700;
-}
-
-.last {
-  color: #6b7e92;
-  margin-top: 4px;
-}
-
-@media (max-width: 900px) {
-  .chat-shell {
-    grid-template-columns: 1fr;
-  }
+.page-card :deep(.chat-panel) {
+  flex: 1;
+  min-height: 0;
 }
 </style>

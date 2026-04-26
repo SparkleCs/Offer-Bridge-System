@@ -56,7 +56,7 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listForumNotifications } from './services/forum'
-import { listSystemNotifications } from './services/message'
+import { getChatUnreadSummary, listSystemNotifications } from './services/message'
 import { useAuthStore } from './stores/auth'
 
 const route = useRoute()
@@ -91,11 +91,12 @@ async function refreshMessageUnreadTotal() {
     return
   }
   try {
-    const [forum, system] = await Promise.all([
+    const [forum, system, chat] = await Promise.all([
       listForumNotifications({ page: 1, pageSize: 1 }),
-      listSystemNotifications({ page: 1, pageSize: 1 })
+      listSystemNotifications({ page: 1, pageSize: 1 }),
+      getChatUnreadSummary()
     ])
-    messageUnreadTotal.value = (forum.unreadCount || 0) + (system.unreadCount || 0)
+    messageUnreadTotal.value = (forum.unreadCount || 0) + (system.unreadCount || 0) + (chat.unreadCount || 0)
   } catch {
     messageUnreadTotal.value = 0
   }

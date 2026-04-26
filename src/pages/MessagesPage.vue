@@ -1,18 +1,8 @@
 <template>
   <section class="page-card fade-up message-shell">
-    <div class="message-head">
-      <h2 class="section-title">消息中心</h2>
-      <p class="section-desc">私聊、论坛互动、系统通知分域管理。</p>
-    </div>
-
-    <el-tabs v-model="activeTab" class="mt16">
-      <el-tab-pane label="学生-中介私聊" name="chat">
-        <div class="message-card">
-          <h3>当前上下文</h3>
-          <p>团队ID：{{ teamId || '未指定' }}</p>
-          <p>团队名称：{{ teamName || '未指定' }}</p>
-          <el-alert title="私聊模块开发中，后续将在此接入会话列表与聊天窗口。" type="info" :closable="false" show-icon />
-        </div>
+    <el-tabs v-model="activeTab" class="message-tabs">
+      <el-tab-pane :label="`中介沟通${chatUnreadCount > 0 ? ` (${chatUnreadCount})` : ''}`" name="chat">
+        <ChatPanel :initial-conversation-id="conversationId" mode="student" @unread-change="chatUnreadCount = $event" />
       </el-tab-pane>
 
       <el-tab-pane :label="`系统通知${systemUnreadCount > 0 ? ` (${systemUnreadCount})` : ''}`" name="system-notification">
@@ -51,6 +41,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
+import ChatPanel from '../components/ChatPanel.vue'
 import { ApiError } from '../services/http'
 import { listForumNotifications, markForumNotificationsRead } from '../services/forum'
 import { listSystemNotifications, markSystemNotificationsRead } from '../services/message'
@@ -59,10 +50,10 @@ import type { SystemNotificationItem } from '../types/message'
 
 const route = useRoute()
 const router = useRouter()
-const teamId = computed(() => String(route.query.teamId || ''))
-const teamName = computed(() => String(route.query.teamName || ''))
+const conversationId = computed(() => String(route.query.conversationId || ''))
 
 const activeTab = ref('chat')
+const chatUnreadCount = ref(0)
 const loading = ref(false)
 const notifications = ref<ForumNotification[]>([])
 const unreadCount = ref(0)
@@ -157,28 +148,31 @@ async function goPost(postId: string) {
 
 <style scoped>
 .message-shell {
-  max-width: 920px;
+  max-width: 1280px;
   margin: 0 auto;
+  height: calc(100vh - 78px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
-.mt16 {
-  margin-top: 16px;
+.message-tabs {
+  margin-top: 0;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.message-card {
-  border: 1px solid #dbe6f1;
-  border-radius: 14px;
-  padding: 16px;
-  background: linear-gradient(160deg, #ffffff, #f8fbff);
+.message-tabs :deep(.el-tabs__content) {
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
-.message-card h3 {
-  margin: 0 0 8px;
-}
-
-.message-card p {
-  margin: 4px 0;
-  color: #5b738b;
+.message-tabs :deep(.el-tab-pane) {
+  height: 100%;
+  overflow: hidden;
 }
 
 .notify-head {

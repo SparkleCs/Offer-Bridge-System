@@ -145,8 +145,32 @@
       COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
       CASE
         WHEN t.price_min &lt;= 0 AND t.price_max &lt;= 0 THEN '价格待沟通'
-        WHEN t.price_min = t.price_max THEN CONCAT('¥', REPLACE(FORMAT(t.price_min, 2), ',', ''))
-        ELSE CONCAT('¥', REPLACE(FORMAT(LEAST(t.price_min, t.price_max), 2), ',', ''), ' - ¥', REPLACE(FORMAT(GREATEST(t.price_min, t.price_max), 2), ',', ''))
+        WHEN t.price_min = t.price_max THEN
+          CASE
+            WHEN t.price_min &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 10000, 1))), 'w')
+            WHEN t.price_min &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 1000, 1))), 'k')
+            ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min, 1)))
+          END
+        ELSE
+          CASE
+            WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 AND GREATEST(t.price_min, t.price_max) &gt;= 10000
+              THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+            WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 AND GREATEST(t.price_min, t.price_max) &lt; 10000
+              THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+            ELSE CONCAT(
+              CASE
+                WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), 'w')
+                WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), 'k')
+                ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max), 1)))
+              END,
+              '-',
+              CASE
+                WHEN GREATEST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+                WHEN GREATEST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+                ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max), 1)))
+              END
+            )
+          END
       END AS priceTextPlaceholder
     FROM agency_team t
     JOIN agency_org o ON o.id = t.org_id
@@ -204,8 +228,32 @@
       COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
       CASE
         WHEN t.price_min &lt;= 0 AND t.price_max &lt;= 0 THEN '价格待沟通'
-        WHEN t.price_min = t.price_max THEN CONCAT('¥', REPLACE(FORMAT(t.price_min, 2), ',', ''))
-        ELSE CONCAT('¥', REPLACE(FORMAT(LEAST(t.price_min, t.price_max), 2), ',', ''), ' - ¥', REPLACE(FORMAT(GREATEST(t.price_min, t.price_max), 2), ',', ''))
+        WHEN t.price_min = t.price_max THEN
+          CASE
+            WHEN t.price_min &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 10000, 1))), 'w')
+            WHEN t.price_min &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 1000, 1))), 'k')
+            ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min, 1)))
+          END
+        ELSE
+          CASE
+            WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 AND GREATEST(t.price_min, t.price_max) &gt;= 10000
+              THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+            WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 AND GREATEST(t.price_min, t.price_max) &lt; 10000
+              THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+            ELSE CONCAT(
+              CASE
+                WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), 'w')
+                WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), 'k')
+                ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max), 1)))
+              END,
+              '-',
+              CASE
+                WHEN GREATEST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+                WHEN GREATEST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+                ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max), 1)))
+              END
+            )
+          END
       END AS priceTextPlaceholder,
       '服务内容' AS packagePlaceholderTitle,
       '该套餐由下方负责成员提供服务，支持先沟通后下单。' AS packagePlaceholderDesc

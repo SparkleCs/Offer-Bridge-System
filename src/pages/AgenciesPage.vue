@@ -84,7 +84,7 @@
           </div>
 
           <div class="card-actions">
-            <el-button size="small" @click.stop="goMessage(team)">沟通</el-button>
+            <el-button size="small" @click.stop="openGreetingDialog(team)">沟通</el-button>
           </div>
         </article>
       </aside>
@@ -101,7 +101,7 @@
               </div>
               <div class="head-actions">
                 <el-button size="large" class="ghost-btn">收藏</el-button>
-                <el-button size="large" type="primary" @click="goMessage(detail)">立即沟通</el-button>
+                <el-button size="large" type="primary" @click="openGreetingDialog(detail)">立即沟通</el-button>
               </div>
             </div>
 
@@ -149,6 +149,21 @@
         </transition>
       </main>
     </div>
+
+    <el-dialog v-model="greetingDialogVisible" width="460px" class="greeting-dialog" :show-close="false">
+      <template #header>
+        <div class="greeting-head">
+          <strong>已向中介发送消息</strong>
+          <el-button text @click="greetingDialogVisible = false">×</el-button>
+        </div>
+      </template>
+      <div class="greeting-preview">{{ greetingText }}</div>
+      <p class="greeting-tip">如需修改打招呼内容，请在消息页面继续编辑发送。</p>
+      <template #footer>
+        <el-button size="large" @click="greetingDialogVisible = false">留在此页</el-button>
+        <el-button size="large" type="primary" :loading="startingChat" @click="continueChat">继续沟通</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -157,6 +172,7 @@ import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
+import { startChat } from '../services/message'
 import { getStudentVerificationStatus } from '../services/student'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
 
@@ -168,6 +184,10 @@ const teams = ref<DiscoveryTeamItem[]>([])
 const selectedTeamId = ref<number | null>(null)
 const detail = ref<DiscoveryTeamDetail | null>(null)
 const detailCache = new Map<number, DiscoveryTeamDetail>()
+const greetingDialogVisible = ref(false)
+const greetingText = ref('您好，想咨询一下留学申请相关问题。')
+const pendingChatTeam = ref<{ teamId: number; teamName: string } | null>(null)
+const startingChat = ref(false)
 
 const roleOptions = [
   { label: '咨询顾问', value: 'CONSULTANT' },
@@ -252,7 +272,7 @@ function clearFilters() {
   loadTeams()
 }
 
-async function goMessage(team: { teamId: number; teamName: string }) {
+async function openGreetingDialog(team: { teamId: number; teamName: string }) {
   try {
     const verify = await getStudentVerificationStatus()
     if (!verify.verificationCompleted) {
@@ -265,7 +285,26 @@ async function goMessage(team: { teamId: number; teamName: string }) {
     router.push('/auth')
     return
   }
-  router.push({ path: '/messages', query: { teamId: String(team.teamId), teamName: team.teamName } })
+  pendingChatTeam.value = team
+  greetingText.value = '您好，想咨询一下留学申请相关问题。'
+  greetingDialogVisible.value = true
+}
+
+async function continueChat() {
+  if (!pendingChatTeam.value) return
+  startingChat.value = true
+  try {
+    const data = await startChat({
+      teamId: pendingChatTeam.value.teamId,
+      greeting: greetingText.value
+    })
+    greetingDialogVisible.value = false
+    router.push({ path: '/messages', query: { conversationId: data.conversation.conversationId } })
+  } catch (error: any) {
+    ElMessage.error(error?.message || '发起沟通失败')
+  } finally {
+    startingChat.value = false
+  }
 }
 
 loadTeams()
@@ -521,6 +560,28 @@ loadTeams()
 .detail-fade-leave-to {
   opacity: 0;
   transform: translateY(8px);
+}
+
+.greeting-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 24px;
+}
+
+.greeting-preview {
+  padding: 14px 18px;
+  border-radius: 8px;
+  background: #f7f7f7;
+  color: #2d3339;
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+.greeting-tip {
+  margin: 10px 0 0;
+  color: #9aa1a8;
+  font-size: 15px;
 }
 
 @keyframes riseIn {

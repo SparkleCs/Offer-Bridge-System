@@ -31,7 +31,7 @@
           <div class="row-meta">
             <span class="meta-cell">
               <em class="meta-label">价格</em>
-              <strong class="meta-value">{{ formatPrice(item.priceMin, item.priceMax) }}</strong>
+              <strong class="meta-value price-value">{{ formatPrice(item.priceMin, item.priceMax) }}</strong>
             </span>
             <span class="meta-cell">
               <em class="meta-label">更新时间</em>
@@ -169,6 +169,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
+import { formatCompactPrice } from '../utils/price'
 import {
   createTeamProduct,
   getMyWorkbenchAccess,
@@ -317,11 +318,7 @@ function roleLabel(code?: string | null) {
 }
 
 function formatPrice(min?: number | null, max?: number | null) {
-  const low = Number(min || 0)
-  const high = Number(max || 0)
-  if (low <= 0 && high <= 0) return '价格待沟通'
-  if (low === high) return `¥${low.toFixed(2)}`
-  return `¥${Math.min(low, high).toFixed(2)} - ¥${Math.max(low, high).toFixed(2)}`
+  return formatCompactPrice(min, max)
 }
 
 function validateForm() {
@@ -752,7 +749,7 @@ loadAccessAndList()
 }
 
 .product-title {
-  font-size: 26px;
+  font-size: 23px;
   line-height: 1.18;
   letter-spacing: 0.01em;
   color: #193449;
@@ -798,6 +795,10 @@ loadAccessAndList()
   font-size: 16px;
   line-height: 1.34;
   font-weight: 700;
+}
+
+.price-value {
+  color: #d93026;
 }
 
 .editor-form {
@@ -936,7 +937,7 @@ loadAccessAndList()
   }
 
   .product-title {
-    font-size: 22px;
+    font-size: 20px;
   }
 
   .meta-value {

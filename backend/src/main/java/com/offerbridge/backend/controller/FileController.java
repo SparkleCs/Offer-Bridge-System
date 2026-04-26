@@ -75,7 +75,7 @@ public class FileController {
       return "general";
     }
     String value = bucket.trim().toLowerCase();
-    Set<String> allowed = Set.of("org-verification", "member-verification", "student-verification", "avatar", "general");
+    Set<String> allowed = Set.of("org-verification", "member-verification", "student-verification", "avatar", "general", "chat");
     if (!allowed.contains(value)) {
       throw new BizException("BIZ_BAD_REQUEST", "不支持的上传桶");
     }

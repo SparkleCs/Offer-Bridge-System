@@ -22,7 +22,7 @@ const ACCESS_TOKEN_KEY = 'study_portal_access_token'
 const REFRESH_TOKEN_KEY = 'study_portal_refresh_token'
 const AUTH_META_KEY = 'study_portal_auth_meta'
 
-function readAccessToken() {
+export function readAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
 }
 
