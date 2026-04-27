@@ -1,6 +1,12 @@
 package com.offerbridge.backend.service.impl;
 
+import com.alipay.api.AlipayApiException;
+import com.alipay.api.DefaultAlipayClient;
+import com.alipay.api.internal.util.AlipaySignature;
+import com.alipay.api.request.AlipayTradePagePayRequest;
+import com.offerbridge.backend.config.AppProperties;
 import com.offerbridge.backend.dto.OrderDtos;
+import com.offerbridge.backend.entity.PaymentRecord;
 import com.offerbridge.backend.entity.AgencyMemberProfile;
 import com.offerbridge.backend.entity.AgencyOrg;
 import com.offerbridge.backend.entity.AgencyTeam;
@@ -18,17 +24,23 @@ import com.offerbridge.backend.mapper.ServiceStageMapper;
 import com.offerbridge.backend.mapper.ServiceTodoMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.service.OrderService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+  private static final Logger log = LoggerFactory.getLogger(OrderServiceImpl.class);
+
   private static final String[][] DEFAULT_STAGES = {
     {"CONSULT_CONFIRM", "咨询确认"},
     {"MATERIAL_PREP", "材料准备"},
@@ -51,6 +63,7 @@ public class OrderServiceImpl implements OrderService {
   private final AgencyOrgMapper agencyOrgMapper;
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
   private final UserAccountMapper userAccountMapper;
+  private final AppProperties appProperties;
 
   public OrderServiceImpl(ServiceOrderMapper serviceOrderMapper,
                           PaymentRecordMapper paymentRecordMapper,
@@ -61,7 +74,8 @@ public class OrderServiceImpl implements OrderService {
                           AgencyTeamMapper agencyTeamMapper,
                           AgencyOrgMapper agencyOrgMapper,
                           AgencyMemberProfileMapper agencyMemberProfileMapper,
-                          UserAccountMapper userAccountMapper) {
+                          UserAccountMapper userAccountMapper,
+                          AppProperties appProperties) {
     this.serviceOrderMapper = serviceOrderMapper;
     this.paymentRecordMapper = paymentRecordMapper;
     this.serviceCaseMapper = serviceCaseMapper;
@@ -72,6 +86,7 @@ public class OrderServiceImpl implements OrderService {
     this.agencyOrgMapper = agencyOrgMapper;
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
     this.userAccountMapper = userAccountMapper;
+    this.appProperties = appProperties;
   }
 
   @Override
@@ -128,8 +143,13 @@ public class OrderServiceImpl implements OrderService {
     OrderDtos.PayResult result = new OrderDtos.PayResult();
     result.setPaymentNo(paymentNo);
     result.setChannel("ALIPAY_SANDBOX");
-    result.setPaymentUrl("/orders?mockPaymentNo=" + paymentNo);
-    result.setMessage("沙箱支付已创建，请点击确认沙箱支付完成闭环。");
+    if (isAlipayEnabled()) {
+      result.setPaymentFormHtml(buildAlipayPagePayForm(order, paymentNo));
+      result.setMessage("支付宝沙箱支付已创建，请在新打开的支付宝页面完成付款。");
+    } else {
+      result.setPaymentUrl("/orders?mockPaymentNo=" + paymentNo);
+      result.setMessage("支付宝未启用，已创建模拟支付记录。");
+    }
     return result;
   }
 
@@ -147,6 +167,55 @@ public class OrderServiceImpl implements OrderService {
     }
     openCaseIfNeeded(order);
     return getStudentOrderDetail(userId, orderId);
+  }
+
+  @Override
+  @Transactional
+  public boolean handleAlipayNotify(Map<String, String> params) {
+    if (!isAlipayEnabled()) {
+      return false;
+    }
+    try {
+      AppProperties.Alipay alipay = appProperties.getAlipay();
+      boolean verified = AlipaySignature.rsaCheckV1(params, alipay.getAlipayPublicKey(), alipay.getCharset(), alipay.getSignType());
+      if (!verified) {
+        log.warn("Alipay notify signature verification failed, out_trade_no={}", params.get("out_trade_no"));
+        return false;
+      }
+      String tradeStatus = params.get("trade_status");
+      if (!"TRADE_SUCCESS".equals(tradeStatus) && !"TRADE_FINISHED".equals(tradeStatus)) {
+        return true;
+      }
+      String paymentNo = params.get("out_trade_no");
+      String tradeNo = params.get("trade_no");
+      String totalAmountText = params.get("total_amount");
+      if (paymentNo == null || paymentNo.isBlank() || totalAmountText == null || totalAmountText.isBlank()) {
+        log.warn("Alipay notify missing payment number or amount, out_trade_no={}", paymentNo);
+        return false;
+      }
+      PaymentRecord payment = paymentRecordMapper.findByPaymentNo(paymentNo);
+      if (payment == null) {
+        log.warn("Alipay notify payment record not found, paymentNo={}", paymentNo);
+        return false;
+      }
+      ServiceOrder order = serviceOrderMapper.findByIdForUpdate(payment.getOrderId());
+      if (order == null) {
+        log.warn("Alipay notify service order not found, paymentNo={}, orderId={}", paymentNo, payment.getOrderId());
+        return false;
+      }
+      BigDecimal notifyAmount = new BigDecimal(totalAmountText).setScale(2, RoundingMode.HALF_UP);
+      BigDecimal expectedAmount = payment.getAmount().setScale(2, RoundingMode.HALF_UP);
+      if (notifyAmount.compareTo(expectedAmount) != 0) {
+        log.warn("Alipay notify amount mismatch, paymentNo={}, notifyAmount={}, expectedAmount={}", paymentNo, notifyAmount, expectedAmount);
+        return false;
+      }
+      paymentRecordMapper.markPaid(paymentNo, tradeNo, params.toString());
+      openCaseIfNeeded(order);
+      return true;
+    } catch (Exception ex) {
+      log.warn("Alipay notify handling failed, out_trade_no={}", params.get("out_trade_no"), ex);
+      return false;
+    }
   }
 
   @Override
@@ -285,6 +354,60 @@ public class OrderServiceImpl implements OrderService {
     serviceTodoMapper.insertTodo(caseId, null, "上传成绩单", "请在资料沟通中提供成绩单或可访问的材料链接。", "STUDENT");
     serviceTodoMapper.insertTodo(caseId, null, "确认选校方案", "材料准备后与顾问共同确认选校范围。", "STUDENT");
     serviceOrderMapper.markInService(order.getId());
+  }
+
+  private String buildAlipayPagePayForm(ServiceOrder order, String paymentNo) {
+    try {
+      AppProperties.Alipay alipay = appProperties.getAlipay();
+      DefaultAlipayClient client = new DefaultAlipayClient(
+        alipay.getGatewayUrl(),
+        alipay.getAppId(),
+        normalizeKey(alipay.getAppPrivateKey()),
+        alipay.getFormat(),
+        alipay.getCharset(),
+        normalizeKey(alipay.getAlipayPublicKey()),
+        alipay.getSignType()
+      );
+      AlipayTradePagePayRequest request = new AlipayTradePagePayRequest();
+      request.setNotifyUrl(alipay.getNotifyUrl());
+      request.setReturnUrl(alipay.getReturnUrl());
+      request.setBizContent("{"
+        + "\"out_trade_no\":\"" + escapeJson(paymentNo) + "\","
+        + "\"total_amount\":\"" + order.getFinalAmount().setScale(2, RoundingMode.HALF_UP).toPlainString() + "\","
+        + "\"subject\":\"" + escapeJson(defaultStr(order.getServiceTitle(), order.getTeamNameSnapshot())) + "\","
+        + "\"product_code\":\"FAST_INSTANT_TRADE_PAY\""
+        + "}");
+      return client.pageExecute(request, "POST").getBody();
+    } catch (AlipayApiException ex) {
+      throw new BizException("BIZ_PAYMENT_ERROR", "支付宝沙箱支付创建失败");
+    }
+  }
+
+  private boolean isAlipayEnabled() {
+    AppProperties.Alipay alipay = appProperties.getAlipay();
+    return alipay.isEnabled()
+      && hasText(alipay.getAppId())
+      && hasText(alipay.getGatewayUrl())
+      && hasText(alipay.getAppPrivateKey())
+      && hasText(alipay.getAlipayPublicKey())
+      && hasText(alipay.getNotifyUrl());
+  }
+
+  private boolean hasText(String value) {
+    return value != null && !value.isBlank();
+  }
+
+  private String normalizeKey(String value) {
+    return value == null ? "" : value.replace("\r", "").replace("\n", "").trim();
+  }
+
+  private String escapeJson(String value) {
+    if (value == null) return "";
+    return value.replace("\\", "\\\\").replace("\"", "\\\"");
+  }
+
+  private String defaultStr(String value, String fallback) {
+    return value == null || value.isBlank() ? fallback : value;
   }
 
   private OrderDtos.OrderDetail buildDetail(OrderDtos.OrderSummary summary) {

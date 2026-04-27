@@ -1,5 +1,6 @@
 package com.offerbridge.backend.mapper;
 
+import com.offerbridge.backend.entity.PaymentRecord;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
@@ -14,4 +15,5 @@ public interface PaymentRecordMapper {
                @Param("gatewayTradeNo") String gatewayTradeNo,
                @Param("payload") String payload);
   int countPaidByOrderId(@Param("orderId") Long orderId);
+  PaymentRecord findByPaymentNo(@Param("paymentNo") String paymentNo);
 }

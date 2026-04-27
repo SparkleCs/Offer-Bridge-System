@@ -11,6 +11,7 @@ backend/target/
 .env
 .env.*
 !.env.example
+backend/application-local.yml
 
 # Logs
 npm-debug.log*

@@ -2,6 +2,10 @@ server:
   port: 8080
 
 spring:
+  config:
+    import:
+      - optional:file:./application-local.yml
+      - optional:file:./backend/application-local.yml
   datasource:
     url: jdbc:mysql://127.0.0.1:3306/offer_bridge?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
@@ -37,3 +41,14 @@ app:
     send-interval-seconds: 60
   upload:
     local-dir: uploads
+  alipay:
+    enabled: false
+    app-id: ${ALIPAY_APP_ID:}
+    gateway-url: ${ALIPAY_GATEWAY_URL:https://openapi-sandbox.dl.alipaydev.com/gateway.do}
+    sign-type: ${ALIPAY_SIGN_TYPE:RSA2}
+    charset: ${ALIPAY_CHARSET:UTF-8}
+    format: ${ALIPAY_FORMAT:json}
+    notify-url: ${ALIPAY_NOTIFY_URL:}
+    return-url: ${ALIPAY_RETURN_URL:http://localhost:5173/orders}
+    app-private-key: ${ALIPAY_APP_PRIVATE_KEY:}
+    alipay-public-key: ${ALIPAY_PUBLIC_KEY:}

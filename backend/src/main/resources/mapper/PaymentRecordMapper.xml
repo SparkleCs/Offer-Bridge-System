@@ -1,6 +1,17 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.offerbridge.backend.mapper.PaymentRecordMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.PaymentRecord">
+    <id column="id" property="id"/>
+    <result column="order_id" property="orderId"/>
+    <result column="payment_no" property="paymentNo"/>
+    <result column="channel" property="channel"/>
+    <result column="status" property="status"/>
+    <result column="amount" property="amount"/>
+    <result column="gateway_trade_no" property="gatewayTradeNo"/>
+    <result column="verified" property="verified"/>
+  </resultMap>
+
   <insert id="insertCreated">
     INSERT INTO payment_record(order_id, payment_no, channel, status, amount)
     VALUES(#{orderId}, #{paymentNo}, 'ALIPAY_SANDBOX', 'CREATED', #{amount})
@@ -18,5 +29,12 @@
 
   <select id="countPaidByOrderId" resultType="int">
     SELECT COUNT(1) FROM payment_record WHERE order_id = #{orderId} AND status = 'PAID'
+  </select>
+
+  <select id="findByPaymentNo" resultMap="BaseMap">
+    SELECT id, order_id, payment_no, channel, status, amount, gateway_trade_no, verified
+    FROM payment_record
+    WHERE payment_no = #{paymentNo}
+    LIMIT 1
   </select>
 </mapper>

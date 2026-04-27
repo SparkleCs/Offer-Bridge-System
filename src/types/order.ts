@@ -72,7 +72,8 @@ export interface OrderDetail {
 
 export interface PayResult {
   paymentNo: string
-  paymentUrl: string
+  paymentUrl?: string | null
+  paymentFormHtml?: string | null
   channel: string
   message: string
 }

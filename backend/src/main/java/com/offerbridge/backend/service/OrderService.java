@@ -3,6 +3,7 @@ package com.offerbridge.backend.service;
 import com.offerbridge.backend.dto.OrderDtos;
 
 import java.util.List;
+import java.util.Map;
 
 public interface OrderService {
   OrderDtos.OrderSummary createStudentOrder(Long userId, OrderDtos.CreateOrderRequest request);
@@ -10,6 +11,7 @@ public interface OrderService {
   OrderDtos.OrderDetail getStudentOrderDetail(Long userId, Long orderId);
   OrderDtos.PayResult createPayment(Long userId, Long orderId);
   OrderDtos.OrderDetail mockPaySuccess(Long userId, Long orderId);
+  boolean handleAlipayNotify(Map<String, String> params);
   void closeStudentOrder(Long userId, Long orderId);
   OrderDtos.OrderDetail requestRefund(Long userId, Long orderId, OrderDtos.RefundRequest request);
   OrderDtos.OrderDetail confirmStage(Long userId, Long orderId, Long stageId);

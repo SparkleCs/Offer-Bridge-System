@@ -10,6 +10,7 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -25,6 +26,7 @@ public class JwtService {
     return Jwts.builder()
       .issuer(properties.getJwt().getIssuer())
       .subject(String.valueOf(userId))
+      .id(UUID.randomUUID().toString())
       .issuedAt(Date.from(now))
       .expiration(Date.from(exp))
       .signWith(secretKey())
@@ -37,6 +39,7 @@ public class JwtService {
     return Jwts.builder()
       .issuer(properties.getJwt().getIssuer())
       .subject(String.valueOf(userId))
+      .id(UUID.randomUUID().toString())
       .issuedAt(Date.from(now))
       .expiration(Date.from(exp))
       .claim("typ", "refresh")

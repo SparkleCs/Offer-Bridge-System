@@ -71,12 +71,15 @@ public class OrderDtos {
   public static class PayResult {
     private String paymentNo;
     private String paymentUrl;
+    private String paymentFormHtml;
     private String channel;
     private String message;
     public String getPaymentNo() { return paymentNo; }
     public void setPaymentNo(String paymentNo) { this.paymentNo = paymentNo; }
     public String getPaymentUrl() { return paymentUrl; }
     public void setPaymentUrl(String paymentUrl) { this.paymentUrl = paymentUrl; }
+    public String getPaymentFormHtml() { return paymentFormHtml; }
+    public void setPaymentFormHtml(String paymentFormHtml) { this.paymentFormHtml = paymentFormHtml; }
     public String getChannel() { return channel; }
     public void setChannel(String channel) { this.channel = channel; }
     public String getMessage() { return message; }

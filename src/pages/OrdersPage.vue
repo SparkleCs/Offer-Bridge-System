@@ -40,7 +40,7 @@
             <div class="summary-actions">
               <strong>{{ amountText(detail.order) }}</strong>
               <el-button v-if="detail.order.orderStatus === 'WAITING_PAYMENT'" type="primary" :loading="paying" @click="payOrder">
-                沙箱支付
+                支付宝沙箱支付
               </el-button>
               <el-button v-if="canCancel(detail.order.orderStatus)" @click="cancelOrder">取消订单</el-button>
               <el-button v-if="canRefund(detail.order.orderStatus)" type="warning" @click="openRefundDialog">申请退款</el-button>
@@ -146,7 +146,6 @@ import {
   createPayment,
   getMyOrder,
   listMyOrders,
-  mockPaySuccess,
   rejectStage,
   requestRefund
 } from '../services/order'
@@ -263,13 +262,26 @@ async function refreshCurrent(next?: OrderDetail) {
 
 async function payOrder() {
   if (!detail.value) return
+  const payWindow = window.open('', '_blank')
+  if (!payWindow) {
+    ElMessage.warning('浏览器拦截了支付窗口，请允许弹窗后重试')
+    return
+  }
+  payWindow.document.write('<p style="font-family: sans-serif; padding: 24px;">正在打开支付宝沙箱收银台...</p>')
   paying.value = true
   try {
-    await createPayment(detail.value.order.id)
-    const next = await mockPaySuccess(detail.value.order.id)
-    await refreshCurrent(next)
-    ElMessage.success('沙箱支付成功，服务流程已开启')
+    const payment = await createPayment(detail.value.order.id)
+    if (payment.paymentFormHtml) {
+      payWindow.document.open()
+      payWindow.document.write(payment.paymentFormHtml)
+      payWindow.document.close()
+      ElMessage.success('已打开支付宝沙箱收银台，付款后请返回刷新订单')
+      return
+    }
+    payWindow.close()
+    ElMessage.warning(payment.message || '支付宝沙箱未启用，请检查后端本地配置')
   } catch (error: any) {
+    payWindow.close()
     ElMessage.error(error?.message || '支付失败')
   } finally {
     paying.value = false
