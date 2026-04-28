@@ -896,6 +896,43 @@ public class AgencyDtos {
     public void setPageSize(int pageSize) { this.pageSize = pageSize; }
   }
 
+  public static class AgentStudentSearchItem {
+    private Long studentUserId;
+    private String displayName;
+    private String educationLevel;
+    private String schoolName;
+    private String major;
+    private BigDecimal gpaValue;
+    private String gpaScale;
+    private String languageSummary;
+    private String targetCountries;
+    private String targetMajorText;
+    private String intakeTerm;
+
+    public Long getStudentUserId() { return studentUserId; }
+    public void setStudentUserId(Long studentUserId) { this.studentUserId = studentUserId; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getSchoolName() { return schoolName; }
+    public void setSchoolName(String schoolName) { this.schoolName = schoolName; }
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+    public BigDecimal getGpaValue() { return gpaValue; }
+    public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
+    public String getGpaScale() { return gpaScale; }
+    public void setGpaScale(String gpaScale) { this.gpaScale = gpaScale; }
+    public String getLanguageSummary() { return languageSummary; }
+    public void setLanguageSummary(String languageSummary) { this.languageSummary = languageSummary; }
+    public String getTargetCountries() { return targetCountries; }
+    public void setTargetCountries(String targetCountries) { this.targetCountries = targetCountries; }
+    public String getTargetMajorText() { return targetMajorText; }
+    public void setTargetMajorText(String targetMajorText) { this.targetMajorText = targetMajorText; }
+    public String getIntakeTerm() { return intakeTerm; }
+    public void setIntakeTerm(String intakeTerm) { this.intakeTerm = intakeTerm; }
+  }
+
   public static class MemberWorkbenchAccessView {
     private String orgVerificationStatus;
     private String memberVerificationStatus;

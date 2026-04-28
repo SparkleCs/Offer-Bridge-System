@@ -6,9 +6,11 @@ public interface MessageService {
   MessageDtos.PagedResult<MessageDtos.SystemNotificationItem> listSystemNotifications(Long userId, int page, int pageSize);
   MessageDtos.MarkReadResult markSystemNotificationsRead(Long userId, MessageDtos.MarkReadRequest request);
   MessageDtos.ChatStartResult startChat(Long userId, MessageDtos.StartChatRequest request);
-  MessageDtos.PagedResult<MessageDtos.ChatConversationItem> listChatConversations(Long userId, int page, int pageSize);
+  MessageDtos.ChatStartResult agentStartChat(Long userId, MessageDtos.AgentStartChatRequest request);
+  MessageDtos.PagedResult<MessageDtos.ChatConversationItem> listChatConversations(Long userId, int page, int pageSize, String filter);
   MessageDtos.PagedResult<MessageDtos.ChatMessageItem> listChatMessages(Long userId, String conversationId, int page, int pageSize);
   MessageDtos.ChatMessageItem sendChatMessage(Long userId, String conversationId, MessageDtos.SendChatMessageRequest request);
   MessageDtos.MarkReadResult markChatRead(Long userId, String conversationId);
+  MessageDtos.ChatConversationItem starChatConversation(Long userId, String conversationId, boolean starred);
   MessageDtos.ChatUnreadSummary getChatUnreadSummary(Long userId);
 }

@@ -1,8 +1,5 @@
 <template>
   <section class="page-card fade-up">
-    <h2 class="section-title">沟通</h2>
-    <p class="section-desc">机构认证通过且具备沟通权限后，可在此处理学生会话。</p>
-
     <el-alert v-if="blockedReason" :title="blockedReason" type="warning" :closable="false" show-icon />
 
     <template v-else>
@@ -33,7 +30,8 @@ onMounted(async () => {
 
 <style scoped>
 .page-card {
-  height: calc(100vh - 116px);
+  height: calc(100vh - 40px);
+  height: calc(100dvh - 40px);
   overflow: hidden;
   display: flex;
   flex-direction: column;

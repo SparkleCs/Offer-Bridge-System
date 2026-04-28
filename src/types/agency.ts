@@ -260,6 +260,20 @@ export interface MemberWorkbenchAccess {
   blockedReason?: string
 }
 
+export interface AgentStudentSearchItem {
+  studentUserId: number
+  displayName: string
+  educationLevel?: string | null
+  schoolName?: string | null
+  major?: string | null
+  gpaValue?: number | null
+  gpaScale?: string | null
+  languageSummary?: string | null
+  targetCountries?: string | null
+  targetMajorText?: string | null
+  intakeTerm?: string | null
+}
+
 export interface DiscoveryMemberItem {
   memberId: number
   displayName: string

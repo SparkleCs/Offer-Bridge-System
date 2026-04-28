@@ -38,6 +38,112 @@
     </foreach>
   </select>
 
+  <select id="searchAgentStudents" resultType="com.offerbridge.backend.dto.AgencyDtos$AgentStudentSearchItem">
+    SELECT
+      sp.user_id AS studentUserId,
+      CASE
+        WHEN sp.name IS NOT NULL AND sp.name != '' THEN CONCAT(SUBSTRING(sp.name, 1, 1), '同学')
+        ELSE CONCAT('学生-', LPAD(sp.user_id, 4, '0'))
+      END AS displayName,
+      sp.education_level AS educationLevel,
+      sp.school_name AS schoolName,
+      sp.major AS major,
+      sp.gpa_value AS gpaValue,
+      sp.gpa_scale AS gpaScale,
+      GROUP_CONCAT(DISTINCT CONCAT(sls.language_type, ' ', TRIM(TRAILING '.00' FROM sls.score)) ORDER BY sls.id SEPARATOR ' / ') AS languageSummary,
+      GROUP_CONCAT(DISTINCT stc.country_name ORDER BY stc.id SEPARATOR '、') AS targetCountries,
+      sp.target_major_text AS targetMajorText,
+      sp.intake_term AS intakeTerm
+    FROM student_profile sp
+    JOIN user_account ua ON ua.id = sp.user_id AND ua.role = 'STUDENT' AND ua.status = 'ACTIVE'
+    JOIN verification_record vrn ON vrn.user_id = sp.user_id AND vrn.verify_type = 'REAL_NAME' AND vrn.status = 'APPROVED'
+    JOIN verification_record vre ON vre.user_id = sp.user_id AND vre.verify_type = 'EDUCATION' AND vre.status = 'APPROVED'
+    LEFT JOIN student_target_country stc ON stc.user_id = sp.user_id
+    LEFT JOIN student_language_score sls ON sls.user_id = sp.user_id
+    <where>
+      <if test="keyword != null and keyword != ''">
+        AND (
+          sp.name LIKE CONCAT('%', #{keyword}, '%')
+          OR sp.school_name LIKE CONCAT('%', #{keyword}, '%')
+          OR sp.major LIKE CONCAT('%', #{keyword}, '%')
+          OR sp.target_major_text LIKE CONCAT('%', #{keyword}, '%')
+          OR stc.country_name LIKE CONCAT('%', #{keyword}, '%')
+        )
+      </if>
+      <if test="country != null and country != ''">
+        <choose>
+          <when test="country == 'EUROPE'">
+            AND EXISTS (
+              SELECT 1 FROM student_target_country c
+              WHERE c.user_id = sp.user_id
+                AND c.country_name IN ('德国', '法国', '荷兰', '瑞士', '瑞典', '爱尔兰', '意大利', '西班牙', '欧洲')
+            )
+          </when>
+          <when test="country == 'OTHER'">
+            AND EXISTS (
+              SELECT 1 FROM student_target_country c
+              WHERE c.user_id = sp.user_id
+                AND c.country_name NOT IN ('美国', '英国', '加拿大', '澳洲', '澳大利亚', '新加坡', '中国香港', '香港', '德国', '法国', '荷兰', '瑞士', '瑞典', '爱尔兰', '意大利', '西班牙', '欧洲')
+            )
+          </when>
+          <otherwise>
+            AND EXISTS (
+              SELECT 1 FROM student_target_country c
+              WHERE c.user_id = sp.user_id
+                AND (c.country_name = #{country} OR (#{country} = '澳洲' AND c.country_name = '澳大利亚') OR (#{country} = '中国香港' AND c.country_name = '香港'))
+            )
+          </otherwise>
+        </choose>
+      </if>
+      <if test="educationLevel != null and educationLevel != ''">
+        AND sp.education_level = #{educationLevel}
+      </if>
+      <if test="scoreBucket != null and scoreBucket != ''">
+        <choose>
+          <when test="scoreBucket == 'GPA_3_0'">
+            AND sp.gpa_value &gt;= 3.0
+          </when>
+          <when test="scoreBucket == 'GPA_3_3'">
+            AND sp.gpa_value &gt;= 3.3
+          </when>
+          <when test="scoreBucket == 'GPA_3_5'">
+            AND sp.gpa_value &gt;= 3.5
+          </when>
+          <when test="scoreBucket == 'IELTS_6_5'">
+            AND EXISTS (SELECT 1 FROM student_language_score ls WHERE ls.user_id = sp.user_id AND ls.language_type = 'IELTS' AND ls.score &gt;= 6.5)
+          </when>
+          <when test="scoreBucket == 'IELTS_7'">
+            AND EXISTS (SELECT 1 FROM student_language_score ls WHERE ls.user_id = sp.user_id AND ls.language_type = 'IELTS' AND ls.score &gt;= 7)
+          </when>
+          <when test="scoreBucket == 'TOEFL_90'">
+            AND EXISTS (SELECT 1 FROM student_language_score ls WHERE ls.user_id = sp.user_id AND ls.language_type = 'TOEFL' AND ls.score &gt;= 90)
+          </when>
+          <when test="scoreBucket == 'TOEFL_100'">
+            AND EXISTS (SELECT 1 FROM student_language_score ls WHERE ls.user_id = sp.user_id AND ls.language_type = 'TOEFL' AND ls.score &gt;= 100)
+          </when>
+        </choose>
+      </if>
+      <if test="subjectCategoryCode != null and subjectCategoryCode != ''">
+        <choose>
+          <when test="subjectCategoryCode == 'ENG'">
+            AND (sp.major REGEXP '工程|工科|计算机|软件|数据|人工智能|机械|电子|电气|材料|土木|自动化' OR sp.target_major_text REGEXP '工程|工科|计算机|软件|数据|人工智能|机械|电子|电气|材料|土木|自动化')
+          </when>
+          <when test="subjectCategoryCode == 'BUS'">
+            AND (sp.major REGEXP '商科|金融|会计|管理|经济|市场|商业|运营|供应链|MBA|BA|商业分析' OR sp.target_major_text REGEXP '商科|金融|会计|管理|经济|市场|商业|运营|供应链|MBA|BA|商业分析')
+          </when>
+          <when test="subjectCategoryCode == 'SCI'">
+            AND (sp.major REGEXP '理科|数学|物理|化学|生物|统计|环境|地理|科学' OR sp.target_major_text REGEXP '理科|数学|物理|化学|生物|统计|环境|地理|科学')
+          </when>
+          <when test="subjectCategoryCode == 'HUM'">
+            AND (sp.major REGEXP '文社科|传媒|教育|法学|法律|社会|心理|政治|公共|语言|文学|历史|艺术|设计' OR sp.target_major_text REGEXP '文社科|传媒|教育|法学|法律|社会|心理|政治|公共|语言|文学|历史|艺术|设计')
+          </when>
+        </choose>
+      </if>
+    </where>
+    GROUP BY sp.user_id, sp.name, sp.education_level, sp.school_name, sp.major, sp.gpa_value, sp.gpa_scale, sp.target_major_text, sp.intake_term
+    ORDER BY sp.user_id DESC
+  </select>
+
   <insert id="insertEmpty">
     INSERT INTO student_profile(user_id)
     VALUES(#{userId})

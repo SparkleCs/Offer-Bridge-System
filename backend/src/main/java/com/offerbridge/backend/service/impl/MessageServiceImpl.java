@@ -4,6 +4,7 @@ import com.offerbridge.backend.dto.MessageDtos;
 import com.offerbridge.backend.entity.AgencyMemberProfile;
 import com.offerbridge.backend.entity.AgencyOrg;
 import com.offerbridge.backend.entity.AgencyTeam;
+import com.offerbridge.backend.entity.ServiceOrder;
 import com.offerbridge.backend.entity.StudentProfile;
 import com.offerbridge.backend.entity.UserAccount;
 import com.offerbridge.backend.entity.VerificationRecord;
@@ -11,8 +12,10 @@ import com.offerbridge.backend.entity.chat.ChatConversationDoc;
 import com.offerbridge.backend.entity.chat.ChatMessageDoc;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.AgencyMemberProfileMapper;
+import com.offerbridge.backend.mapper.AgencyMemberPermissionRelMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
+import com.offerbridge.backend.mapper.ServiceOrderMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.SystemNotificationMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
@@ -46,6 +49,14 @@ public class MessageServiceImpl implements MessageService {
   private static final String STATUS_UNREAD = "UNREAD";
   private static final String STATUS_READ = "READ";
   private static final String DEFAULT_GREETING = "您好，想咨询一下留学申请相关问题。";
+  private static final String DEFAULT_AGENT_GREETING = "你好，我是留学顾问，看到你的申请方向比较匹配，想进一步了解你的需求。";
+  private static final String FILTER_ALL = "all";
+  private static final String FILTER_NEW = "new";
+  private static final String FILTER_UNREAD = "unread";
+  private static final String FILTER_ACTIVE = "active";
+  private static final String FILTER_SERVICING = "servicing";
+  private static final String FILTER_ENDED = "ended";
+  private static final String FILTER_STARRED = "starred";
 
   private final SystemNotificationMapper systemNotificationMapper;
   private final ChatConversationRepository chatConversationRepository;
@@ -59,6 +70,8 @@ public class MessageServiceImpl implements MessageService {
   private final AgencyTeamMapper agencyTeamMapper;
   private final AgencyOrgMapper agencyOrgMapper;
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
+  private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
+  private final ServiceOrderMapper serviceOrderMapper;
 
   public MessageServiceImpl(SystemNotificationMapper systemNotificationMapper,
                             ChatConversationRepository chatConversationRepository,
@@ -71,7 +84,9 @@ public class MessageServiceImpl implements MessageService {
                             VerificationRecordMapper verificationRecordMapper,
                             AgencyTeamMapper agencyTeamMapper,
                             AgencyOrgMapper agencyOrgMapper,
-                            AgencyMemberProfileMapper agencyMemberProfileMapper) {
+                            AgencyMemberProfileMapper agencyMemberProfileMapper,
+                            AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
+                            ServiceOrderMapper serviceOrderMapper) {
     this.systemNotificationMapper = systemNotificationMapper;
     this.chatConversationRepository = chatConversationRepository;
     this.chatMessageRepository = chatMessageRepository;
@@ -84,6 +99,8 @@ public class MessageServiceImpl implements MessageService {
     this.agencyTeamMapper = agencyTeamMapper;
     this.agencyOrgMapper = agencyOrgMapper;
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
+    this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
+    this.serviceOrderMapper = serviceOrderMapper;
   }
 
   @Override
@@ -153,10 +170,38 @@ public class MessageServiceImpl implements MessageService {
   }
 
   @Override
-  public MessageDtos.PagedResult<MessageDtos.ChatConversationItem> listChatConversations(Long userId, int page, int pageSize) {
+  public MessageDtos.ChatStartResult agentStartChat(Long userId, MessageDtos.AgentStartChatRequest request) {
+    AgencyMemberProfile member = requireAgentChatAccess(userId);
+    if (request.getStudentUserId() == null) {
+      throw new BizException("BIZ_BAD_REQUEST", "请选择学生");
+    }
+    if (request.getTeamId() == null) {
+      throw new BizException("BIZ_BAD_REQUEST", "请选择团队产品");
+    }
+    requireStudentVerified(request.getStudentUserId());
+    AgencyTeam team = agencyTeamMapper.findById(request.getTeamId());
+    if (team == null || !member.getOrgId().equals(team.getOrgId()) || !"PUBLISHED".equals(team.getPublishStatus())) {
+      throw new BizException("BIZ_BAD_REQUEST", "团队产品不存在或尚未发布");
+    }
+    AgencyOrg org = agencyOrgMapper.findById(team.getOrgId());
+    ChatConversationDoc conversation = chatConversationRepository
+      .findByStudentUserIdAndTeamIdAndAgentMemberId(request.getStudentUserId(), team.getId(), member.getId())
+      .orElseGet(() -> createConversation(request.getStudentUserId(), team, org, member));
+    String content = normalizeMessage(request.getGreeting(), DEFAULT_AGENT_GREETING);
+    ChatMessageDoc message = appendMessage(conversation, userId, MESSAGE_TEXT, content);
+
+    MessageDtos.ChatStartResult result = new MessageDtos.ChatStartResult();
+    result.setConversation(toConversationItem(conversation, userId));
+    result.setFirstMessage(toMessageItem(message, userId));
+    return result;
+  }
+
+  @Override
+  public MessageDtos.PagedResult<MessageDtos.ChatConversationItem> listChatConversations(Long userId, int page, int pageSize, String filter) {
     UserAccount user = requireUser(userId);
     int safePage = Math.max(1, page);
     int safePageSize = Math.max(1, Math.min(pageSize, 100));
+    String safeFilter = normalizeConversationFilter(filter);
     Criteria criteria;
     if (ROLE_STUDENT.equals(user.getRole())) {
       criteria = Criteria.where("studentUserId").is(userId);
@@ -165,20 +210,20 @@ public class MessageServiceImpl implements MessageService {
     } else {
       throw new BizException("BIZ_FORBIDDEN", "当前账号不可查看私聊");
     }
-    Query countQuery = Query.query(criteria);
-    long total = mongoTemplate.count(countQuery, ChatConversationDoc.class);
     Query query = Query.query(criteria)
-      .with(Sort.by(Sort.Direction.DESC, "updatedAt"))
-      .skip((long) (safePage - 1) * safePageSize)
-      .limit(safePageSize);
-    List<MessageDtos.ChatConversationItem> records = mongoTemplate.find(query, ChatConversationDoc.class)
+      .with(Sort.by(Sort.Direction.DESC, "updatedAt"));
+    List<MessageDtos.ChatConversationItem> filtered = mongoTemplate.find(query, ChatConversationDoc.class)
       .stream()
       .map(item -> toConversationItem(item, userId))
+      .filter(item -> matchesConversationFilter(item, safeFilter, user.getRole()))
       .toList();
+    int from = (safePage - 1) * safePageSize;
+    int to = Math.min(from + safePageSize, filtered.size());
+    List<MessageDtos.ChatConversationItem> records = from >= filtered.size() ? List.of() : filtered.subList(from, to);
 
     MessageDtos.PagedResult<MessageDtos.ChatConversationItem> result = new MessageDtos.PagedResult<>();
     result.setRecords(records);
-    result.setTotal(total);
+    result.setTotal(filtered.size());
     result.setPage(safePage);
     result.setPageSize(safePageSize);
     result.setUnreadCount(getChatUnreadSummary(userId).getUnreadCount());
@@ -235,6 +280,20 @@ public class MessageServiceImpl implements MessageService {
     MessageDtos.MarkReadResult result = new MessageDtos.MarkReadResult();
     result.setUpdatedCount(updated.getModifiedCount());
     return result;
+  }
+
+  @Override
+  public MessageDtos.ChatConversationItem starChatConversation(Long userId, String conversationId, boolean starred) {
+    ChatConversationDoc conversation = requireParticipant(userId, conversationId);
+    boolean studentViewer = isStudentParticipant(conversation, userId);
+    Query query = Query.query(Criteria.where("_id").is(conversationId));
+    mongoTemplate.updateFirst(query, new Update().set(studentViewer ? "starredByStudent" : "starredByAgent", starred), ChatConversationDoc.class);
+    if (studentViewer) {
+      conversation.setStarredByStudent(starred);
+    } else {
+      conversation.setStarredByAgent(starred);
+    }
+    return toConversationItem(conversation, userId);
   }
 
   @Override
@@ -295,8 +354,13 @@ public class MessageServiceImpl implements MessageService {
     doc.setAgentAvatarUrl(member.getAvatarUrl());
     doc.setAgentJobTitle(member.getJobTitle());
     doc.setLastMessage("");
+    doc.setLastSenderRole("");
+    doc.setStudentMessageCount(0);
+    doc.setAgentMessageCount(0);
     doc.setUnreadByStudent(0);
     doc.setUnreadByAgent(0);
+    doc.setStarredByStudent(false);
+    doc.setStarredByAgent(false);
     doc.setCreatedAt(now);
     doc.setUpdatedAt(now);
     return chatConversationRepository.save(doc);
@@ -328,6 +392,9 @@ public class MessageServiceImpl implements MessageService {
       }
     }
     conversation.setLastMessage(buildLastMessage(contentType, content));
+    conversation.setLastSenderRole(message.getSenderRole());
+    conversation.setStudentMessageCount(safeInt(conversation.getStudentMessageCount()) + (studentSender ? 1 : 0));
+    conversation.setAgentMessageCount(safeInt(conversation.getAgentMessageCount()) + (studentSender ? 0 : 1));
     conversation.setUnreadByStudent(studentUnread);
     conversation.setUnreadByAgent(agentUnread);
     conversation.setUpdatedAt(now);
@@ -375,6 +442,13 @@ public class MessageServiceImpl implements MessageService {
     item.setPeerSubtitle(studentViewer ? buildAgentSubtitle(doc) : buildStudentSubtitle(student));
     item.setPeerAvatarUrl(studentViewer ? doc.getAgentAvatarUrl() : "");
     item.setLastMessage(doc.getLastMessage());
+    item.setLastSenderRole(defaultStr(doc.getLastSenderRole(), ""));
+    item.setStudentMessageCount(resolveMessageCount(doc, ROLE_STUDENT));
+    item.setAgentMessageCount(resolveMessageCount(doc, ROLE_AGENT_MEMBER));
+    item.setViewerStarred(Boolean.TRUE.equals(studentViewer ? doc.getStarredByStudent() : doc.getStarredByAgent()));
+    ServiceOrder order = findRelatedOrder(doc);
+    item.setRelatedOrderId(order == null ? null : order.getId());
+    item.setRelatedOrderStatus(order == null ? null : order.getOrderStatus());
     item.setUnreadCount((int) getConversationUnread(doc, viewerUserId));
     item.setCreatedAt(doc.getCreatedAt());
     item.setUpdatedAt(doc.getUpdatedAt());
@@ -414,6 +488,53 @@ public class MessageServiceImpl implements MessageService {
 
   private long getConversationUnread(ChatConversationDoc doc, Long userId) {
     return isStudentParticipant(doc, userId) ? safeInt(doc.getUnreadByStudent()) : safeInt(doc.getUnreadByAgent());
+  }
+
+  private String normalizeConversationFilter(String value) {
+    if (!StringUtils.hasText(value)) return FILTER_ALL;
+    String filter = value.trim().toLowerCase();
+    if (FILTER_NEW.equals(filter) ||
+      FILTER_UNREAD.equals(filter) ||
+      FILTER_ACTIVE.equals(filter) ||
+      FILTER_SERVICING.equals(filter) ||
+      FILTER_ENDED.equals(filter) ||
+      FILTER_STARRED.equals(filter)) {
+      return filter;
+    }
+    return FILTER_ALL;
+  }
+
+  private boolean matchesConversationFilter(MessageDtos.ChatConversationItem item, String filter, String viewerRole) {
+    if (FILTER_ALL.equals(filter)) return true;
+    if (FILTER_UNREAD.equals(filter)) return item.getUnreadCount() > 0;
+    if (FILTER_STARRED.equals(filter)) return item.isViewerStarred();
+    if (FILTER_NEW.equals(filter)) {
+      return ROLE_AGENT_MEMBER.equals(viewerRole) && item.getStudentMessageCount() > 0 && item.getAgentMessageCount() == 0;
+    }
+    String relationshipStage = resolveRelationshipStage(item);
+    if (FILTER_ACTIVE.equals(filter)) return FILTER_ACTIVE.equals(relationshipStage);
+    if (FILTER_SERVICING.equals(filter)) return FILTER_SERVICING.equals(relationshipStage);
+    if (FILTER_ENDED.equals(filter)) return FILTER_ENDED.equals(relationshipStage);
+    return true;
+  }
+
+  private String resolveRelationshipStage(MessageDtos.ChatConversationItem item) {
+    String status = item.getRelatedOrderStatus();
+    if ("PAID".equals(status) || "IN_SERVICE".equals(status)) return FILTER_SERVICING;
+    if ("COMPLETED".equals(status) || "CLOSED".equals(status) || "REFUND_REQUESTED".equals(status)) return FILTER_ENDED;
+    return FILTER_ACTIVE;
+  }
+
+  private ServiceOrder findRelatedOrder(ChatConversationDoc doc) {
+    if (doc.getStudentUserId() == null || doc.getOrgId() == null || doc.getTeamId() == null) return null;
+    return serviceOrderMapper.findLatestByConversationKeys(doc.getStudentUserId(), doc.getOrgId(), doc.getTeamId());
+  }
+
+  private int resolveMessageCount(ChatConversationDoc doc, String senderRole) {
+    Integer savedCount = ROLE_STUDENT.equals(senderRole) ? doc.getStudentMessageCount() : doc.getAgentMessageCount();
+    if (savedCount != null) return savedCount;
+    Query query = Query.query(Criteria.where("conversationId").is(doc.getId()).and("senderRole").is(senderRole));
+    return (int) mongoTemplate.count(query, ChatMessageDoc.class);
   }
 
   private boolean isStudentParticipant(ChatConversationDoc doc, Long userId) {
@@ -472,6 +593,29 @@ public class MessageServiceImpl implements MessageService {
     String name = slash >= 0 ? value.substring(slash + 1) : value;
     int query = name.indexOf('?');
     return query >= 0 ? name.substring(0, query) : name;
+  }
+
+  private AgencyMemberProfile requireAgentChatAccess(Long userId) {
+    UserAccount user = requireUser(userId);
+    if (!ROLE_AGENT_MEMBER.equals(user.getRole())) {
+      throw new BizException("BIZ_FORBIDDEN", "仅中介顾问可发起学生沟通");
+    }
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null || !"ACTIVE".equals(member.getStatus())) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
+    if (org == null || !"APPROVED".equals(org.getVerificationStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "当前机构尚未通过认证");
+    }
+    VerificationRecord cert = verificationRecordMapper.findOne(userId, "AGENT_MEMBER_CERT");
+    if (cert == null || !"APPROVED".equals(cert.getStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "员工认证未通过，暂不可执行该操作");
+    }
+    if (!agencyMemberPermissionRelMapper.listPermissionCodesByMemberId(member.getId()).contains("CAN_CHAT_STUDENT")) {
+      throw new BizException("BIZ_FORBIDDEN", "你当前没有沟通学生权限，请联系机构管理员开通");
+    }
+    return member;
   }
 
   private UserAccount requireUser(Long userId) {

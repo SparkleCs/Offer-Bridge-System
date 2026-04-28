@@ -5,6 +5,7 @@ import type {
   ChatPagedResult,
   ChatStartResult,
   ChatUnreadSummary,
+  AgentStartChatPayload,
   MarkSystemNotificationReadPayload,
   MarkSystemNotificationReadResult,
   SendChatMessagePayload,
@@ -34,10 +35,18 @@ export function startChat(payload: StartChatPayload) {
   }, true)
 }
 
-export function listChatConversations(params: { page?: number; pageSize?: number } = {}) {
+export function agentStartChat(payload: AgentStartChatPayload) {
+  return apiRequest<ChatStartResult>('/api/v1/messages/chats/agent-start', {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function listChatConversations(params: { page?: number; pageSize?: number; filter?: string } = {}) {
   const search = new URLSearchParams()
   if (params.page) search.append('page', String(params.page))
   if (params.pageSize) search.append('pageSize', String(params.pageSize))
+  if (params.filter) search.append('filter', params.filter)
   const query = search.toString()
   return apiRequest<ChatPagedResult<ChatConversationItem>>(`/api/v1/messages/chats${query ? `?${query}` : ''}`, { method: 'GET' }, true)
 }
@@ -70,6 +79,14 @@ export function markChatRead(conversationId: string) {
   return apiRequest<MarkSystemNotificationReadResult>(`/api/v1/messages/chats/${conversationId}/read`, {
     method: 'POST'
   }, true)
+}
+
+export function starChatConversation(conversationId: string) {
+  return apiRequest<ChatConversationItem>(`/api/v1/messages/chats/${conversationId}/star`, { method: 'POST' }, true)
+}
+
+export function unstarChatConversation(conversationId: string) {
+  return apiRequest<ChatConversationItem>(`/api/v1/messages/chats/${conversationId}/star`, { method: 'DELETE' }, true)
 }
 
 export function getChatUnreadSummary() {

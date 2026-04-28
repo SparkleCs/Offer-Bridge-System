@@ -20,6 +20,7 @@ public interface AgencyService {
   void softDeleteOrgMember(Long userId, Long memberId);
   void updateOrgMemberPermissions(Long userId, Long memberId, AgencyDtos.MemberPermissionsUpdateRequest request);
   AgencyDtos.MemberWorkbenchAccessView getMyWorkbenchAccess(Long userId);
+  AgencyDtos.PagedResult<AgencyDtos.AgentStudentSearchItem> searchAgentStudents(Long userId, int page, int pageSize, String keyword, String country, String educationLevel, String scoreBucket, String subjectCategoryCode);
   AgencyDtos.TeamView createTeam(Long userId, AgencyDtos.TeamCreateRequest request);
   List<AgencyDtos.TeamView> listTeams(Long userId);
   List<AgencyDtos.TeamProductSummaryItem> listTeamProducts(Long userId);

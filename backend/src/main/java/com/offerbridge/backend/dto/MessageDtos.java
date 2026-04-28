@@ -85,6 +85,19 @@ public class MessageDtos {
     public void setGreeting(String greeting) { this.greeting = greeting; }
   }
 
+  public static class AgentStartChatRequest {
+    private Long studentUserId;
+    private Long teamId;
+    private String greeting;
+
+    public Long getStudentUserId() { return studentUserId; }
+    public void setStudentUserId(Long studentUserId) { this.studentUserId = studentUserId; }
+    public Long getTeamId() { return teamId; }
+    public void setTeamId(Long teamId) { this.teamId = teamId; }
+    public String getGreeting() { return greeting; }
+    public void setGreeting(String greeting) { this.greeting = greeting; }
+  }
+
   public static class SendChatMessageRequest {
     private String content;
     private String contentType;
@@ -116,6 +129,12 @@ public class MessageDtos {
     private String peerSubtitle;
     private String peerAvatarUrl;
     private String lastMessage;
+    private String lastSenderRole;
+    private int studentMessageCount;
+    private int agentMessageCount;
+    private boolean viewerStarred;
+    private String relatedOrderStatus;
+    private Long relatedOrderId;
     private int unreadCount;
     private Instant createdAt;
     private Instant updatedAt;
@@ -160,6 +179,18 @@ public class MessageDtos {
     public void setPeerAvatarUrl(String peerAvatarUrl) { this.peerAvatarUrl = peerAvatarUrl; }
     public String getLastMessage() { return lastMessage; }
     public void setLastMessage(String lastMessage) { this.lastMessage = lastMessage; }
+    public String getLastSenderRole() { return lastSenderRole; }
+    public void setLastSenderRole(String lastSenderRole) { this.lastSenderRole = lastSenderRole; }
+    public int getStudentMessageCount() { return studentMessageCount; }
+    public void setStudentMessageCount(int studentMessageCount) { this.studentMessageCount = studentMessageCount; }
+    public int getAgentMessageCount() { return agentMessageCount; }
+    public void setAgentMessageCount(int agentMessageCount) { this.agentMessageCount = agentMessageCount; }
+    public boolean isViewerStarred() { return viewerStarred; }
+    public void setViewerStarred(boolean viewerStarred) { this.viewerStarred = viewerStarred; }
+    public String getRelatedOrderStatus() { return relatedOrderStatus; }
+    public void setRelatedOrderStatus(String relatedOrderStatus) { this.relatedOrderStatus = relatedOrderStatus; }
+    public Long getRelatedOrderId() { return relatedOrderId; }
+    public void setRelatedOrderId(Long relatedOrderId) { this.relatedOrderId = relatedOrderId; }
     public int getUnreadCount() { return unreadCount; }
     public void setUnreadCount(int unreadCount) { this.unreadCount = unreadCount; }
     public Instant getCreatedAt() { return createdAt; }

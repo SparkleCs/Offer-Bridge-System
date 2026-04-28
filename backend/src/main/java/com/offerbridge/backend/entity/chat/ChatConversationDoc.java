@@ -30,8 +30,13 @@ public class ChatConversationDoc {
   private String agentAvatarUrl;
   private String agentJobTitle;
   private String lastMessage;
+  private String lastSenderRole;
+  private Integer studentMessageCount;
+  private Integer agentMessageCount;
   private Integer unreadByStudent;
   private Integer unreadByAgent;
+  private Boolean starredByStudent;
+  private Boolean starredByAgent;
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -59,10 +64,20 @@ public class ChatConversationDoc {
   public void setAgentJobTitle(String agentJobTitle) { this.agentJobTitle = agentJobTitle; }
   public String getLastMessage() { return lastMessage; }
   public void setLastMessage(String lastMessage) { this.lastMessage = lastMessage; }
+  public String getLastSenderRole() { return lastSenderRole; }
+  public void setLastSenderRole(String lastSenderRole) { this.lastSenderRole = lastSenderRole; }
+  public Integer getStudentMessageCount() { return studentMessageCount; }
+  public void setStudentMessageCount(Integer studentMessageCount) { this.studentMessageCount = studentMessageCount; }
+  public Integer getAgentMessageCount() { return agentMessageCount; }
+  public void setAgentMessageCount(Integer agentMessageCount) { this.agentMessageCount = agentMessageCount; }
   public Integer getUnreadByStudent() { return unreadByStudent; }
   public void setUnreadByStudent(Integer unreadByStudent) { this.unreadByStudent = unreadByStudent; }
   public Integer getUnreadByAgent() { return unreadByAgent; }
   public void setUnreadByAgent(Integer unreadByAgent) { this.unreadByAgent = unreadByAgent; }
+  public Boolean getStarredByStudent() { return starredByStudent; }
+  public void setStarredByStudent(Boolean starredByStudent) { this.starredByStudent = starredByStudent; }
+  public Boolean getStarredByAgent() { return starredByAgent; }
+  public void setStarredByAgent(Boolean starredByAgent) { this.starredByAgent = starredByAgent; }
   public Instant getCreatedAt() { return createdAt; }
   public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }

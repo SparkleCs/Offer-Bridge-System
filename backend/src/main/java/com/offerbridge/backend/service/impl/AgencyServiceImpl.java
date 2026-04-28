@@ -20,6 +20,7 @@ import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMemberRelMapper;
 import com.offerbridge.backend.mapper.AgencyTeamPublisherRelMapper;
+import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
 import com.offerbridge.backend.service.AgencyService;
@@ -53,6 +54,7 @@ public class AgencyServiceImpl implements AgencyService {
   private final AgencyMemberMetricsMapper agencyMemberMetricsMapper;
   private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
   private final VerificationRecordMapper verificationRecordMapper;
+  private final StudentProfileMapper studentProfileMapper;
   private final UserAccountMapper userAccountMapper;
   private final ObjectMapper objectMapper;
 
@@ -67,6 +69,7 @@ public class AgencyServiceImpl implements AgencyService {
                            AgencyMemberMetricsMapper agencyMemberMetricsMapper,
                            AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
                            VerificationRecordMapper verificationRecordMapper,
+                           StudentProfileMapper studentProfileMapper,
                            UserAccountMapper userAccountMapper,
                            ObjectMapper objectMapper) {
     this.agencyOrgMapper = agencyOrgMapper;
@@ -80,6 +83,7 @@ public class AgencyServiceImpl implements AgencyService {
     this.agencyMemberMetricsMapper = agencyMemberMetricsMapper;
     this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
     this.verificationRecordMapper = verificationRecordMapper;
+    this.studentProfileMapper = studentProfileMapper;
     this.userAccountMapper = userAccountMapper;
     this.objectMapper = objectMapper;
   }
@@ -314,6 +318,36 @@ public class AgencyServiceImpl implements AgencyService {
       view.setBlockedReason("");
     }
     return view;
+  }
+
+  @Override
+  public AgencyDtos.PagedResult<AgencyDtos.AgentStudentSearchItem> searchAgentStudents(Long userId,
+                                                                                       int page,
+                                                                                       int pageSize,
+                                                                                       String keyword,
+                                                                                       String country,
+                                                                                       String educationLevel,
+                                                                                       String scoreBucket,
+                                                                                       String subjectCategoryCode) {
+    requireMemberCoreAccess(userId);
+    int safePage = Math.max(1, page);
+    int safePageSize = Math.max(1, Math.min(pageSize, 50));
+    List<AgencyDtos.AgentStudentSearchItem> all = studentProfileMapper.searchAgentStudents(
+      trimToNull(keyword),
+      trimToNull(country),
+      trimToNull(educationLevel),
+      trimToNull(scoreBucket),
+      trimToNull(subjectCategoryCode)
+    );
+    int from = (safePage - 1) * safePageSize;
+    int to = Math.min(from + safePageSize, all.size());
+    List<AgencyDtos.AgentStudentSearchItem> records = from >= all.size() ? List.of() : all.subList(from, to);
+    AgencyDtos.PagedResult<AgencyDtos.AgentStudentSearchItem> result = new AgencyDtos.PagedResult<>();
+    result.setRecords(records);
+    result.setTotal(all.size());
+    result.setPage(safePage);
+    result.setPageSize(safePageSize);
+    return result;
   }
 
   @Override
@@ -790,6 +824,25 @@ public class AgencyServiceImpl implements AgencyService {
     return new PublisherContext(org, member);
   }
 
+  private AgencyMemberProfile requireMemberCoreAccess(Long userId) {
+    UserAccount user = requireUser(userId);
+    requireRole(user, "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null || !"ACTIVE".equals(member.getStatus())) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    AgencyOrg org = agencyOrgMapper.findById(member.getOrgId());
+    if (org == null) {
+      throw new BizException("BIZ_NOT_FOUND", "机构档案不存在");
+    }
+    requireOrgApproved(org);
+    VerificationRecord cert = verificationRecordMapper.findOne(userId, "AGENT_MEMBER_CERT");
+    if (cert == null || !"APPROVED".equals(cert.getStatus())) {
+      throw new BizException("BIZ_FORBIDDEN", "员工认证未通过，暂不可执行该操作");
+    }
+    return member;
+  }
+
   private record PublisherContext(AgencyOrg org, AgencyMemberProfile member) {}
 
   private AgencyDtos.OrgVerificationView upsertOrgVerification(Long userId, AgencyDtos.OrgVerificationSubmitRequest request) {
@@ -1060,6 +1113,11 @@ public class AgencyServiceImpl implements AgencyService {
 
   private String defaultStr(String input, String fallback) {
     return (input == null || input.isBlank()) ? fallback : input.trim();
+  }
+
+  private String trimToNull(String input) {
+    if (input == null || input.isBlank()) return null;
+    return input.trim();
   }
 
   private void insertUserCompat(String phone, String role) {

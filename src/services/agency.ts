@@ -1,6 +1,7 @@
 import { apiRequest } from './http'
 import type {
   AgencyOrgProfile,
+  AgentStudentSearchItem,
   AgencyTeam,
   CreateTeamPayload,
   DiscoveryMemberDetail,
@@ -236,6 +237,23 @@ export function updateMyAgencyMetrics(payload: MemberMetricsPayload) {
 
 export function getMyWorkbenchAccess() {
   return apiRequest<MemberWorkbenchAccess>('/api/v1/agency/members/me/workbench-access', { method: 'GET' }, true)
+}
+
+export function searchAgentStudents(params: {
+  page?: number
+  pageSize?: number
+  keyword?: string
+  country?: string
+  educationLevel?: string
+  scoreBucket?: string
+  subjectCategoryCode?: string
+} = {}) {
+  const search = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) search.append(key, String(value))
+  })
+  const query = search.toString()
+  return apiRequest<PagedResult<AgentStudentSearchItem>>(`/api/v1/agency/student-search${query ? `?${query}` : ''}`, { method: 'GET' }, true)
 }
 
 export function listDiscoveryMembers(params: {

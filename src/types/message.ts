@@ -49,6 +49,12 @@ export interface ChatConversationItem {
   peerSubtitle: string
   peerAvatarUrl?: string | null
   lastMessage?: string | null
+  lastSenderRole?: 'STUDENT' | 'AGENT_MEMBER' | string
+  studentMessageCount: number
+  agentMessageCount: number
+  viewerStarred: boolean
+  relatedOrderStatus?: string | null
+  relatedOrderId?: number | null
   unreadCount: number
   createdAt: string
   updatedAt: string
@@ -79,6 +85,12 @@ export interface ChatPagedResult<T> {
 export interface StartChatPayload {
   teamId: number
   greeting: string
+}
+
+export interface AgentStartChatPayload {
+  studentUserId: number
+  teamId: number
+  greeting?: string
 }
 
 export interface ChatStartResult {

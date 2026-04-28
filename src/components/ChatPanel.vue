@@ -6,30 +6,52 @@
           <template #suffix><Search class="search-icon" /></template>
         </el-input>
         <div class="chat-filters">
-          <button type="button" :class="{ active: filter === 'all' }" @click="filter = 'all'">全部</button>
-          <button type="button" :class="{ active: filter === 'unread' }" @click="filter = 'unread'">未读</button>
+          <button
+            v-for="item in filterOptions"
+            :key="item.value"
+            type="button"
+            :class="{ active: activeFilter === item.value }"
+            @click="activeFilter = item.value"
+          >
+            {{ item.label }}
+          </button>
         </div>
       </div>
       <div class="conversation-list">
         <el-empty v-if="!filteredConversations.length" description="暂无会话" />
-        <button
+        <article
           v-for="item in filteredConversations"
           :key="item.conversationId"
           class="conversation-item"
           :class="{ active: item.conversationId === activeConversationId }"
+          role="button"
+          tabindex="0"
           @click="selectConversation(item.conversationId)"
+          @keydown.enter.prevent="selectConversation(item.conversationId)"
         >
           <div class="avatar">{{ avatarText(item.peerName) }}</div>
           <div class="conversation-meta">
             <div class="conversation-title">
               <strong>{{ item.peerName }}</strong>
-              <span>{{ formatDate(item.updatedAt) }}</span>
+              <span class="conversation-date">{{ formatDate(item.updatedAt) }}</span>
+            </div>
+            <div class="conversation-tags">
+              <span class="stage-tag" :class="`stage-${relationshipStage(item)}`">{{ relationshipLabel(item) }}</span>
+              <button
+                type="button"
+                class="star-btn"
+                :class="{ active: item.viewerStarred }"
+                :title="item.viewerStarred ? '取消收藏' : '收藏会话'"
+                @click.stop="toggleStar(item)"
+              >
+                <component :is="item.viewerStarred ? StarFilled : Star" />
+              </button>
             </div>
             <p class="conversation-sub">{{ item.peerSubtitle }}</p>
             <p class="conversation-last">{{ item.lastMessage || '暂无消息' }}</p>
           </div>
           <span v-if="item.unreadCount > 0" class="unread-dot">{{ item.unreadCount }}</span>
-        </button>
+        </article>
       </div>
     </aside>
 
@@ -94,13 +116,15 @@
 
 <script setup lang="ts">
 import { Client } from '@stomp/stompjs'
-import { ChatRound, Document, Picture, Search } from '@element-plus/icons-vue'
+import { ChatRound, Document, Picture, Search, Star, StarFilled } from '@element-plus/icons-vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { readAccessToken } from '../services/http'
-import { listChatConversations, listChatMessages, markChatRead, sendChatMessage, uploadChatFile } from '../services/message'
+import { listChatConversations, listChatMessages, markChatRead, sendChatMessage, starChatConversation, unstarChatConversation, uploadChatFile } from '../services/message'
 import type { ChatConversationItem, ChatMessageItem } from '../types/message'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
+
+type ConversationFilter = 'all' | 'new' | 'unread' | 'active' | 'servicing' | 'ended' | 'starred'
 
 const props = defineProps<{
   initialConversationId?: string
@@ -115,7 +139,7 @@ const conversations = ref<ChatConversationItem[]>([])
 const messages = ref<ChatMessageItem[]>([])
 const activeConversationId = ref('')
 const keyword = ref('')
-const filter = ref<'all' | 'unread'>('all')
+const activeFilter = ref<ConversationFilter>('all')
 const draft = ref('')
 const loadingConversations = ref(false)
 const loadingMessages = ref(false)
@@ -127,6 +151,27 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 let stompClient: Client | null = null
 
 const mode = computed(() => props.mode || 'student')
+const filterOptions = computed<Array<{ label: string; value: ConversationFilter }>>(() => {
+  if (mode.value === 'agent') {
+    return [
+      { label: '全部', value: 'all' },
+      { label: '新咨询', value: 'new' },
+      { label: '未读', value: 'unread' },
+      { label: '沟通中', value: 'active' },
+      { label: '服务中', value: 'servicing' },
+      { label: '已结束', value: 'ended' },
+      { label: '收藏', value: 'starred' }
+    ]
+  }
+  return [
+    { label: '全部', value: 'all' },
+    { label: '未读', value: 'unread' },
+    { label: '咨询中', value: 'active' },
+    { label: '合作中', value: 'servicing' },
+    { label: '已结束', value: 'ended' },
+    { label: '收藏', value: 'starred' }
+  ]
+})
 const activeConversation = computed(() => conversations.value.find((item) => item.conversationId === activeConversationId.value) || null)
 const activeHeaderSubtitle = computed(() => {
   if (!activeConversation.value) return ''
@@ -138,7 +183,7 @@ const activeHeaderSubtitle = computed(() => {
 const filteredConversations = computed(() => {
   const key = keyword.value.trim().toLowerCase()
   return conversations.value.filter((item) => {
-    if (filter.value === 'unread' && item.unreadCount <= 0) return false
+    if (!matchesFilter(item, activeFilter.value)) return false
     if (!key) return true
     return [
       item.peerName,
@@ -147,7 +192,8 @@ const filteredConversations = computed(() => {
       item.orgName,
       item.studentSchoolName,
       item.studentMajor,
-      item.studentTargetMajorText
+      item.studentTargetMajorText,
+      item.lastMessage
     ].some((value) => String(value || '').toLowerCase().includes(key))
   })
 })
@@ -167,14 +213,30 @@ watch(() => props.initialConversationId, async (next) => {
   }
 })
 
-async function loadConversations() {
+watch(activeFilter, async () => {
+  await loadConversations(false)
+})
+
+async function loadConversations(autoSelect = true) {
   loadingConversations.value = true
   try {
-    const data = await listChatConversations({ page: 1, pageSize: 100 })
+    const data = await listChatConversations({ page: 1, pageSize: 100, filter: activeFilter.value })
     conversations.value = data.records
     emit('unreadChange', data.unreadCount)
-    const nextId = props.initialConversationId || activeConversationId.value || conversations.value[0]?.conversationId || ''
+    if (!autoSelect) {
+      if (!conversations.value.some((item) => item.conversationId === activeConversationId.value)) {
+        activeConversationId.value = ''
+        messages.value = []
+      }
+      return
+    }
+    const preferredId = props.initialConversationId || activeConversationId.value
+    const nextId = conversations.value.some((item) => item.conversationId === preferredId) ? preferredId : conversations.value[0]?.conversationId || ''
     if (nextId) await selectConversation(nextId)
+    else {
+      activeConversationId.value = ''
+      messages.value = []
+    }
   } catch (error: any) {
     ElMessage.error(error?.message || '会话加载失败')
   } finally {
@@ -283,7 +345,7 @@ function handleSocketMessage(message: ChatMessageItem) {
     markChatRead(message.conversationId).catch(() => null)
   } else {
     conversations.value = conversations.value.map((item) => item.conversationId === message.conversationId
-      ? { ...item, lastMessage: message.content, unreadCount: item.unreadCount + (message.mine ? 0 : 1), updatedAt: message.createdAt }
+      ? applyMessageToConversation(item, message, item.unreadCount + (message.mine ? 0 : 1))
       : item)
     emit('unreadChange', conversations.value.reduce((sum, item) => sum + item.unreadCount, 0))
   }
@@ -294,9 +356,56 @@ function upsertMessage(message: ChatMessageItem) {
     messages.value.push(message)
   }
   conversations.value = conversations.value.map((item) => item.conversationId === message.conversationId
-    ? { ...item, lastMessage: message.content, updatedAt: message.createdAt }
+    ? applyMessageToConversation(item, message, item.unreadCount)
     : item)
   scrollToBottom()
+}
+
+async function toggleStar(item: ChatConversationItem) {
+  try {
+    const updated = item.viewerStarred
+      ? await unstarChatConversation(item.conversationId)
+      : await starChatConversation(item.conversationId)
+    conversations.value = conversations.value.map((conversation) => conversation.conversationId === item.conversationId ? updated : conversation)
+  } catch (error: any) {
+    ElMessage.error(error?.message || '收藏操作失败')
+  }
+}
+
+function applyMessageToConversation(item: ChatConversationItem, message: ChatMessageItem, unreadCount: number): ChatConversationItem {
+  const studentMessageCount = item.studentMessageCount + (message.senderRole === 'STUDENT' ? 1 : 0)
+  const agentMessageCount = item.agentMessageCount + (message.senderRole === 'AGENT_MEMBER' ? 1 : 0)
+  return {
+    ...item,
+    lastMessage: message.content,
+    lastSenderRole: message.senderRole,
+    studentMessageCount,
+    agentMessageCount,
+    unreadCount,
+    updatedAt: message.createdAt
+  }
+}
+
+function matchesFilter(item: ChatConversationItem, filter: ConversationFilter) {
+  if (filter === 'all') return true
+  if (filter === 'unread') return item.unreadCount > 0
+  if (filter === 'starred') return item.viewerStarred
+  if (filter === 'new') return mode.value === 'agent' && item.studentMessageCount > 0 && item.agentMessageCount === 0
+  return relationshipStage(item) === filter
+}
+
+function relationshipStage(item: ChatConversationItem): 'active' | 'servicing' | 'ended' {
+  if (item.relatedOrderStatus === 'PAID' || item.relatedOrderStatus === 'IN_SERVICE') return 'servicing'
+  if (['COMPLETED', 'CLOSED', 'REFUND_REQUESTED'].includes(item.relatedOrderStatus || '')) return 'ended'
+  return 'active'
+}
+
+function relationshipLabel(item: ChatConversationItem) {
+  if (mode.value === 'agent' && item.studentMessageCount > 0 && item.agentMessageCount === 0) return '新咨询'
+  const stage = relationshipStage(item)
+  if (stage === 'servicing') return mode.value === 'agent' ? '服务中' : '合作中'
+  if (stage === 'ended') return '已结束'
+  return mode.value === 'agent' ? '沟通中' : '咨询中'
 }
 
 async function scrollToBottom() {
@@ -401,17 +510,20 @@ function fileNameFromUrl(value: string) {
 .chat-filters {
   margin-top: 14px;
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .chat-filters button {
-  min-width: 62px;
-  height: 34px;
+  flex: 0 0 auto;
+  min-width: 58px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid #d6dde6;
-  border-radius: 7px;
+  border-radius: 999px;
   background: #fff;
   color: #2b3540;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 650;
   cursor: pointer;
   transition: transform .18s ease, box-shadow .18s ease, background .18s ease, color .18s ease;
@@ -497,6 +609,64 @@ function fileNameFromUrl(value: string) {
   font-size: 14px;
   font-weight: 500;
   flex: 0 0 auto;
+}
+
+.conversation-tags {
+  margin-top: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.stage-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #316078;
+  background: #edf7fb;
+  border: 1px solid #cbe7f2;
+}
+
+.stage-servicing {
+  color: #0d6b52;
+  background: #e8f8f1;
+  border-color: #b9e7d3;
+}
+
+.stage-ended {
+  color: #68717c;
+  background: #f2f4f7;
+  border-color: #dde3ea;
+}
+
+.star-btn {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #a3afba;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color .18s ease, background .18s ease, transform .18s ease;
+}
+
+.star-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.star-btn:hover,
+.star-btn.active {
+  color: #f0a51a;
+  background: #fff6df;
+  transform: translateY(-1px);
 }
 
 .conversation-sub,

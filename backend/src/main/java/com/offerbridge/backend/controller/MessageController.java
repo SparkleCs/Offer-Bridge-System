@@ -6,6 +6,7 @@ import com.offerbridge.backend.security.AuthContext;
 import com.offerbridge.backend.service.MessageService;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -42,12 +43,18 @@ public class MessageController {
     return ApiResponse.ok(messageService.startChat(AuthContext.getUserId(), request));
   }
 
+  @PostMapping("/chats/agent-start")
+  public ApiResponse<MessageDtos.ChatStartResult> agentStartChat(@Valid @RequestBody MessageDtos.AgentStartChatRequest request) {
+    return ApiResponse.ok(messageService.agentStartChat(AuthContext.getUserId(), request));
+  }
+
   @GetMapping("/chats")
   public ApiResponse<MessageDtos.PagedResult<MessageDtos.ChatConversationItem>> listChatConversations(
     @RequestParam(defaultValue = "1") int page,
-    @RequestParam(defaultValue = "50") int pageSize
+    @RequestParam(defaultValue = "50") int pageSize,
+    @RequestParam(defaultValue = "all") String filter
   ) {
-    return ApiResponse.ok(messageService.listChatConversations(AuthContext.getUserId(), page, pageSize));
+    return ApiResponse.ok(messageService.listChatConversations(AuthContext.getUserId(), page, pageSize, filter));
   }
 
   @GetMapping("/chats/unread")
@@ -75,5 +82,15 @@ public class MessageController {
   @PostMapping("/chats/{conversationId}/read")
   public ApiResponse<MessageDtos.MarkReadResult> markChatRead(@PathVariable String conversationId) {
     return ApiResponse.ok(messageService.markChatRead(AuthContext.getUserId(), conversationId));
+  }
+
+  @PostMapping("/chats/{conversationId}/star")
+  public ApiResponse<MessageDtos.ChatConversationItem> starChatConversation(@PathVariable String conversationId) {
+    return ApiResponse.ok(messageService.starChatConversation(AuthContext.getUserId(), conversationId, true));
+  }
+
+  @DeleteMapping("/chats/{conversationId}/star")
+  public ApiResponse<MessageDtos.ChatConversationItem> unstarChatConversation(@PathVariable String conversationId) {
+    return ApiResponse.ok(messageService.starChatConversation(AuthContext.getUserId(), conversationId, false));
   }
 }

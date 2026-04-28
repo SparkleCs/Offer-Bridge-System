@@ -19,11 +19,11 @@
           @click="selectOrder(order.id)"
         >
           <div class="case-top">
-            <strong>{{ order.studentName || order.studentPhone || `学生 #${order.studentUserId}` }}</strong>
+            <strong class="case-student">{{ order.studentName || order.studentPhone || `学生 #${order.studentUserId}` }}</strong>
             <el-tag size="small" :type="statusTagType(order.orderStatus)">{{ statusLabel(order.orderStatus) }}</el-tag>
           </div>
-          <p>{{ order.serviceTitle || order.teamNameSnapshot }}</p>
-          <span>{{ amountText(order) }}</span>
+          <p class="case-service">{{ order.serviceTitle || order.teamNameSnapshot }}</p>
+          <span class="case-amount">{{ amountText(order) }}</span>
         </button>
       </aside>
 
@@ -368,9 +368,27 @@ loadOrders()
   margin: 6px 0 0;
 }
 
-.case-card span {
+.case-student {
+  color: #182635;
+  font-size: 16px;
+  line-height: 1.35;
   font-weight: 700;
-  color: #0f4c81;
+}
+
+.case-service {
+  color: #5f7483;
+  font-size: 15px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.case-amount {
+  display: inline-block;
+  margin-top: 2px;
+  color: #d93026;
+  font-size: 15px;
+  line-height: 1.35;
+  font-weight: 700;
 }
 
 .detail-hero,

@@ -73,6 +73,16 @@
     LIMIT 1
   </select>
 
+  <select id="findLatestByConversationKeys" resultMap="BaseMap">
+    SELECT *
+    FROM service_order
+    WHERE student_user_id = #{studentUserId}
+      AND org_id = #{orgId}
+      AND team_id = #{teamId}
+    ORDER BY updated_at DESC, id DESC
+    LIMIT 1
+  </select>
+
   <select id="listByStudent" resultType="com.offerbridge.backend.dto.OrderDtos$OrderSummary">
     SELECT <include refid="SummaryColumns"/>
     FROM service_order o

@@ -173,6 +173,19 @@ public class AgencyController {
     return ApiResponse.ok(agencyService.getMyProfile(AuthContext.getUserId()));
   }
 
+  @GetMapping("/student-search")
+  public ApiResponse<AgencyDtos.PagedResult<AgencyDtos.AgentStudentSearchItem>> searchAgentStudents(
+    @RequestParam(defaultValue = "1") int page,
+    @RequestParam(defaultValue = "12") int pageSize,
+    @RequestParam(required = false) String keyword,
+    @RequestParam(required = false) String country,
+    @RequestParam(required = false) String educationLevel,
+    @RequestParam(required = false) String scoreBucket,
+    @RequestParam(required = false) String subjectCategoryCode
+  ) {
+    return ApiResponse.ok(agencyService.searchAgentStudents(AuthContext.getUserId(), page, pageSize, keyword, country, educationLevel, scoreBucket, subjectCategoryCode));
+  }
+
   @GetMapping("/members/me/verification/status")
   public ApiResponse<AgencyDtos.MemberVerificationStatusView> getMyVerificationStatus() {
     return ApiResponse.ok(agencyService.getMyVerificationStatus(AuthContext.getUserId()));

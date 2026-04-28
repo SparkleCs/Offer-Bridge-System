@@ -749,7 +749,7 @@ loadAccessAndList()
 }
 
 .product-title {
-  font-size: 23px;
+  font-size: 20px;
   line-height: 1.18;
   letter-spacing: 0.01em;
   color: #193449;
