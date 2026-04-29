@@ -4,20 +4,21 @@
   <resultMap id="BaseMap" type="com.offerbridge.backend.entity.UserAccount">
     <id column="id" property="id"/>
     <result column="phone" property="phone"/>
+    <result column="password_hash" property="passwordHash"/>
     <result column="role" property="role"/>
     <result column="status" property="status"/>
     <result column="last_login_at" property="lastLoginAt"/>
   </resultMap>
 
   <select id="findByPhone" resultMap="BaseMap">
-    SELECT id, phone, role, status, last_login_at
+    SELECT id, phone, password_hash, role, status, last_login_at
     FROM user_account
     WHERE phone = #{phone}
     LIMIT 1
   </select>
 
   <select id="findById" resultMap="BaseMap">
-    SELECT id, phone, role, status, last_login_at
+    SELECT id, phone, password_hash, role, status, last_login_at
     FROM user_account
     WHERE id = #{id}
     LIMIT 1
@@ -32,6 +33,12 @@
     INSERT INTO user_account(phone, password_hash, role, status)
     VALUES(#{phone}, '', #{role}, 'ACTIVE')
   </insert>
+
+  <update id="updatePasswordHash">
+    UPDATE user_account
+    SET password_hash = #{passwordHash}
+    WHERE id = #{id}
+  </update>
 
   <update id="updateLastLoginAt">
     UPDATE user_account

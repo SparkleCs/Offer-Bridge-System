@@ -32,6 +32,43 @@ public class AuthDtos {
     public void setRole(String role) { this.role = role; }
   }
 
+  public static class PasswordLoginRequest {
+    @NotBlank
+    @Pattern(regexp = "^1\\d{10}$")
+    private String phone;
+    @NotBlank
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,32}$", message = "密码需为8-32位且包含字母和数字")
+    private String password;
+    @Pattern(regexp = "^(STUDENT|AGENT_ORG|AGENT_MEMBER)$")
+    private String role;
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+  }
+
+  public static class UpdatePasswordRequest {
+    private String currentPassword;
+    @NotBlank
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d).{8,32}$", message = "密码需为8-32位且包含字母和数字")
+    private String newPassword;
+
+    public String getCurrentPassword() { return currentPassword; }
+    public void setCurrentPassword(String currentPassword) { this.currentPassword = currentPassword; }
+    public String getNewPassword() { return newPassword; }
+    public void setNewPassword(String newPassword) { this.newPassword = newPassword; }
+  }
+
+  public static class PasswordStatusResult {
+    private boolean hasPassword;
+
+    public boolean isHasPassword() { return hasPassword; }
+    public void setHasPassword(boolean hasPassword) { this.hasPassword = hasPassword; }
+  }
+
   public static class AdminSmsLoginRequest {
     @Pattern(regexp = "^1\\d{10}$")
     private String phone;
@@ -66,6 +103,7 @@ public class AuthDtos {
     private String role;
     private boolean profileCompleted;
     private boolean verificationCompleted;
+    private boolean hasPassword;
 
     public String getAccessToken() { return accessToken; }
     public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
@@ -79,5 +117,7 @@ public class AuthDtos {
     public void setProfileCompleted(boolean profileCompleted) { this.profileCompleted = profileCompleted; }
     public boolean isVerificationCompleted() { return verificationCompleted; }
     public void setVerificationCompleted(boolean verificationCompleted) { this.verificationCompleted = verificationCompleted; }
+    public boolean isHasPassword() { return hasPassword; }
+    public void setHasPassword(boolean hasPassword) { this.hasPassword = hasPassword; }
   }
 }

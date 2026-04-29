@@ -6,6 +6,7 @@ import com.offerbridge.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -30,6 +31,23 @@ public class AuthController {
   public ApiResponse<AuthDtos.AuthResult> smsLoginOrRegister(@Valid @RequestBody AuthDtos.SmsLoginRequest request,
                                                              HttpServletRequest httpRequest) {
     return ApiResponse.ok(authService.smsLoginOrRegister(request, httpRequest));
+  }
+
+  @PostMapping("/password/login")
+  public ApiResponse<AuthDtos.AuthResult> passwordLogin(@Valid @RequestBody AuthDtos.PasswordLoginRequest request,
+                                                        HttpServletRequest httpRequest) {
+    return ApiResponse.ok(authService.passwordLogin(request, httpRequest));
+  }
+
+  @PostMapping("/password/update")
+  public ApiResponse<Void> updatePassword(@Valid @RequestBody AuthDtos.UpdatePasswordRequest request) {
+    authService.updatePassword(request);
+    return ApiResponse.ok();
+  }
+
+  @GetMapping("/password/status")
+  public ApiResponse<AuthDtos.PasswordStatusResult> passwordStatus() {
+    return ApiResponse.ok(authService.passwordStatus());
   }
 
   @PostMapping("/admin/sms/send")

@@ -61,6 +61,8 @@
       </div>
     </section>
 
+    <AccountSecurityPanel class="security-panel" />
+
     <section class="glass-panel verify-panel">
       <div class="verify-head">
         <h3>员工认证材料</h3>
@@ -105,6 +107,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage, type UploadRequestOptions } from 'element-plus'
+import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
 import { ApiError } from '../services/http'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 import {
@@ -363,6 +366,14 @@ onMounted(async () => {
 
 .verify-panel {
   margin-top: 14px;
+}
+
+.security-panel {
+  position: relative;
+  z-index: 1;
+  margin-top: 14px;
+  background: linear-gradient(155deg, rgba(255, 255, 255, 0.92), rgba(241, 248, 255, 0.8));
+  box-shadow: 0 16px 36px rgba(31, 73, 141, 0.12);
 }
 
 .field-tip {

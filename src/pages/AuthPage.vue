@@ -19,10 +19,17 @@
 
       <section class="auth-panel">
         <button class="admin-entry" type="button" @click="goAdminAuth">平台管理员入口</button>
-        <h2 class="title">验证码登录/注册</h2>
-        <p class="desc">首次验证通过即注册</p>
+        <h2 class="title">{{ authMode === 'sms' ? '验证码登录/注册' : '密码登录' }}</h2>
+        <p class="desc">{{ authMode === 'sms' ? '首次验证通过即注册' : '使用已设置的登录密码' }}</p>
 
         <el-form label-position="top" class="auth-form" @submit.prevent>
+          <div class="mode-card">
+            <el-radio-group v-model="authMode" class="mode-group" size="large">
+              <el-radio-button label="sms">验证码登录</el-radio-button>
+              <el-radio-button label="password">密码登录</el-radio-button>
+            </el-radio-group>
+          </div>
+
           <el-form-item label="选择角色" class="auth-field-item">
             <div class="field-card role-card">
               <el-radio-group v-model="selectedRole" class="role-group" size="large">
@@ -38,14 +45,30 @@
             </div>
           </el-form-item>
 
-          <el-form-item label="短信验证码" class="auth-field-item">
-            <div class="field-card">
-              <div class="code-row">
-                <el-input v-model="code" maxlength="6" size="large" placeholder="请输入验证码" />
-                <el-button class="code-btn" size="large" :disabled="countdown > 0 || !phone" @click="sendCode">
-                  {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-                </el-button>
+          <template v-if="authMode === 'sms'">
+            <el-form-item label="短信验证码" class="auth-field-item">
+              <div class="field-card">
+                <div class="code-row">
+                  <el-input v-model="code" maxlength="6" size="large" placeholder="请输入验证码" />
+                  <el-button class="code-btn" size="large" :disabled="countdown > 0 || !phone" @click="sendCode">
+                    {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
+                  </el-button>
+                </div>
               </div>
+            </el-form-item>
+
+          </template>
+
+          <el-form-item v-else label="密码" class="auth-field-item">
+            <div class="field-card">
+              <el-input
+                v-model="password"
+                maxlength="32"
+                show-password
+                size="large"
+                placeholder="请输入密码"
+                type="password"
+              />
             </div>
           </el-form-item>
 
@@ -54,7 +77,7 @@
           </div>
 
           <el-button class="submit-btn" type="primary" size="large" :loading="submitting" @click="submitSms">
-            登录/注册
+            {{ authMode === 'sms' ? '登录/注册' : '密码登录' }}
           </el-button>
         </el-form>
       </section>
@@ -70,6 +93,7 @@ import { ApiError } from '../services/http'
 import { useAuthStore } from '../stores/auth'
 
 type LoginRole = 'STUDENT' | 'AGENT'
+type AuthMode = 'sms' | 'password'
 
 const roleContents: Record<LoginRole, { title: string; desc: string; features: Array<{ title: string; desc: string }> }> = {
   STUDENT: {
@@ -95,9 +119,11 @@ const roleContents: Record<LoginRole, { title: string; desc: string; features: A
 const router = useRouter()
 const authStore = useAuthStore()
 
+const authMode = ref<AuthMode>('sms')
 const selectedRole = ref<LoginRole>('STUDENT')
 const phone = ref('')
 const code = ref('')
+const password = ref('')
 const agreed = ref(true)
 const countdown = ref(0)
 const timer = ref<number | null>(null)
@@ -114,6 +140,24 @@ function clearTimer() {
 
 function goAdminAuth() {
   router.push('/admin-auth')
+}
+
+function currentRole() {
+  return selectedRole.value === 'AGENT' ? 'AGENT_ORG' : 'STUDENT'
+}
+
+function isValidPassword(value: string) {
+  return /^(?=.*[A-Za-z])(?=.*\d).{8,32}$/.test(value)
+}
+
+async function routeAfterLogin(role: string) {
+  if (role === 'AGENT_ORG') {
+    await router.push('/org-admin/verification')
+  } else if (role === 'AGENT_MEMBER') {
+    await router.push('/agent-workbench/communication')
+  } else {
+    await router.push('/')
+  }
 }
 
 async function sendCode() {
@@ -163,6 +207,10 @@ async function sendCode() {
 }
 
 async function submitSms() {
+  if (authMode.value === 'password') {
+    await submitPasswordLogin()
+    return
+  }
   if (!/^1\d{10}$/.test(phone.value)) {
     ElMessage.warning('请输入有效手机号')
     return
@@ -181,7 +229,7 @@ async function submitSms() {
     const payload = {
       phone: phone.value,
       code: code.value,
-      role: selectedRole.value === 'AGENT' ? 'AGENT_ORG' : 'STUDENT'
+      role: currentRole()
     } as const
     if (!payload.role) {
       ElMessage.error('登录角色缺失，请刷新后重试')
@@ -191,13 +239,36 @@ async function submitSms() {
       console.info('[auth][loginBySms][payload]', payload)
     }
     const result = await authStore.loginBySms(payload)
-    if (result.role === 'AGENT_ORG') {
-      await router.push('/org-admin/verification')
-    } else if (result.role === 'AGENT_MEMBER') {
-      await router.push('/agent-workbench/communication')
-    } else {
-      await router.push('/')
-    }
+    await routeAfterLogin(result.role)
+  } catch (error) {
+    ElMessage.error(error instanceof ApiError ? error.message : '登录失败')
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function submitPasswordLogin() {
+  if (!/^1\d{10}$/.test(phone.value)) {
+    ElMessage.warning('请输入有效手机号')
+    return
+  }
+  if (!isValidPassword(password.value)) {
+    ElMessage.warning('密码需为8-32位且包含字母和数字')
+    return
+  }
+  if (!agreed.value) {
+    ElMessage.warning('请先阅读并同意协议')
+    return
+  }
+
+  submitting.value = true
+  try {
+    const result = await authStore.loginByPassword({
+      phone: phone.value,
+      password: password.value,
+      role: currentRole()
+    })
+    await routeAfterLogin(result.role)
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '登录失败')
   } finally {
@@ -348,6 +419,32 @@ onBeforeUnmount(() => {
 .auth-form {
   max-width: 520px;
   margin: 0 auto;
+}
+
+.mode-card {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--card-stroke);
+  border-radius: 14px;
+  background: #f5f9fd;
+  padding: 8px;
+  margin-bottom: 16px;
+}
+
+.mode-group {
+  display: flex;
+  width: 100%;
+}
+
+.mode-group :deep(.el-radio-button) {
+  flex: 1 1 50%;
+}
+
+.mode-group :deep(.el-radio-button__inner) {
+  width: 100%;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
 }
 
 .auth-field-item {

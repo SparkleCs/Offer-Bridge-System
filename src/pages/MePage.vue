@@ -14,6 +14,8 @@
     </aside>
 
     <main ref="centerPaneRef" class="center-pane" @scroll="onCenterScroll">
+      <AccountSecurityPanel id="security" />
+
       <section id="basic" class="page-card section-card">
         <div class="section-head-inline section-head-edit">
           <h2>基础信息</h2>
@@ -488,6 +490,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
+import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../services/http'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
@@ -552,6 +555,7 @@ const editingMap = reactive<Record<EditableSection, boolean>>({
 const sectionSnapshots = reactive<Partial<Record<EditableSection, unknown>>>({})
 
 const navItems = [
+  { id: 'security', label: '账号安全' },
   { id: 'basic', label: '基础信息' },
   { id: 'applicationList', label: '申请清单' },
   { id: 'academic', label: '学术背景' },

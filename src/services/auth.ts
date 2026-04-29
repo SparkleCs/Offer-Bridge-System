@@ -1,10 +1,13 @@
 import { apiRequest } from './http'
 import type {
   AuthResult,
+  PasswordLoginPayload,
+  PasswordStatusResult,
   RefreshPayload,
   AdminSmsLoginPayload,
   SendSmsPayload,
   SendSmsResult,
+  UpdatePasswordPayload,
   SmsLoginPayload
 } from '../types/auth'
 
@@ -28,6 +31,32 @@ export function smsLoginOrRegister(payload: SmsLoginPayload) {
     },
     false
   )
+}
+
+export function passwordLogin(payload: PasswordLoginPayload) {
+  return apiRequest<AuthResult>(
+    '/api/v1/auth/password/login',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    },
+    false
+  )
+}
+
+export function updatePassword(payload: UpdatePasswordPayload) {
+  return apiRequest<void>(
+    '/api/v1/auth/password/update',
+    {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    },
+    true
+  )
+}
+
+export function getPasswordStatus() {
+  return apiRequest<PasswordStatusResult>('/api/v1/auth/password/status', { method: 'GET' }, true)
 }
 
 export function adminSendSmsCode(phone: string) {

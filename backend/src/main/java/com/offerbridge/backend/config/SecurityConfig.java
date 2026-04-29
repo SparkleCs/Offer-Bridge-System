@@ -1,7 +1,10 @@
 package com.offerbridge.backend.config;
 
 import com.offerbridge.backend.security.AuthInterceptor;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
@@ -23,6 +26,7 @@ public class SecurityConfig implements WebMvcConfigurer {
       .excludePathPatterns(
         "/api/v1/auth/sms/send",
         "/api/v1/auth/sms/login-or-register",
+        "/api/v1/auth/password/login",
         "/api/v1/auth/admin/sms/send",
         "/api/v1/auth/admin/sms/login",
         "/api/v1/auth/refresh",
@@ -56,4 +60,8 @@ public class SecurityConfig implements WebMvcConfigurer {
       .addResourceLocations("file:" + absolute + "/");
   }
 
+  @Bean
+  public PasswordEncoder passwordEncoder() {
+    return new BCryptPasswordEncoder(12);
+  }
 }

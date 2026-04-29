@@ -39,7 +39,8 @@ function persistAuth(result: AuthResult) {
       userId: result.userId,
       role: result.role,
       profileCompleted: result.profileCompleted,
-      verificationCompleted: result.verificationCompleted
+      verificationCompleted: result.verificationCompleted,
+      hasPassword: result.hasPassword
     })
   )
 }

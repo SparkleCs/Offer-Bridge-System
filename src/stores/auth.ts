@@ -1,9 +1,9 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import { logout, sendSmsCode, smsLoginOrRegister } from '../services/auth'
+import { logout, passwordLogin, sendSmsCode, smsLoginOrRegister } from '../services/auth'
 import { authStorageKeys, clearLocalAuth, refreshByToken } from '../services/http'
 import { getStudentProfile } from '../services/student'
-import type { AuthResult, SendSmsPayload, SmsLoginPayload } from '../types/auth'
+import type { AuthResult, PasswordLoginPayload, SendSmsPayload, SmsLoginPayload } from '../types/auth'
 import type { StudentProfile } from '../types/student'
 
 const { accessTokenKey, refreshTokenKey, authMetaKey } = authStorageKeys()
@@ -15,6 +15,7 @@ function readAuthMeta() {
       role: string
       profileCompleted: boolean
       verificationCompleted: boolean
+      hasPassword?: boolean
     } | null
   } catch {
     return null
@@ -38,7 +39,8 @@ export const useAuthStore = defineStore('auth', () => {
       userId: result.userId,
       role: result.role,
       profileCompleted: result.profileCompleted,
-      verificationCompleted: result.verificationCompleted
+      verificationCompleted: result.verificationCompleted,
+      hasPassword: result.hasPassword
     }
     localStorage.setItem(accessTokenKey, result.accessToken)
     localStorage.setItem(refreshTokenKey, result.refreshToken)
@@ -54,8 +56,23 @@ export const useAuthStore = defineStore('auth', () => {
     return result
   }
 
+  async function loginByPassword(payload: PasswordLoginPayload) {
+    const result = await passwordLogin(payload)
+    applyAuth(result)
+    if (result.role === 'STUDENT') {
+      await loadProfile().catch(() => null)
+    }
+    return result
+  }
+
   function sendCode(payload: SendSmsPayload) {
     return sendSmsCode(payload)
+  }
+
+  function setPasswordConfigured(value: boolean) {
+    if (!authMeta.value) return
+    authMeta.value.hasPassword = value
+    localStorage.setItem(authMetaKey, JSON.stringify(authMeta.value))
   }
 
   async function refreshSession() {
@@ -109,7 +126,9 @@ export const useAuthStore = defineStore('auth', () => {
     verificationCompleted,
     applyAuth,
     loginBySms,
+    loginByPassword,
     sendCode,
+    setPasswordConfigured,
     refreshSession,
     loadProfile,
     doLogout,

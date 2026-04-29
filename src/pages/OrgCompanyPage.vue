@@ -18,12 +18,15 @@
       </el-row>
       <el-button type="primary" :loading="saving" @click="save">保存</el-button>
     </el-form>
+
+    <AccountSecurityPanel class="security-panel" />
   </section>
 </template>
 
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
 import { ApiError } from '../services/http'
 import { createAgencyOrgProfile, getAgencyOrgProfile, updateAgencyOrgProfile } from '../services/agency'
 import type { AgencyOrgProfile } from '../types/agency'
@@ -81,3 +84,9 @@ async function save() {
 
 onMounted(load)
 </script>
+
+<style scoped>
+.security-panel {
+  margin-top: 16px;
+}
+</style>

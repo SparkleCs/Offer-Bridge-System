@@ -15,6 +15,7 @@ export interface AuthResult {
   role: UserRole
   profileCompleted: boolean
   verificationCompleted: boolean
+  hasPassword: boolean
 }
 
 export interface SendSmsPayload {
@@ -30,6 +31,21 @@ export interface SmsLoginPayload {
   phone: string
   code: string
   role: 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
+}
+
+export interface PasswordLoginPayload {
+  phone: string
+  password: string
+  role: 'STUDENT' | 'AGENT_ORG' | 'AGENT_MEMBER'
+}
+
+export interface UpdatePasswordPayload {
+  currentPassword?: string
+  newPassword: string
+}
+
+export interface PasswordStatusResult {
+  hasPassword: boolean
 }
 
 export interface AdminSmsLoginPayload {

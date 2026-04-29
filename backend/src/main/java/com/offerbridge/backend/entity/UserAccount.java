@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public class UserAccount {
   private Long id;
   private String phone;
+  private String passwordHash;
   private String role;
   private String status;
   private LocalDateTime lastLoginAt;
@@ -13,6 +14,8 @@ public class UserAccount {
   public void setId(Long id) { this.id = id; }
   public String getPhone() { return phone; }
   public void setPhone(String phone) { this.phone = phone; }
+  public String getPasswordHash() { return passwordHash; }
+  public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
   public String getRole() { return role; }
   public void setRole(String role) { this.role = role; }
   public String getStatus() { return status; }

@@ -10,6 +10,7 @@ public interface UserAccountMapper {
   UserAccount findById(@Param("id") Long id);
   int insertByRole(@Param("phone") String phone, @Param("role") String role);
   int insertByRoleWithEmptyPassword(@Param("phone") String phone, @Param("role") String role);
+  int updatePasswordHash(@Param("id") Long id, @Param("passwordHash") String passwordHash);
   int updateLastLoginAt(@Param("id") Long id);
   int updateRole(@Param("id") Long id, @Param("role") String role);
   int updateStatus(@Param("id") Long id, @Param("status") String status);

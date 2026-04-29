@@ -14,12 +14,14 @@ import com.offerbridge.backend.mapper.StudentLanguageScoreMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
+import com.offerbridge.backend.security.AuthContext;
 import com.offerbridge.backend.security.JwtService;
 import com.offerbridge.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -48,6 +50,7 @@ public class AuthServiceImpl implements AuthService {
   private final AuthRefreshTokenMapper authRefreshTokenMapper;
   private final LoginAuditLogMapper loginAuditLogMapper;
   private final JwtService jwtService;
+  private final PasswordEncoder passwordEncoder;
 
   public AuthServiceImpl(AppProperties appProperties,
                          StringRedisTemplate redisTemplate,
@@ -58,7 +61,8 @@ public class AuthServiceImpl implements AuthService {
                          VerificationRecordMapper verificationRecordMapper,
                          AuthRefreshTokenMapper authRefreshTokenMapper,
                          LoginAuditLogMapper loginAuditLogMapper,
-                         JwtService jwtService) {
+                         JwtService jwtService,
+                         PasswordEncoder passwordEncoder) {
     this.appProperties = appProperties;
     this.redisTemplate = redisTemplate;
     this.authSmsCodeMapper = authSmsCodeMapper;
@@ -69,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
     this.authRefreshTokenMapper = authRefreshTokenMapper;
     this.loginAuditLogMapper = loginAuditLogMapper;
     this.jwtService = jwtService;
+    this.passwordEncoder = passwordEncoder;
   }
 
   @Override
@@ -122,6 +127,87 @@ public class AuthServiceImpl implements AuthService {
     userAccountMapper.updateLastLoginAt(user.getId());
     logLogin(user.getId(), user.getPhone(), LOGIN_METHOD_SMS_CODE, true, null, httpRequest);
     return buildAuthResult(user, httpRequest);
+  }
+
+  @Override
+  @Transactional
+  public AuthDtos.AuthResult passwordLogin(AuthDtos.PasswordLoginRequest request, HttpServletRequest httpRequest) {
+    UserAccount user = userAccountMapper.findByPhone(request.getPhone());
+    if (user == null) {
+      logPasswordFailure(null, request.getPhone(), "USER_NOT_FOUND", httpRequest);
+      throw new BizException("BIZ_UNAUTHORIZED", "手机号或密码错误");
+    }
+
+    String effectiveRole;
+    try {
+      ensureSupportedAndActive(user);
+      effectiveRole = resolveLoginRole(request.getRole(), user);
+      if (!isCompatibleLoginRole(effectiveRole, user.getRole())) {
+        logPasswordFailure(user.getId(), user.getPhone(), "ROLE_MISMATCH", httpRequest);
+        throw new BizException("BIZ_FORBIDDEN", "当前手机号已注册为其他角色");
+      }
+    } catch (BizException ex) {
+      if (!"BIZ_FORBIDDEN".equals(ex.getCode())) {
+        logPasswordFailure(user.getId(), user.getPhone(), ex.getCode(), httpRequest);
+      }
+      throw ex;
+    }
+
+    if (user.getPasswordHash() == null || user.getPasswordHash().isBlank()) {
+      logPasswordFailure(user.getId(), user.getPhone(), "PASSWORD_NOT_SET", httpRequest);
+      throw new BizException("BIZ_PASSWORD_NOT_SET", "该账号尚未设置密码，请先使用验证码登录后在个人中心设置密码");
+    }
+    if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+      logPasswordFailure(user.getId(), user.getPhone(), "BAD_CREDENTIALS", httpRequest);
+      throw new BizException("BIZ_UNAUTHORIZED", "手机号或密码错误");
+    }
+
+    if ("STUDENT".equals(user.getRole()) && studentProfileMapper.findByUserId(user.getId()) == null) {
+      studentProfileMapper.insertEmpty(user.getId());
+    }
+    userAccountMapper.updateLastLoginAt(user.getId());
+    logLogin(user.getId(), user.getPhone(), LOGIN_METHOD_PASSWORD, true, null, httpRequest);
+    return buildAuthResult(user, httpRequest);
+  }
+
+  @Override
+  @Transactional
+  public AuthDtos.PasswordStatusResult passwordStatus() {
+    Long userId = AuthContext.getUserId();
+    if (userId == null) {
+      throw new BizException("BIZ_UNAUTHORIZED", "未登录或登录已过期");
+    }
+    UserAccount user = requireUser(userId);
+    AuthDtos.PasswordStatusResult result = new AuthDtos.PasswordStatusResult();
+    result.setHasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isBlank());
+    return result;
+  }
+
+  @Override
+  @Transactional
+  public void updatePassword(AuthDtos.UpdatePasswordRequest request) {
+    Long userId = AuthContext.getUserId();
+    if (userId == null) {
+      throw new BizException("BIZ_UNAUTHORIZED", "未登录或登录已过期");
+    }
+    UserAccount user = requireUser(userId);
+    ensureSupportedAndActive(user);
+
+    boolean hasPassword = user.getPasswordHash() != null && !user.getPasswordHash().isBlank();
+    if (hasPassword) {
+      String currentPassword = request.getCurrentPassword();
+      if (currentPassword == null || currentPassword.isBlank()) {
+        throw new BizException("BIZ_BAD_REQUEST", "请输入当前密码");
+      }
+      if (!passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+        throw new BizException("BIZ_UNAUTHORIZED", "当前密码错误");
+      }
+    }
+
+    if (hasPassword && passwordEncoder.matches(request.getNewPassword(), user.getPasswordHash())) {
+      throw new BizException("BIZ_BAD_REQUEST", "新密码不能与当前密码相同");
+    }
+    userAccountMapper.updatePasswordHash(user.getId(), passwordEncoder.encode(request.getNewPassword()));
   }
 
   @Override
@@ -195,6 +281,7 @@ public class AuthServiceImpl implements AuthService {
     result.setRole(user.getRole());
     result.setProfileCompleted(profileCompleted);
     result.setVerificationCompleted(verificationCompleted);
+    result.setHasPassword(user.getPasswordHash() != null && !user.getPasswordHash().isBlank());
     return result;
   }
 
@@ -291,6 +378,14 @@ public class AuthServiceImpl implements AuthService {
       throw new BizException("BIZ_BAD_REQUEST", "登录方式不合法");
     }
     loginAuditLogMapper.insertLog(userId, phone, method, success, reason, getIp(req), getUserAgent(req));
+  }
+
+  private void logPasswordFailure(Long userId, String phone, String reason, HttpServletRequest req) {
+    try {
+      logLogin(userId, phone, LOGIN_METHOD_PASSWORD, false, reason, req);
+    } catch (Exception ex) {
+      log.warn("Failed to write password login audit phone={}, reason={}", phone, reason, ex);
+    }
   }
 
   private String normalizeScene(String scene) {
