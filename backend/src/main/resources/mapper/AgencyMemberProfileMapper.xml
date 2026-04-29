@@ -89,16 +89,18 @@
       COALESCE(pr.role_code, '') AS roleCode,
       m.verified_badge_status AS verifiedBadgeStatus
     FROM agency_member_profile m
+    JOIN user_account ua ON ua.id = m.user_id
     LEFT JOIN agency_member_role_rel pr
       ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    LEFT JOIN verification_record vrn ON vrn.user_id = m.user_id AND vrn.verify_type = 'AGENT_REAL_NAME'
+    LEFT JOIN verification_record vre ON vre.user_id = m.user_id AND vre.verify_type = 'AGENT_EDUCATION'
     WHERE m.org_id = #{orgId}
       AND m.status = 'ACTIVE'
-      AND EXISTS (
-        SELECT 1
-        FROM verification_record vr
-        WHERE vr.user_id = m.user_id
-          AND vr.verify_type = 'AGENT_MEMBER_CERT'
-          AND vr.status = 'APPROVED'
+      AND m.public_status = 'PUBLIC'
+      AND ua.status = 'ACTIVE'
+      AND (
+        (vrn.status = 'APPROVED' AND vre.status = 'APPROVED')
+        OR m.verified_badge_status = 'APPROVED'
       )
       <if test="keyword != null and keyword != ''">
         AND (

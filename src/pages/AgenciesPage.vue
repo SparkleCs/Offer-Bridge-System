@@ -133,7 +133,7 @@
                     <strong>{{ roleLabel(member.roleCode) }}</strong>
                     <span>{{ member.displayName }}</span>
                   </div>
-                  <p class="member-job">{{ member.jobTitle }}</p>
+                  <p v-if="displayJobTitle(member)" class="member-job">{{ displayJobTitle(member) }}</p>
                   <div class="member-score-row">
                     <strong>{{ scoreText(memberReviewMap[member.memberId]?.ratingScore) }}</strong>
                     <span>{{ memberReviewMap[member.memberId]?.reviewCount || 0 }} 条评价</span>
@@ -238,6 +238,17 @@ const filters = reactive({
 function roleLabel(code: string) {
   const match = roleOptions.find((item) => item.value === code)
   return match?.label || code || '未标注角色'
+}
+
+function normalizeDisplayText(value?: string | null) {
+  return (value || '').trim().replace(/\s+/g, '').toLowerCase()
+}
+
+function displayJobTitle(member: { jobTitle?: string | null; roleCode?: string | null }) {
+  const title = member.jobTitle?.trim()
+  if (!title) return ''
+  if (normalizeDisplayText(title) === normalizeDisplayText(roleLabel(member.roleCode || ''))) return ''
+  return title
 }
 
 function scoreText(value?: number | null) {

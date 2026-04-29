@@ -122,7 +122,8 @@
             <div class="preview-members">
               <article v-for="member in selectedMemberObjects" :key="member.memberId" class="preview-member">
                 <strong>{{ member.displayName }}</strong>
-                <span>{{ member.jobTitle || '顾问' }}{{ member.roleCode ? ` · ${roleLabel(member.roleCode)}` : '' }}</span>
+                <span>{{ roleLabel(member.roleCode) }}</span>
+                <small v-if="displayJobTitle(member)">{{ displayJobTitle(member) }}</small>
               </article>
               <p v-if="selectedMemberObjects.length === 0" class="placeholder">发布前请至少选择 1 位负责成员。</p>
             </div>
@@ -151,12 +152,13 @@
         @selection-change="onMemberSelectionChange"
       >
         <el-table-column type="selection" width="52" :reserve-selection="true" :selectable="() => true" />
-        <el-table-column prop="displayName" label="姓名" min-width="120" />
-        <el-table-column prop="jobTitle" label="岗位" min-width="150" />
-        <el-table-column prop="roleCode" label="角色" min-width="130">
+        <el-table-column prop="displayName" label="成员" min-width="150" />
+        <el-table-column label="岗位" min-width="170">
+          <template #default="scope">{{ displayJobTitle(scope.row) || '-' }}</template>
+        </el-table-column>
+        <el-table-column prop="roleCode" label="服务角色" min-width="140">
           <template #default="scope">{{ roleLabel(scope.row.roleCode) }}</template>
         </el-table-column>
-        <el-table-column prop="verifiedBadgeStatus" label="认证" width="120" />
       </el-table>
       <template #footer>
         <el-button @click="closeMemberDialog">取消</el-button>
@@ -315,6 +317,17 @@ function roleLabel(code?: string | null) {
     AFTERCARE: '后续服务'
   }
   return dict[code] || code
+}
+
+function normalizeDisplayText(value?: string | null) {
+  return (value || '').trim().replace(/\s+/g, '').toLowerCase()
+}
+
+function displayJobTitle(member: { jobTitle?: string | null; roleCode?: string | null }) {
+  const title = member.jobTitle?.trim()
+  if (!title) return ''
+  if (normalizeDisplayText(title) === normalizeDisplayText(roleLabel(member.roleCode))) return ''
+  return title
 }
 
 function formatPrice(min?: number | null, max?: number | null) {
@@ -878,6 +891,10 @@ loadAccessAndList()
   display: flex;
   flex-direction: column;
   gap: 3px;
+}
+
+.preview-member small {
+  color: rgba(214, 238, 247, 0.78);
 }
 
 .member-picker {

@@ -20,7 +20,7 @@
           <div>
             <span class="eyebrow">{{ roleLabel(member.roleCode) }}</span>
             <h3>{{ member.displayName }}</h3>
-            <p>{{ member.jobTitle || '服务老师' }} · {{ detail.teamName }}</p>
+            <p>{{ [displayJobTitle(member), detail.teamName].filter(Boolean).join(' · ') }}</p>
           </div>
         </div>
         <div class="score-summary">
@@ -104,6 +104,17 @@ const roleOptions = [
 function roleLabel(code: string) {
   const match = roleOptions.find((item) => item.value === code)
   return match?.label || code || '未标注角色'
+}
+
+function normalizeDisplayText(value?: string | null) {
+  return (value || '').trim().replace(/\s+/g, '').toLowerCase()
+}
+
+function displayJobTitle(member: { jobTitle?: string | null; roleCode?: string | null }) {
+  const title = member.jobTitle?.trim()
+  if (!title) return ''
+  if (normalizeDisplayText(title) === normalizeDisplayText(roleLabel(member.roleCode || ''))) return ''
+  return title
 }
 
 function scoreText(value?: number | null) {
