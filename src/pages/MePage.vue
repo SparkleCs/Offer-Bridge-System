@@ -510,6 +510,7 @@ import {
   updateApplicationStatus as updateUniversityApplicationStatus,
   removeApplication as removeUniversityApplication
 } from '../services/university'
+import { getMyOrder, listMyOrders } from '../services/order'
 import type {
   ApplicationProgressView,
   CompetitionItem,
@@ -522,6 +523,7 @@ import type {
   WorkItem
 } from '../types/student'
 import type { ApplicationListItem } from '../types/university'
+import type { OrderDetail, StageItem } from '../types/order'
 
 interface LoadErrorItem {
   source: string
@@ -584,6 +586,7 @@ const updatingApplicationId = ref<number | null>(null)
 const removingApplicationId = ref<number | null>(null)
 const uploadingIdCard = ref(false)
 const uploadingStudentCard = ref(false)
+const latestServiceOrderDetail = ref<OrderDetail | null>(null)
 
 const basicForm = reactive({
   name: '',
@@ -870,6 +873,17 @@ async function loadApplicationList() {
   }
 }
 
+async function loadLatestServiceOrderProgress() {
+  const orders = await listMyOrders()
+  const activeOrders = orders.filter((order) => ['PAID', 'IN_SERVICE', 'COMPLETED'].includes(order.orderStatus))
+  if (activeOrders.length === 0) {
+    latestServiceOrderDetail.value = null
+    return
+  }
+  const latest = activeOrders[0]
+  latestServiceOrderDetail.value = await getMyOrder(latest.id)
+}
+
 async function changeApplicationStatus(applicationId: number, statusCode: string) {
   updatingApplicationId.value = applicationId
   try {
@@ -1028,6 +1042,11 @@ async function loadData() {
         const data = value as { items: ApplicationListItem[] }
         applicationList.items = data.items || []
       }
+    },
+    {
+      source: 'service-order-progress',
+      request: loadLatestServiceOrderProgress,
+      onSuccess: () => {}
     }
   ]
 
@@ -1246,7 +1265,35 @@ async function submitVerification() {
   }
 }
 
-const progress = computed<ApplicationProgressView>(() => {
+function nextActionForStage(stage: StageItem) {
+  if (stage.status === 'WAITING_CONFIRMATION') return `确认「${stage.stageName}」阶段成果`
+  if (stage.status === 'WAITING_AGENT') return `等待中介修改「${stage.stageName}」`
+  if (stage.status === 'IN_PROGRESS') return `等待中介推进「${stage.stageName}」`
+  if (stage.status === 'WAITING_STUDENT') return `补充「${stage.stageName}」所需材料`
+  return `继续推进「${stage.stageName}」`
+}
+
+function buildServiceOrderProgress(detail: OrderDetail): ApplicationProgressView | null {
+  if (!detail.stages.length) return null
+  const total = detail.stages.length
+  const completedCount = detail.stages.filter((stage) => stage.status === 'COMPLETED').length
+  const percent = detail.order.orderStatus === 'COMPLETED' ? 100 : Math.round((completedCount / total) * 100)
+  const current = detail.stages.find((stage) => stage.status !== 'COMPLETED') || detail.stages[detail.stages.length - 1]
+  const milestones = detail.stages.map((stage) => ({
+    name: stage.stageName,
+    status: (stage.status === 'COMPLETED' ? 'done' : stage.id === current.id ? 'doing' : 'todo') as 'done' | 'doing' | 'todo',
+    etaText: stage.status === 'COMPLETED' ? '已完成' : stage.id === current.id ? '进行中' : '待开始'
+  }))
+  return {
+    overallPercent: percent,
+    currentStage: percent === 100 ? '服务完成' : current.stageName,
+    nextAction: percent === 100 ? '可以回到订单页评价本次服务' : nextActionForStage(current),
+    milestones,
+    updatedAtText: detail.order.updatedAt || new Date().toLocaleString()
+  }
+}
+
+function buildProfileProgress(): ApplicationProgressView {
   const sectionStates = [
     Boolean(basicForm.name && basicForm.schoolName && basicForm.major),
     applicationList.items.length > 0,
@@ -1295,6 +1342,11 @@ const progress = computed<ApplicationProgressView>(() => {
     milestones,
     updatedAtText: new Date().toLocaleString()
   }
+}
+
+const progress = computed<ApplicationProgressView>(() => {
+  const serviceProgress = latestServiceOrderDetail.value ? buildServiceOrderProgress(latestServiceOrderDetail.value) : null
+  return serviceProgress || buildProfileProgress()
 })
 
 onMounted(() => {

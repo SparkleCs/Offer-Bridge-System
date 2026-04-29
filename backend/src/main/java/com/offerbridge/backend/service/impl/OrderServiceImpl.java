@@ -18,12 +18,14 @@ import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.PaymentRecordMapper;
 import com.offerbridge.backend.mapper.RefundRequestMapper;
+import com.offerbridge.backend.mapper.ServiceStageAttachmentMapper;
 import com.offerbridge.backend.mapper.ServiceCaseMapper;
 import com.offerbridge.backend.mapper.ServiceOrderMapper;
 import com.offerbridge.backend.mapper.ServiceStageMapper;
 import com.offerbridge.backend.mapper.ServiceTodoMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.service.OrderService;
+import com.offerbridge.backend.service.ReviewService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -36,6 +38,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderServiceImpl implements OrderService {
@@ -57,6 +60,7 @@ public class OrderServiceImpl implements OrderService {
   private final PaymentRecordMapper paymentRecordMapper;
   private final ServiceCaseMapper serviceCaseMapper;
   private final ServiceStageMapper serviceStageMapper;
+  private final ServiceStageAttachmentMapper serviceStageAttachmentMapper;
   private final ServiceTodoMapper serviceTodoMapper;
   private final RefundRequestMapper refundRequestMapper;
   private final AgencyTeamMapper agencyTeamMapper;
@@ -64,22 +68,26 @@ public class OrderServiceImpl implements OrderService {
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
   private final UserAccountMapper userAccountMapper;
   private final AppProperties appProperties;
+  private final ReviewService reviewService;
 
   public OrderServiceImpl(ServiceOrderMapper serviceOrderMapper,
                           PaymentRecordMapper paymentRecordMapper,
                           ServiceCaseMapper serviceCaseMapper,
                           ServiceStageMapper serviceStageMapper,
+                          ServiceStageAttachmentMapper serviceStageAttachmentMapper,
                           ServiceTodoMapper serviceTodoMapper,
                           RefundRequestMapper refundRequestMapper,
                           AgencyTeamMapper agencyTeamMapper,
                           AgencyOrgMapper agencyOrgMapper,
                           AgencyMemberProfileMapper agencyMemberProfileMapper,
                           UserAccountMapper userAccountMapper,
-                          AppProperties appProperties) {
+                          AppProperties appProperties,
+                          ReviewService reviewService) {
     this.serviceOrderMapper = serviceOrderMapper;
     this.paymentRecordMapper = paymentRecordMapper;
     this.serviceCaseMapper = serviceCaseMapper;
     this.serviceStageMapper = serviceStageMapper;
+    this.serviceStageAttachmentMapper = serviceStageAttachmentMapper;
     this.serviceTodoMapper = serviceTodoMapper;
     this.refundRequestMapper = refundRequestMapper;
     this.agencyTeamMapper = agencyTeamMapper;
@@ -87,6 +95,7 @@ public class OrderServiceImpl implements OrderService {
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
     this.userAccountMapper = userAccountMapper;
     this.appProperties = appProperties;
+    this.reviewService = reviewService;
   }
 
   @Override
@@ -114,6 +123,7 @@ public class OrderServiceImpl implements OrderService {
     order.setOrderStatus("PENDING_QUOTE");
     order.setPaymentStatus("UNPAID");
     serviceOrderMapper.insertOne(order);
+    reviewService.snapshotOrderMembers(order.getId(), team.getId());
     return serviceOrderMapper.findStudentSummary(order.getId(), userId);
   }
 
@@ -246,7 +256,11 @@ public class OrderServiceImpl implements OrderService {
     OrderDtos.StageItem stage = requireStage(stageId, caseId);
     int updated = serviceStageMapper.completeStage(stageId, caseId);
     if (updated == 0) throw new BizException("BIZ_BAD_REQUEST", "当前阶段不可确认");
-    serviceStageMapper.startNextStage(caseId, stage.getStageOrder() + 1);
+    if ("SERVICE_DONE".equals(stage.getStageKey())) {
+      serviceOrderMapper.markCompleted(order.getId());
+    } else {
+      serviceStageMapper.startNextStage(caseId, stage.getStageOrder() + 1);
+    }
     return getStudentOrderDetail(userId, orderId);
   }
 
@@ -314,6 +328,7 @@ public class OrderServiceImpl implements OrderService {
     requireStage(stageId, caseId);
     int updated = serviceStageMapper.submitStage(stageId, caseId, request.getDeliverableText().trim(), blankToNull(request.getDeliverableUrl()));
     if (updated == 0) throw new BizException("BIZ_BAD_REQUEST", "当前阶段不可提交成果");
+    replaceStageAttachments(userId, stageId, request.getAttachments());
     return getAgentOrderDetail(userId, orderId);
   }
 
@@ -340,6 +355,7 @@ public class OrderServiceImpl implements OrderService {
 
   private void openCaseIfNeeded(ServiceOrder order) {
     serviceOrderMapper.markPaid(order.getId());
+    reviewService.snapshotOrderMembers(order.getId(), order.getTeamId());
     if (serviceCaseMapper.findIdByOrderId(order.getId()) != null) {
       serviceOrderMapper.markInService(order.getId());
       return;
@@ -413,9 +429,50 @@ public class OrderServiceImpl implements OrderService {
   private OrderDtos.OrderDetail buildDetail(OrderDtos.OrderSummary summary) {
     OrderDtos.OrderDetail detail = new OrderDtos.OrderDetail();
     detail.setOrder(summary);
-    detail.setStages(summary.getCaseId() == null ? List.of() : serviceStageMapper.listByOrderId(summary.getId()));
+    if (summary.getCaseId() == null) {
+      detail.setStages(List.of());
+    } else {
+      List<OrderDtos.StageItem> stages = serviceStageMapper.listByOrderId(summary.getId());
+      Map<Long, List<OrderDtos.StageAttachment>> attachmentsByStage = serviceStageAttachmentMapper.listByOrderId(summary.getId())
+        .stream()
+        .collect(Collectors.groupingBy(OrderDtos.StageAttachment::getStageId));
+      for (OrderDtos.StageItem stage : stages) {
+        stage.setAttachments(attachmentsByStage.getOrDefault(stage.getId(), List.of()));
+      }
+      detail.setStages(stages);
+    }
     detail.setTodos(summary.getCaseId() == null ? List.of() : serviceTodoMapper.listByOrderId(summary.getId()));
     return detail;
+  }
+
+  private void replaceStageAttachments(Long userId, Long stageId, List<OrderDtos.StageAttachmentRequest> attachments) {
+    serviceStageAttachmentMapper.deleteByStageId(stageId);
+    if (attachments == null || attachments.isEmpty()) {
+      return;
+    }
+    for (int i = 0; i < attachments.size(); i++) {
+      OrderDtos.StageAttachmentRequest item = attachments.get(i);
+      if (item == null || !hasText(item.getFileName()) || !hasText(item.getFileUrl())) {
+        throw new BizException("BIZ_BAD_REQUEST", "附件信息不完整");
+      }
+      String contentType = normalizeAttachmentType(item.getContentType());
+      serviceStageAttachmentMapper.insertOne(
+        stageId,
+        item.getFileName().trim(),
+        item.getFileUrl().trim(),
+        contentType,
+        blankToNull(item.getMimeType()),
+        item.getSizeBytes(),
+        userId,
+        i
+      );
+    }
+  }
+
+  private String normalizeAttachmentType(String contentType) {
+    if (contentType == null || contentType.isBlank()) return "FILE";
+    String value = contentType.trim().toUpperCase();
+    return "IMAGE".equals(value) ? "IMAGE" : "FILE";
   }
 
   private ServiceOrder requireStudentOrderForUpdate(Long userId, Long orderId) {

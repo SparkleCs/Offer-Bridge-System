@@ -54,7 +54,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listForumNotifications } from './services/forum'
 import { getChatUnreadSummary, listSystemNotifications } from './services/message'
@@ -79,6 +79,13 @@ const displayName = computed(() => {
   return '学生用户'
 })
 const userInitial = computed(() => displayName.value.slice(0, 1) || 'U')
+
+function handleUnreadEvent(event: Event) {
+  const detail = (event as CustomEvent<{ total?: number }>).detail
+  if (typeof detail?.total === 'number') {
+    messageUnreadTotal.value = Math.max(0, detail.total)
+  }
+}
 
 function go(path: string) {
   if (path && path !== route.path) {
@@ -125,6 +132,14 @@ watch(
     }
   }
 )
+
+onMounted(() => {
+  window.addEventListener('offerbridge:message-unread-change', handleUnreadEvent)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('offerbridge:message-unread-change', handleUnreadEvent)
+})
 </script>
 
 <style scoped>

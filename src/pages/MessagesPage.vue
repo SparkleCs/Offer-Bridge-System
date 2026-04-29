@@ -38,7 +38,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import ChatPanel from '../components/ChatPanel.vue'
@@ -62,10 +62,23 @@ const systemLoading = ref(false)
 const systemNotifications = ref<SystemNotificationItem[]>([])
 const systemUnreadCount = ref(0)
 
+function emitGlobalUnread() {
+  window.dispatchEvent(new CustomEvent('offerbridge:message-unread-change', {
+    detail: {
+      total: chatUnreadCount.value + systemUnreadCount.value + unreadCount.value,
+      chat: chatUnreadCount.value,
+      system: systemUnreadCount.value,
+      forum: unreadCount.value
+    }
+  }))
+}
+
 onMounted(() => {
   loadNotifications()
   loadSystemNotifications()
 })
+
+watch([chatUnreadCount, systemUnreadCount, unreadCount], emitGlobalUnread)
 
 function formatTime(value: string) {
   return new Date(value).toLocaleString('zh-CN', { hour12: false })
@@ -141,6 +154,8 @@ async function goPost(postId: string) {
   const unreadIds = notifications.value.filter((item) => !item.read).map((item) => item.notificationId)
   if (unreadIds.length > 0) {
     await markForumNotificationsRead({ notificationIds: unreadIds })
+    notifications.value = notifications.value.map((item) => ({ ...item, read: true }))
+    unreadCount.value = 0
   }
   await router.push({ path: '/forum', query: { postId } })
 }

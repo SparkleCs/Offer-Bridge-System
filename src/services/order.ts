@@ -1,5 +1,5 @@
 import { apiRequest } from './http'
-import type { AgentOrderSummary, OrderDetail, OrderSummary, PayResult } from '../types/order'
+import type { AgentOrderSummary, OrderDetail, OrderSummary, PayResult, SubmitStagePayload } from '../types/order'
 
 export function createServiceOrder(payload: { teamId: number; remark?: string }) {
   return apiRequest<OrderSummary>('/api/v1/orders', {
@@ -70,7 +70,7 @@ export function quoteServiceOrder(orderId: number, payload: {
   }, true)
 }
 
-export function submitStage(orderId: number, stageId: number, payload: { deliverableText: string; deliverableUrl?: string }) {
+export function submitStage(orderId: number, stageId: number, payload: SubmitStagePayload) {
   return apiRequest<OrderDetail>(`/api/v1/agency/service-orders/${orderId}/stages/${stageId}/submit`, {
     method: 'POST',
     body: JSON.stringify(payload)

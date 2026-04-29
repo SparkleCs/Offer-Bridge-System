@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 public class OrderDtos {
@@ -35,10 +36,31 @@ public class OrderDtos {
   public static class SubmitStageRequest {
     @NotBlank private String deliverableText;
     private String deliverableUrl;
+    private List<StageAttachmentRequest> attachments = new ArrayList<>();
     public String getDeliverableText() { return deliverableText; }
     public void setDeliverableText(String deliverableText) { this.deliverableText = deliverableText; }
     public String getDeliverableUrl() { return deliverableUrl; }
     public void setDeliverableUrl(String deliverableUrl) { this.deliverableUrl = deliverableUrl; }
+    public List<StageAttachmentRequest> getAttachments() { return attachments; }
+    public void setAttachments(List<StageAttachmentRequest> attachments) { this.attachments = attachments; }
+  }
+
+  public static class StageAttachmentRequest {
+    @NotBlank private String fileName;
+    @NotBlank private String fileUrl;
+    @NotBlank private String contentType;
+    private String mimeType;
+    private Long sizeBytes;
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileUrl() { return fileUrl; }
+    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
+    public String getContentType() { return contentType; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
+    public String getMimeType() { return mimeType; }
+    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public Long getSizeBytes() { return sizeBytes; }
+    public void setSizeBytes(Long sizeBytes) { this.sizeBytes = sizeBytes; }
   }
 
   public static class RejectStageRequest {
@@ -152,6 +174,7 @@ public class OrderDtos {
     private String status;
     private String deliverableText;
     private String deliverableUrl;
+    private List<StageAttachment> attachments = List.of();
     private String studentFeedback;
     private String submittedAt;
     private String completedAt;
@@ -171,12 +194,41 @@ public class OrderDtos {
     public void setDeliverableText(String deliverableText) { this.deliverableText = deliverableText; }
     public String getDeliverableUrl() { return deliverableUrl; }
     public void setDeliverableUrl(String deliverableUrl) { this.deliverableUrl = deliverableUrl; }
+    public List<StageAttachment> getAttachments() { return attachments; }
+    public void setAttachments(List<StageAttachment> attachments) { this.attachments = attachments; }
     public String getStudentFeedback() { return studentFeedback; }
     public void setStudentFeedback(String studentFeedback) { this.studentFeedback = studentFeedback; }
     public String getSubmittedAt() { return submittedAt; }
     public void setSubmittedAt(String submittedAt) { this.submittedAt = submittedAt; }
     public String getCompletedAt() { return completedAt; }
     public void setCompletedAt(String completedAt) { this.completedAt = completedAt; }
+  }
+
+  public static class StageAttachment {
+    private Long id;
+    private Long stageId;
+    private String fileName;
+    private String fileUrl;
+    private String contentType;
+    private String mimeType;
+    private Long sizeBytes;
+    private String uploadedAt;
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public Long getStageId() { return stageId; }
+    public void setStageId(Long stageId) { this.stageId = stageId; }
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
+    public String getFileUrl() { return fileUrl; }
+    public void setFileUrl(String fileUrl) { this.fileUrl = fileUrl; }
+    public String getContentType() { return contentType; }
+    public void setContentType(String contentType) { this.contentType = contentType; }
+    public String getMimeType() { return mimeType; }
+    public void setMimeType(String mimeType) { this.mimeType = mimeType; }
+    public Long getSizeBytes() { return sizeBytes; }
+    public void setSizeBytes(Long sizeBytes) { this.sizeBytes = sizeBytes; }
+    public String getUploadedAt() { return uploadedAt; }
+    public void setUploadedAt(String uploadedAt) { this.uploadedAt = uploadedAt; }
   }
 
   public static class TodoItem {

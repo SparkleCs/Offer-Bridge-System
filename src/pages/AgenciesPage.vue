@@ -80,7 +80,8 @@
 
           <div class="mini-metrics">
             <span>案例 {{ team.caseCount || 0 }}</span>
-            <span>评分 {{ Number(team.avgRating || 0).toFixed(1) }}</span>
+            <span>综合 {{ scoreText(teamRatingMap[team.teamId]?.totalScore) }}</span>
+            <span>Offer {{ scoreText(teamRatingMap[team.teamId]?.offerOutcomeScore) }}</span>
           </div>
 
           <div class="card-actions">
@@ -115,8 +116,8 @@
             <div class="metric-panel">
               <div class="metric-item"><label>案例数</label><strong>{{ detail.caseCount || 0 }}</strong></div>
               <div class="metric-item"><label>成功率</label><strong>{{ Number(detail.successRate || 0).toFixed(1) }}%</strong></div>
-              <div class="metric-item"><label>评分</label><strong>{{ Number(detail.avgRating || 0).toFixed(1) }}</strong></div>
-              <div class="metric-item"><label>响应</label><strong>{{ Number(detail.responseEfficiencyScore || 0).toFixed(1) }}</strong></div>
+              <div class="metric-item hero-score"><label>综合评分</label><strong>{{ scoreText(activeRating?.totalScore) }}</strong></div>
+              <div class="metric-item"><label>评价数</label><strong>{{ activeRating?.reviewCount || 0 }}</strong></div>
             </div>
 
             <section class="block">
@@ -133,7 +134,13 @@
                     <span>{{ member.displayName }}</span>
                   </div>
                   <p class="member-job">{{ member.jobTitle }}</p>
+                  <div class="member-score-row">
+                    <strong>{{ scoreText(memberReviewMap[member.memberId]?.ratingScore) }}</strong>
+                    <span>{{ memberReviewMap[member.memberId]?.reviewCount || 0 }} 条评价</span>
+                    <el-button text size="small" @click="openMemberReviews(member)">查看评价</el-button>
+                  </div>
                   <p class="member-desc">{{ member.bio || '暂无简介' }}</p>
+                  <p class="member-keywords">{{ memberReviewMap[member.memberId]?.keywordSummary || '暂无评价关键词' }}</p>
                   <div class="tags">
                     <span class="tag">{{ member.educationLevel }}</span>
                     <span class="tag">{{ member.yearsOfExperience }}年</span>
@@ -165,21 +172,25 @@
         <el-button size="large" type="primary" :loading="startingChat" @click="continueChat">继续沟通</el-button>
       </template>
     </el-dialog>
+
   </section>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
 import { startChat } from '../services/message'
 import { createServiceOrder } from '../services/order'
+import { getTeamMemberReviewSummaries, getTeamRatingSummaries, getTeamRatingSummary } from '../services/review'
 import { getStudentVerificationStatus } from '../services/student'
 import { useAuthStore } from '../stores/auth'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
+import type { RatingSummary, TeamMemberReviewSummary } from '../types/review'
 import { confirmLoginRequired } from '../utils/authPrompt'
 
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -189,11 +200,14 @@ const teams = ref<DiscoveryTeamItem[]>([])
 const selectedTeamId = ref<number | null>(null)
 const detail = ref<DiscoveryTeamDetail | null>(null)
 const detailCache = new Map<number, DiscoveryTeamDetail>()
+const teamRatingMap = ref<Record<number, RatingSummary>>({})
+const memberReviewMap = ref<Record<number, TeamMemberReviewSummary>>({})
 const greetingDialogVisible = ref(false)
 const greetingText = ref('您好，想咨询一下留学申请相关问题。')
 const pendingChatTeam = ref<{ teamId: number; teamName: string } | null>(null)
 const startingChat = ref(false)
 const creatingOrder = ref(false)
+const activeRating = ref<RatingSummary | null>(null)
 
 const roleOptions = [
   { label: '咨询顾问', value: 'CONSULTANT' },
@@ -226,6 +240,11 @@ function roleLabel(code: string) {
   return match?.label || code || '未标注角色'
 }
 
+function scoreText(value?: number | null) {
+  if (value == null || Number.isNaN(Number(value))) return '--'
+  return Number(value).toFixed(0)
+}
+
 async function loadTeams() {
   loadingList.value = true
   try {
@@ -235,8 +254,12 @@ async function loadTeams() {
       detail.value = null
       return
     }
+    await loadTeamRatings()
 
-    const nextId = selectedTeamId.value && teams.value.some((item) => item.teamId === selectedTeamId.value)
+    const queryTeamId = Number(route.query.teamId || 0)
+    const nextId = queryTeamId && teams.value.some((item) => item.teamId === queryTeamId)
+      ? queryTeamId
+      : selectedTeamId.value && teams.value.some((item) => item.teamId === selectedTeamId.value)
       ? selectedTeamId.value
       : teams.value[0].teamId
 
@@ -248,10 +271,20 @@ async function loadTeams() {
   }
 }
 
+async function loadTeamRatings() {
+  const summaries = await getTeamRatingSummaries(teams.value.map((item) => item.teamId)).catch(() => [])
+  const next: Record<number, RatingSummary> = {}
+  summaries.forEach((item) => {
+    if (item.teamId) next[item.teamId] = item
+  })
+  teamRatingMap.value = next
+}
+
 async function selectTeam(teamId: number) {
   selectedTeamId.value = teamId
   if (detailCache.has(teamId)) {
     detail.value = detailCache.get(teamId) || null
+    await loadRatingDetail(teamId)
     return
   }
 
@@ -260,11 +293,33 @@ async function selectTeam(teamId: number) {
     const data = await getDiscoveryTeamDetail(teamId)
     detailCache.set(teamId, data)
     detail.value = data
+    await loadRatingDetail(teamId)
   } catch (error: any) {
     ElMessage.error(error?.message || '团队详情加载失败')
   } finally {
     loadingDetail.value = false
   }
+}
+
+async function loadRatingDetail(teamId: number) {
+  const [summary, members] = await Promise.all([
+    getTeamRatingSummary(teamId).catch(() => teamRatingMap.value[teamId] || null),
+    getTeamMemberReviewSummaries(teamId).catch(() => [])
+  ])
+  activeRating.value = summary
+  if (summary?.teamId) {
+    teamRatingMap.value = { ...teamRatingMap.value, [summary.teamId]: summary }
+  }
+  const next: Record<number, TeamMemberReviewSummary> = {}
+  members.forEach((item) => {
+    next[item.memberId] = item
+  })
+  memberReviewMap.value = next
+}
+
+function openMemberReviews(member: DiscoveryTeamDetail['members'][number]) {
+  if (!detail.value) return
+  router.push(`/agencies/teams/${detail.value.teamId}/members/${member.memberId}/reviews`)
 }
 
 function clearFilters() {
@@ -550,6 +605,16 @@ loadTeams()
   font-size: 20px;
 }
 
+.hero-score {
+  background: linear-gradient(135deg, #102b46, #1e667b);
+  color: #fff;
+  border-color: transparent;
+}
+
+.hero-score label {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .block {
   margin-top: 14px;
 }
@@ -562,8 +627,9 @@ loadTeams()
 
 .member-card {
   border: 1px solid #e4edf6;
-  border-radius: 12px;
+  border-radius: 8px;
   padding: 10px;
+  background: linear-gradient(180deg, #fff, #f8fbfe);
 }
 
 .member-top {
@@ -577,9 +643,35 @@ loadTeams()
   color: #627991;
 }
 
+.member-score-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 8px 0;
+  border-top: 1px solid #edf2f6;
+  border-bottom: 1px solid #edf2f6;
+}
+
+.member-score-row strong {
+  font-size: 22px;
+  color: #102b46;
+}
+
+.member-score-row span {
+  color: #75879a;
+  font-size: 13px;
+}
+
 .member-desc {
   margin: 0 0 8px;
   color: #495f77;
+}
+
+.member-keywords {
+  margin: 0 0 8px;
+  color: #2c6174;
+  font-size: 13px;
 }
 
 .detail-fade-enter-active,
@@ -641,4 +733,5 @@ loadTeams()
     grid-template-columns: 1fr;
   }
 }
+
 </style>

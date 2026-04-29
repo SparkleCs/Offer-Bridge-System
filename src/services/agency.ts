@@ -296,7 +296,7 @@ export function getDiscoveryTeamDetail(teamId: number) {
   return apiRequest<DiscoveryTeamDetail>(`/api/v1/agency/discovery/teams/${teamId}`, { method: 'GET' }, false)
 }
 
-export async function uploadFile(file: File, bucket: 'org-verification' | 'member-verification' | 'student-verification' | 'avatar' | 'general' = 'general') {
+export async function uploadFile(file: File, bucket: 'org-verification' | 'member-verification' | 'student-verification' | 'avatar' | 'general' | 'service-stage' = 'general') {
   const form = new FormData()
   form.append('file', file)
   return apiRequest<{ url: string }>(`/api/v1/files/upload?bucket=${encodeURIComponent(bucket)}`, {

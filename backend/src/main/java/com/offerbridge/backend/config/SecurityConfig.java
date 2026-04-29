@@ -31,7 +31,8 @@ public class SecurityConfig implements WebMvcConfigurer {
         "/api/v1/agency/discovery/members/*",
         "/api/v1/agency/discovery/teams",
         "/api/v1/agency/discovery/teams/*",
-        "/api/v1/agency/discovery/**"
+        "/api/v1/agency/discovery/**",
+        "/api/v1/reviews/discovery/**"
       );
   }
 

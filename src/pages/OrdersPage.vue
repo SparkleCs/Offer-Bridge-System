@@ -5,7 +5,6 @@
         <h2 class="section-title">订单与申请进度</h2>
         <p class="section-desc">查看报价、完成支付，并与中介双向确认每个服务阶段。</p>
       </div>
-      <el-button :loading="loading" @click="loadOrders">刷新</el-button>
     </header>
 
     <div class="orders-layout">
@@ -42,6 +41,7 @@
               <el-button v-if="detail.order.orderStatus === 'WAITING_PAYMENT'" type="primary" :loading="paying" @click="payOrder">
                 支付宝沙箱支付
               </el-button>
+              <el-button v-if="canOpenReview" type="primary" class="review-cta" @click="openReviewDialog">评价服务</el-button>
               <el-button v-if="canCancel(detail.order.orderStatus)" @click="cancelOrder">取消订单</el-button>
               <el-button v-if="canRefund(detail.order.orderStatus)" type="warning" @click="openRefundDialog">申请退款</el-button>
             </div>
@@ -81,11 +81,11 @@
                     <el-tag size="small" :type="stageTagType(stage.status)">{{ stageLabel(stage.status) }}</el-tag>
                   </div>
                   <p v-if="stage.deliverableText" class="deliverable">{{ stage.deliverableText }}</p>
-                  <a v-if="stage.deliverableUrl" :href="stage.deliverableUrl" target="_blank" rel="noreferrer">查看成果材料</a>
                   <p v-if="stage.studentFeedback" class="feedback">退回意见：{{ stage.studentFeedback }}</p>
-                  <div v-if="stage.status === 'WAITING_CONFIRMATION'" class="stage-actions">
-                    <el-button type="success" size="small" @click="confirmStageItem(stage.id)">确认通过</el-button>
-                    <el-button size="small" @click="openRejectDialog(stage.id)">退回修改</el-button>
+                  <div class="stage-actions">
+                    <el-button size="small" :type="stage.status === 'WAITING_CONFIRMATION' ? 'primary' : 'default'" @click="openStageDetail(stage.id)">
+                      详情
+                    </el-button>
                   </div>
                 </div>
               </article>
@@ -117,14 +117,6 @@
       </main>
     </div>
 
-    <el-dialog v-model="rejectDialogVisible" title="退回阶段" width="420px">
-      <el-input v-model="rejectFeedback" type="textarea" :rows="4" placeholder="请说明需要调整的地方" />
-      <template #footer>
-        <el-button @click="rejectDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="rejectStageItem">提交退回</el-button>
-      </template>
-    </el-dialog>
-
     <el-dialog v-model="refundDialogVisible" title="申请退款" width="420px">
       <el-input v-model="refundReason" type="textarea" :rows="4" placeholder="请填写退款原因" />
       <template #footer>
@@ -132,37 +124,104 @@
         <el-button type="warning" @click="submitRefund">提交申请</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="reviewDialogVisible" width="760px" class="review-dialog" :show-close="!submittingReview">
+      <template #header>
+        <div class="review-dialog-head">
+          <span>评价服务老师</span>
+          <small>你的评价会直接影响套餐评分</small>
+        </div>
+      </template>
+
+      <div class="review-stack">
+        <article v-for="target in pendingReviewTargets" :key="target.memberId" class="review-form-card">
+          <div class="review-teacher">
+            <div class="teacher-avatar">{{ target.displayName.slice(0, 1) }}</div>
+            <div>
+              <strong>{{ target.displayName }}</strong>
+              <p>{{ roleLabel(target.roleCode) }} · {{ target.jobTitle || '服务老师' }}</p>
+            </div>
+          </div>
+
+          <div class="rating-grid">
+            <label v-for="metric in reviewMetrics" :key="metric.key">
+              <span>{{ metric.label }}</span>
+              <el-rate v-model="reviewForms[target.memberId][metric.key]" :max="5" allow-half />
+            </label>
+          </div>
+
+          <div class="review-extra">
+            <el-slider v-model="reviewForms[target.memberId].npsScore" :min="0" :max="10" show-stops />
+            <span>NPS 推荐意愿：{{ reviewForms[target.memberId].npsScore }}</span>
+          </div>
+          <el-input
+            v-model="reviewForms[target.memberId].commentText"
+            type="textarea"
+            :rows="3"
+            maxlength="500"
+            show-word-limit
+            placeholder="可以说说这位老师在哪些地方帮到了你，也可以指出需要改进的地方。"
+          />
+          <el-checkbox v-model="reviewForms[target.memberId].anonymous">匿名展示</el-checkbox>
+        </article>
+      </div>
+
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false" :disabled="submittingReview">稍后评价</el-button>
+        <el-button type="primary" :loading="submittingReview" @click="submitReviewForms">提交评价</el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import {
   closeServiceOrder,
   completeTodo,
-  confirmStage,
   createPayment,
   getMyOrder,
   listMyOrders,
-  rejectStage,
   requestRefund
 } from '../services/order'
+import { getOrderReviewStatus, submitOrderReview } from '../services/review'
 import type { OrderDetail, OrderSummary } from '../types/order'
+import type { OrderReviewStatus, OrderReviewTarget } from '../types/review'
 
 const route = useRoute()
+const router = useRouter()
 const orders = ref<OrderSummary[]>([])
 const detail = ref<OrderDetail | null>(null)
 const selectedId = ref<number | null>(null)
 const loading = ref(false)
 const detailLoading = ref(false)
 const paying = ref(false)
-const rejectDialogVisible = ref(false)
 const refundDialogVisible = ref(false)
-const pendingRejectStageId = ref<number | null>(null)
-const rejectFeedback = ref('')
+const reviewDialogVisible = ref(false)
 const refundReason = ref('')
+const reviewStatus = ref<OrderReviewStatus | null>(null)
+const submittingReview = ref(false)
+
+type ReviewMetricKey = 'professionalScore' | 'communicationScore' | 'materialScore' | 'transparencyScore' | 'responsibilityScore'
+type ReviewFormState = Record<ReviewMetricKey, number> & {
+  npsScore: number
+  commentText: string
+  anonymous: boolean
+}
+
+const reviewForms = reactive<Record<number, ReviewFormState>>({})
+const reviewMetrics: Array<{ key: ReviewMetricKey; label: string }> = [
+  { key: 'professionalScore', label: '专业能力' },
+  { key: 'communicationScore', label: '响应沟通' },
+  { key: 'materialScore', label: '材料文书' },
+  { key: 'transparencyScore', label: '透明诚信' },
+  { key: 'responsibilityScore', label: '责任态度' }
+]
+
+const pendingReviewTargets = computed(() => (reviewStatus.value?.targets || []).filter((item) => !item.reviewed))
+const canOpenReview = computed(() => detail.value?.order.orderStatus === 'COMPLETED' && pendingReviewTargets.value.length > 0)
 
 function statusLabel(status: string) {
   const dict: Record<string, string> = {
@@ -212,6 +271,18 @@ function todoLabel(status: string) {
   return dict[status] || status
 }
 
+function roleLabel(code?: string | null) {
+  const dict: Record<string, string> = {
+    CONSULTANT: '咨询顾问',
+    PLANNER: '规划顾问',
+    WRITER: '文书顾问',
+    APPLY_SPECIALIST: '申请专员',
+    VISA_SPECIALIST: '签证专员',
+    AFTERCARE: '后续服务'
+  }
+  return code ? dict[code] || code : '服务老师'
+}
+
 function amountText(order: OrderSummary) {
   if (order.finalAmount == null) return '待中介报价'
   return `${order.currency || 'CNY'} ${Number(order.finalAmount).toLocaleString()}`
@@ -248,6 +319,7 @@ async function selectOrder(orderId: number) {
   detailLoading.value = true
   try {
     detail.value = await getMyOrder(orderId)
+    await loadReviewStatus()
   } catch (error: any) {
     ElMessage.error(error?.message || '订单详情加载失败')
   } finally {
@@ -258,6 +330,19 @@ async function selectOrder(orderId: number) {
 async function refreshCurrent(next?: OrderDetail) {
   if (next) detail.value = next
   orders.value = await listMyOrders()
+  await loadReviewStatus()
+}
+
+async function loadReviewStatus() {
+  if (!detail.value || detail.value.order.orderStatus !== 'COMPLETED') {
+    reviewStatus.value = null
+    return
+  }
+  try {
+    reviewStatus.value = await getOrderReviewStatus(detail.value.order.id)
+  } catch {
+    reviewStatus.value = null
+  }
 }
 
 async function payOrder() {
@@ -275,7 +360,7 @@ async function payOrder() {
       payWindow.document.open()
       payWindow.document.write(payment.paymentFormHtml)
       payWindow.document.close()
-      ElMessage.success('已打开支付宝沙箱收银台，付款后请返回刷新订单')
+      ElMessage.success('已打开支付宝沙箱收银台，付款后请返回本页面查看订单状态')
       return
     }
     payWindow.close()
@@ -298,28 +383,9 @@ async function cancelOrder() {
   ElMessage.success('订单已取消')
 }
 
-async function confirmStageItem(stageId: number) {
+function openStageDetail(stageId: number) {
   if (!detail.value) return
-  const next = await confirmStage(detail.value.order.id, stageId)
-  await refreshCurrent(next)
-  ElMessage.success('阶段已确认')
-}
-
-function openRejectDialog(stageId: number) {
-  pendingRejectStageId.value = stageId
-  rejectFeedback.value = ''
-  rejectDialogVisible.value = true
-}
-
-async function rejectStageItem() {
-  if (!detail.value || !pendingRejectStageId.value || !rejectFeedback.value.trim()) {
-    ElMessage.warning('请填写退回意见')
-    return
-  }
-  const next = await rejectStage(detail.value.order.id, pendingRejectStageId.value, rejectFeedback.value)
-  rejectDialogVisible.value = false
-  await refreshCurrent(next)
-  ElMessage.success('已退回中介修改')
+  router.push(`/orders/${detail.value.order.id}/stages/${stageId}`)
 }
 
 async function completeTodoItem(todoId: number) {
@@ -343,6 +409,59 @@ async function submitRefund() {
   refundDialogVisible.value = false
   await refreshCurrent(next)
   ElMessage.success('退款申请已提交')
+}
+
+function ensureReviewForm(target: OrderReviewTarget) {
+  if (reviewForms[target.memberId]) return
+  reviewForms[target.memberId] = {
+    professionalScore: 5,
+    communicationScore: 5,
+    materialScore: 5,
+    transparencyScore: 5,
+    responsibilityScore: 5,
+    npsScore: 9,
+    commentText: '',
+    anonymous: true
+  }
+}
+
+async function openReviewDialog() {
+  await loadReviewStatus()
+  pendingReviewTargets.value.forEach(ensureReviewForm)
+  if (pendingReviewTargets.value.length === 0) {
+    ElMessage.info('该订单已完成评价')
+    return
+  }
+  reviewDialogVisible.value = true
+}
+
+async function submitReviewForms() {
+  if (!detail.value) return
+  const targets = pendingReviewTargets.value
+  if (targets.length === 0) return
+  submittingReview.value = true
+  try {
+    const next = await submitOrderReview(detail.value.order.id, {
+      reviews: targets.map((target) => ({
+        memberId: target.memberId,
+        professionalScore: reviewForms[target.memberId].professionalScore,
+        communicationScore: reviewForms[target.memberId].communicationScore,
+        materialScore: reviewForms[target.memberId].materialScore,
+        transparencyScore: reviewForms[target.memberId].transparencyScore,
+        responsibilityScore: reviewForms[target.memberId].responsibilityScore,
+        npsScore: reviewForms[target.memberId].npsScore,
+        commentText: reviewForms[target.memberId].commentText.trim(),
+        anonymous: reviewForms[target.memberId].anonymous
+      }))
+    })
+    reviewStatus.value = next
+    reviewDialogVisible.value = false
+    ElMessage.success('评价已提交，感谢你的反馈')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '评价提交失败')
+  } finally {
+    submittingReview.value = false
+  }
 }
 
 loadOrders()
@@ -476,6 +595,12 @@ loadOrders()
   color: #0f4c81;
 }
 
+.review-cta {
+  background: linear-gradient(135deg, #102b46, #1f7a91);
+  border: 0;
+  box-shadow: 0 10px 20px rgba(20, 77, 111, 0.24);
+}
+
 .eyebrow,
 .muted {
   font-size: 12px;
@@ -555,6 +680,88 @@ loadOrders()
   background: #fbfdff;
 }
 
+.review-dialog-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-dialog-head span {
+  font-size: 22px;
+  font-weight: 800;
+  color: #14293d;
+}
+
+.review-dialog-head small {
+  color: #6c7e8f;
+}
+
+.review-stack {
+  display: grid;
+  gap: 14px;
+  max-height: 66vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.review-form-card {
+  border: 1px solid #d9e6ef;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #fbfdff, #f4f8fb);
+  padding: 16px;
+}
+
+.review-teacher {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.teacher-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #12344f;
+  color: #fff;
+  font-weight: 800;
+}
+
+.review-teacher strong {
+  font-size: 18px;
+  color: #1a3348;
+}
+
+.review-teacher p {
+  margin: 4px 0 0;
+  color: #718193;
+}
+
+.rating-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  margin-bottom: 12px;
+}
+
+.rating-grid label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #41556a;
+}
+
+.review-extra {
+  display: grid;
+  grid-template-columns: 1fr 150px;
+  gap: 14px;
+  align-items: center;
+  color: #607489;
+}
+
 @media (max-width: 980px) {
   .orders-layout {
     grid-template-columns: 1fr;
@@ -564,6 +771,11 @@ loadOrders()
   .todo-item {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .rating-grid,
+  .review-extra {
+    grid-template-columns: 1fr;
   }
 }
 </style>

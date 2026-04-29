@@ -24,6 +24,9 @@ public class AuthInterceptor implements HandlerInterceptor {
     if (uri != null && uri.startsWith("/api/v1/agency/discovery/")) {
       return true;
     }
+    if (uri != null && uri.startsWith("/api/v1/reviews/discovery/") && "GET".equalsIgnoreCase(request.getMethod())) {
+      return true;
+    }
 
     String auth = request.getHeader("Authorization");
     if (isPublicReadEndpoint(request, uri)) {
@@ -61,6 +64,7 @@ public class AuthInterceptor implements HandlerInterceptor {
       return false;
     }
     if (uri.equals("/api/v1/universities/meta")) return true;
+    if (uri.startsWith("/api/v1/reviews/discovery/")) return true;
     if (uri.startsWith("/api/v1/universities/schools")) return true;
     if (uri.startsWith("/api/v1/universities/programs")) return true;
     if (uri.equals("/api/v1/forum/posts")) {

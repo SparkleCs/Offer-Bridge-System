@@ -87,7 +87,7 @@ onMounted(async () => {
     }
     form.channel = detail.channel
     form.title = detail.title
-    form.tags = [...detail.tags]
+    form.tags = sanitizeTags(detail.tags, detail.channel)
     if (editorRef.value) editorRef.value.innerHTML = detail.contentHtml || ''
   } catch (error) {
     ElMessage.error(error instanceof ApiError ? error.message : '帖子加载失败')
@@ -112,6 +112,24 @@ function insertImageUrl() {
   execFormat('insertImage', url)
 }
 
+function channelText(value: ForumChannel) {
+  return value === 'EXPERIENCE' ? '留学经验贴' : 'offer墙'
+}
+
+function sanitizeTags(tags: string[] = form.tags, value: ForumChannel = form.channel) {
+  const channelLabel = channelText(value).toLowerCase()
+  const seen = new Set<string>()
+  return tags
+    .map((tag) => (tag || '').trim())
+    .filter((tag) => {
+      const key = tag.toLowerCase()
+      if (!tag || key === channelLabel || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+    .slice(0, 8)
+}
+
 async function submit() {
   const contentHtml = editorRef.value?.innerHTML?.trim() || ''
   if (!form.title.trim()) {
@@ -130,7 +148,7 @@ async function submit() {
         channel: form.channel,
         title: form.title,
         contentHtml,
-        tags: form.tags
+        tags: sanitizeTags()
       })
       ElMessage.success('帖子已更新')
     } else {
@@ -138,7 +156,7 @@ async function submit() {
         channel: form.channel,
         title: form.title,
         contentHtml,
-        tags: form.tags
+        tags: sanitizeTags()
       })
       ElMessage.success('发布成功')
     }

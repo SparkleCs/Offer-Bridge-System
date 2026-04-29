@@ -9,6 +9,7 @@ const routes = [
   { path: '/login', redirect: '/auth' },
   { path: '/register', redirect: '/auth' },
   { path: '/agencies', name: 'agencies', component: () => import('../pages/AgenciesPage.vue') },
+  { path: '/agencies/teams/:teamId/members/:memberId/reviews', name: 'agency-member-reviews', component: () => import('../pages/AgencyMemberReviewsPage.vue') },
   {
     path: '/admin',
     component: () => import('../pages/AdminLayoutPage.vue'),
@@ -41,6 +42,7 @@ const routes = [
       { path: '', redirect: '/agent-workbench/communication' },
       { path: 'team-products', name: 'agent-team-products', component: () => import('../pages/AgentTeamProductsPage.vue') },
       { path: 'students', name: 'agent-students', component: () => import('../pages/AgentStudentManagementPage.vue') },
+      { path: 'students/:orderId/stages/:stageId/submit', name: 'agent-stage-submit', component: () => import('../pages/AgentStageSubmitPage.vue') },
       { path: 'recommend', name: 'agent-recommend', component: () => import('../pages/AgentRecommendStudentsPage.vue') },
       { path: 'search', name: 'agent-search', component: () => import('../pages/AgentSearchPage.vue') },
       { path: 'communication', name: 'agent-communication', component: () => import('../pages/AgentCommunicationPage.vue') },
@@ -56,6 +58,7 @@ const routes = [
   { path: '/forum/new', name: 'forum-new', component: () => import('../pages/ForumEditorPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/forum/edit/:postId', name: 'forum-edit', component: () => import('../pages/ForumEditorPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/orders', name: 'orders', component: () => import('../pages/OrdersPage.vue'), meta: { requiresAuth: true } },
+  { path: '/orders/:orderId/stages/:stageId', name: 'student-stage-detail', component: () => import('../pages/StudentStageDetailPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/universities', name: 'universities', component: () => import('../pages/UniversitiesPage.vue') }
 ]
 

@@ -246,6 +246,11 @@ async function loadConversations(autoSelect = true) {
 
 async function selectConversation(conversationId: string) {
   activeConversationId.value = conversationId
+  const selectedUnread = conversations.value.find((item) => item.conversationId === conversationId)?.unreadCount || 0
+  if (selectedUnread > 0) {
+    conversations.value = conversations.value.map((item) => item.conversationId === conversationId ? { ...item, unreadCount: 0 } : item)
+    emit('unreadChange', conversations.value.reduce((sum, item) => sum + item.unreadCount, 0))
+  }
   loadingMessages.value = true
   try {
     const data = await listChatMessages(conversationId, { page: 1, pageSize: 200 })
@@ -342,6 +347,8 @@ function connectSocket() {
 function handleSocketMessage(message: ChatMessageItem) {
   if (message.conversationId === activeConversationId.value) {
     upsertMessage(message)
+    conversations.value = conversations.value.map((item) => item.conversationId === message.conversationId ? { ...item, unreadCount: 0 } : item)
+    emit('unreadChange', conversations.value.reduce((sum, item) => sum + item.unreadCount, 0))
     markChatRead(message.conversationId).catch(() => null)
   } else {
     conversations.value = conversations.value.map((item) => item.conversationId === message.conversationId

@@ -27,5 +27,6 @@ public interface ServiceOrderMapper {
   int closeStudentOrder(@Param("id") Long id, @Param("studentUserId") Long studentUserId);
   int markPaid(@Param("id") Long id);
   int markInService(@Param("id") Long id);
+  int markCompleted(@Param("id") Long id);
   int requestRefund(@Param("id") Long id, @Param("studentUserId") Long studentUserId);
 }

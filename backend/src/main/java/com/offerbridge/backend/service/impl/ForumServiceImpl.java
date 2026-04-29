@@ -643,10 +643,6 @@ public class ForumServiceImpl implements ForumService {
       if (result.size() >= 8) break;
     }
 
-    String channelTag = CHANNEL_EXPERIENCE.equals(channel) ? "留学经验贴" : "offer墙";
-    if (result.stream().noneMatch(item -> item.equalsIgnoreCase(channelTag))) {
-      result.add(0, channelTag);
-    }
     return result;
   }
 

@@ -58,7 +58,7 @@
 
         <div class="tag-row">
           <el-tag type="primary" effect="light" size="small">{{ channelText(item.channel) }}</el-tag>
-          <el-tag v-for="tag in item.tags" :key="`${item.postId}-${tag}`" size="small" effect="plain">{{ tag }}</el-tag>
+          <el-tag v-for="tag in visibleTags(item.tags, item.channel)" :key="`${item.postId}-${tag}`" size="small" effect="plain">{{ tag }}</el-tag>
         </div>
 
         <div class="post-body">
@@ -206,6 +206,18 @@ onMounted(async () => {
 
 function channelText(value: ForumChannel) {
   return value === 'EXPERIENCE' ? '留学经验贴' : 'offer墙'
+}
+
+function visibleTags(tags: string[] = [], value: ForumChannel) {
+  const channelLabel = channelText(value).toLowerCase()
+  const seen = new Set<string>()
+  return tags.filter((tag) => {
+    const clean = (tag || '').trim()
+    const key = clean.toLowerCase()
+    if (!clean || key === channelLabel || seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
 }
 
 function notificationText(type: ForumNotificationType) {

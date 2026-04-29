@@ -15,6 +15,17 @@ export type StageStatus =
   | 'WAITING_CONFIRMATION'
   | 'COMPLETED'
 
+export interface StageAttachment {
+  id?: number
+  stageId?: number
+  fileName: string
+  fileUrl: string
+  contentType: 'IMAGE' | 'FILE' | string
+  mimeType?: string | null
+  sizeBytes?: number | null
+  uploadedAt?: string | null
+}
+
 export interface OrderSummary {
   id: number
   orderNo: string
@@ -47,9 +58,16 @@ export interface StageItem {
   status: StageStatus | string
   deliverableText?: string | null
   deliverableUrl?: string | null
+  attachments?: StageAttachment[]
   studentFeedback?: string | null
   submittedAt?: string | null
   completedAt?: string | null
+}
+
+export interface SubmitStagePayload {
+  deliverableText: string
+  deliverableUrl?: string
+  attachments?: StageAttachment[]
 }
 
 export interface TodoItem {

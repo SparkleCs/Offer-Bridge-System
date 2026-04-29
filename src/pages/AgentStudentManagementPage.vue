@@ -5,7 +5,6 @@
         <h2 class="section-title">学生服务管理</h2>
         <p class="section-desc">处理待报价订单，跟进已开案学生的阶段成果和待办确认。</p>
       </div>
-      <el-button :loading="loading" @click="loadOrders">刷新</el-button>
     </header>
 
     <div class="management-layout">
@@ -68,9 +67,25 @@
                   <el-tag size="small" :type="stageTagType(stage.status)">{{ stageLabel(stage.status) }}</el-tag>
                 </div>
                 <p v-if="stage.deliverableText">{{ stage.deliverableText }}</p>
+                <a v-if="stage.deliverableUrl" :href="stage.deliverableUrl" target="_blank" rel="noreferrer" class="legacy-link">
+                  查看材料链接
+                </a>
+                <div v-if="stage.attachments?.length" class="attachment-list compact">
+                  <a
+                    v-for="attachment in stage.attachments"
+                    :key="attachment.id || attachment.fileUrl"
+                    :href="attachment.fileUrl"
+                    target="_blank"
+                    rel="noreferrer"
+                    class="attachment-chip"
+                  >
+                    <el-icon><Picture v-if="attachment.contentType === 'IMAGE'" /><Document v-else /></el-icon>
+                    <span>{{ attachment.fileName }}</span>
+                  </a>
+                </div>
                 <p v-if="stage.studentFeedback" class="feedback">学生退回：{{ stage.studentFeedback }}</p>
               </div>
-              <el-button v-if="canSubmitStage(stage.status)" size="small" @click="openStageDialog(stage.id)">提交成果</el-button>
+              <el-button v-if="canSubmitStage(stage.status)" size="small" @click="openStageSubmit(stage.id)">提交成果</el-button>
             </article>
           </section>
 
@@ -106,29 +121,25 @@
       </main>
     </div>
 
-    <el-dialog v-model="stageDialogVisible" title="提交阶段成果" width="520px">
-      <el-input v-model="stageForm.deliverableText" type="textarea" :rows="4" placeholder="说明本阶段交付成果" />
-      <el-input v-model="stageForm.deliverableUrl" class="mt" placeholder="材料链接（可选）" />
-      <template #footer>
-        <el-button @click="stageDialogVisible = false">取消</el-button>
-        <el-button type="primary" @click="submitStageResult">提交给学生确认</el-button>
-      </template>
-    </el-dialog>
   </section>
 </template>
 
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Document, Picture } from '@element-plus/icons-vue'
+import { useRoute, useRouter } from 'vue-router'
 import {
   confirmTodo,
   createAgentTodo,
   getAgentServiceOrder,
   listAgentServiceOrders,
-  quoteServiceOrder,
-  submitStage
+  quoteServiceOrder
 } from '../services/order'
 import type { AgentOrderSummary, OrderDetail } from '../types/order'
+
+const route = useRoute()
+const router = useRouter()
 
 const orders = ref<AgentOrderSummary[]>([])
 const detail = ref<OrderDetail | null>(null)
@@ -136,18 +147,11 @@ const selectedId = ref<number | null>(null)
 const loading = ref(false)
 const detailLoading = ref(false)
 const savingQuote = ref(false)
-const stageDialogVisible = ref(false)
-const pendingStageId = ref<number | null>(null)
 
 const quoteForm = reactive({
   serviceTitle: '',
   finalAmount: 0,
   quoteDesc: ''
-})
-
-const stageForm = reactive({
-  deliverableText: '',
-  deliverableUrl: ''
 })
 
 const todoForm = reactive({
@@ -214,8 +218,10 @@ async function loadOrders() {
   loading.value = true
   try {
     orders.value = await listAgentServiceOrders()
-    if (!selectedId.value && orders.value.length) await selectOrder(orders.value[0].id)
-    else if (selectedId.value) await selectOrder(selectedId.value)
+    const queryOrderId = Number(route.query.orderId || 0)
+    const preferredId = queryOrderId && orders.value.some((item) => item.id === queryOrderId) ? queryOrderId : selectedId.value
+    if (!preferredId && orders.value.length) await selectOrder(orders.value[0].id)
+    else if (preferredId) await selectOrder(preferredId)
   } catch (error: any) {
     ElMessage.error(error?.message || '订单加载失败')
   } finally {
@@ -260,22 +266,9 @@ async function submitQuote() {
   }
 }
 
-function openStageDialog(stageId: number) {
-  pendingStageId.value = stageId
-  stageForm.deliverableText = ''
-  stageForm.deliverableUrl = ''
-  stageDialogVisible.value = true
-}
-
-async function submitStageResult() {
-  if (!detail.value || !pendingStageId.value || !stageForm.deliverableText.trim()) {
-    ElMessage.warning('请填写阶段成果')
-    return
-  }
-  const next = await submitStage(detail.value.order.id, pendingStageId.value, stageForm)
-  stageDialogVisible.value = false
-  await refresh(next)
-  ElMessage.success('已提交给学生确认')
+function openStageSubmit(stageId: number) {
+  if (!detail.value) return
+  router.push(`/agent-workbench/students/${detail.value.order.id}/stages/${stageId}/submit`)
 }
 
 async function confirmTodoItem(todoId: number) {
@@ -437,6 +430,45 @@ loadOrders()
 
 .feedback {
   color: #b14b38 !important;
+}
+
+.legacy-link {
+  display: inline-block;
+  margin-top: 8px;
+  color: #0f70c8;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.attachment-list.compact {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.attachment-chip {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #285c7a;
+  text-decoration: none;
+}
+
+.attachment-chip {
+  border: 1px solid #dbe7ef;
+  border-radius: 8px;
+  background: #f7fbfd;
+  padding: 8px 10px;
+}
+
+.attachment-chip span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .todo-row {

@@ -1,0 +1,72 @@
+USE offer_bridge;
+
+CREATE TABLE IF NOT EXISTS service_order_member_snapshot (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  team_id BIGINT NOT NULL,
+  member_id BIGINT NOT NULL,
+  role_code_snapshot VARCHAR(50) NOT NULL,
+  display_name_snapshot VARCHAR(100) NOT NULL,
+  job_title_snapshot VARCHAR(100) NULL,
+  avatar_url_snapshot VARCHAR(500) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_order_member_snapshot (order_id, member_id),
+  INDEX idx_snapshot_order (order_id),
+  INDEX idx_snapshot_team_member (team_id, member_id),
+  CONSTRAINT fk_snapshot_order FOREIGN KEY (order_id) REFERENCES service_order(id) ON DELETE CASCADE,
+  CONSTRAINT fk_snapshot_team FOREIGN KEY (team_id) REFERENCES agency_team(id) ON DELETE CASCADE,
+  CONSTRAINT fk_snapshot_member FOREIGN KEY (member_id) REFERENCES agency_member_profile(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS agency_member_review (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  order_id BIGINT NOT NULL,
+  student_user_id BIGINT NOT NULL,
+  org_id BIGINT NOT NULL,
+  team_id BIGINT NOT NULL,
+  member_id BIGINT NOT NULL,
+  role_code_snapshot VARCHAR(50) NOT NULL,
+  professional_score DECIMAL(3,2) NOT NULL,
+  communication_score DECIMAL(3,2) NOT NULL,
+  material_score DECIMAL(3,2) NOT NULL,
+  transparency_score DECIMAL(3,2) NOT NULL,
+  responsibility_score DECIMAL(3,2) NOT NULL,
+  overall_rating DECIMAL(3,2) NOT NULL,
+  nps_score INT NULL,
+  comment_text TEXT NULL,
+  anonymous TINYINT(1) NOT NULL DEFAULT 1,
+  status VARCHAR(30) NOT NULL DEFAULT 'APPROVED',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_review_order_member (order_id, member_id),
+  INDEX idx_review_team_member (team_id, member_id, status),
+  INDEX idx_review_member_status (member_id, status),
+  INDEX idx_review_org_status (org_id, status),
+  CONSTRAINT fk_review_order FOREIGN KEY (order_id) REFERENCES service_order(id) ON DELETE CASCADE,
+  CONSTRAINT fk_review_student FOREIGN KEY (student_user_id) REFERENCES user_account(id) ON DELETE CASCADE,
+  CONSTRAINT fk_review_org FOREIGN KEY (org_id) REFERENCES agency_org(id) ON DELETE CASCADE,
+  CONSTRAINT fk_review_team FOREIGN KEY (team_id) REFERENCES agency_team(id) ON DELETE CASCADE,
+  CONSTRAINT fk_review_member FOREIGN KEY (member_id) REFERENCES agency_member_profile(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS agency_rating_summary (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  scope_type VARCHAR(20) NOT NULL,
+  scope_id BIGINT NOT NULL,
+  team_id BIGINT NULL,
+  org_id BIGINT NULL,
+  member_id BIGINT NULL,
+  total_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  student_review_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  offer_outcome_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  process_performance_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  platform_trust_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  review_count INT NOT NULL DEFAULT 0,
+  positive_rate DECIMAL(5,2) NOT NULL DEFAULT 0,
+  confidence_label VARCHAR(50) NOT NULL DEFAULT '暂无足够评价',
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_rating_scope (scope_type, scope_id),
+  INDEX idx_rating_team (team_id),
+  INDEX idx_rating_org (org_id),
+  INDEX idx_rating_member (member_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

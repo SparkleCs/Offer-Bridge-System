@@ -143,6 +143,14 @@
       AND order_status IN ('PAID', 'IN_SERVICE')
   </update>
 
+  <update id="markCompleted">
+    UPDATE service_order
+    SET order_status = 'COMPLETED',
+        closed_at = COALESCE(closed_at, CURRENT_TIMESTAMP)
+    WHERE id = #{id}
+      AND order_status IN ('IN_SERVICE', 'PAID', 'COMPLETED')
+  </update>
+
   <update id="requestRefund">
     UPDATE service_order
     SET order_status = 'REFUND_REQUESTED'

@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ReviewMapper">
+  <insert id="insertOrderMemberSnapshots">
+    INSERT IGNORE INTO service_order_member_snapshot(
+      order_id, team_id, member_id, role_code_snapshot, display_name_snapshot, job_title_snapshot, avatar_url_snapshot
+    )
+    SELECT
+      #{orderId},
+      r.team_id,
+      m.id,
+      r.role_code,
+      m.display_name,
+      m.job_title,
+      m.avatar_url
+    FROM agency_team_publisher_rel r
+    JOIN agency_member_profile m ON m.id = r.member_id
+    WHERE r.team_id = #{teamId}
+      AND r.status = 'ACTIVE'
+      AND m.status = 'ACTIVE'
+  </insert>
+
+  <select id="listOrderReviewTargets" resultType="com.offerbridge.backend.dto.ReviewDtos$OrderReviewTarget">
+    SELECT
+      s.order_id AS orderId,
+      s.member_id AS memberId,
+      s.display_name_snapshot AS displayName,
+      s.avatar_url_snapshot AS avatarUrl,
+      s.job_title_snapshot AS jobTitle,
+      s.role_code_snapshot AS roleCode,
+      CASE WHEN r.id IS NULL THEN 0 ELSE 1 END AS reviewed
+    FROM service_order_member_snapshot s
+    LEFT JOIN agency_member_review r
+      ON r.order_id = s.order_id
+      AND r.member_id = s.member_id
+      AND r.status != 'DELETED'
+    WHERE s.order_id = #{orderId}
+    ORDER BY
+      CASE s.role_code_snapshot
+        WHEN 'CONSULTANT' THEN 1
+        WHEN 'PLANNER' THEN 2
+        WHEN 'WRITER' THEN 3
+        WHEN 'APPLY_SPECIALIST' THEN 4
+        WHEN 'VISA_SPECIALIST' THEN 5
+        WHEN 'AFTERCARE' THEN 6
+        ELSE 99
+      END,
+      s.member_id ASC
+  </select>
+
+  <select id="countSnapshotMember" resultType="int">
+    SELECT COUNT(1)
+    FROM service_order_member_snapshot
+    WHERE order_id = #{orderId}
+      AND member_id = #{memberId}
+  </select>
+
+  <select id="countReviewByOrderAndMember" resultType="int">
+    SELECT COUNT(1)
+    FROM agency_member_review
+    WHERE order_id = #{orderId}
+      AND member_id = #{memberId}
+      AND status != 'DELETED'
+  </select>
+
+  <insert id="insertMemberReview">
+    INSERT INTO agency_member_review(
+      order_id, student_user_id, org_id, team_id, member_id, role_code_snapshot,
+      professional_score, communication_score, material_score, transparency_score, responsibility_score,
+      overall_rating, nps_score, comment_text, anonymous, status
+    )
+    SELECT
+      #{orderId}, #{studentUserId}, o.org_id, o.team_id, s.member_id, s.role_code_snapshot,
+      #{professionalScore}, #{communicationScore}, #{materialScore}, #{transparencyScore}, #{responsibilityScore},
+      #{overallRating}, #{npsScore}, #{commentText}, #{anonymous}, 'APPROVED'
+    FROM service_order o
+    JOIN service_order_member_snapshot s ON s.order_id = o.id
+    WHERE o.id = #{orderId}
+      AND s.member_id = #{memberId}
+    LIMIT 1
+  </insert>
+
+  <select id="listTeamMemberReviewStats" resultType="com.offerbridge.backend.dto.ReviewDtos$TeamMemberReviewStats">
+    SELECT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.avatar_url AS avatarUrl,
+      m.job_title AS jobTitle,
+      tr.role_code AS roleCode,
+      COALESCE(SUM(r.overall_rating), 0) AS reviewSum,
+      COALESCE(ROUND(AVG(r.overall_rating), 2), 0) AS avgRating,
+      COUNT(r.id) AS reviewCount,
+      COALESCE(SUM(CASE WHEN r.overall_rating &gt;= 4.5 THEN 1 ELSE 0 END), 0) AS positiveCount,
+      COALESCE(ROUND(SUM(CASE WHEN r.overall_rating &gt;= 4.5 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(r.id), 0), 2), 0) AS positiveRate,
+      SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(TRIM(r.comment_text), '') ORDER BY r.created_at DESC SEPARATOR ' / '), ' / ', 2) AS keywordSummary
+    FROM agency_team_publisher_rel tr
+    JOIN agency_member_profile m ON m.id = tr.member_id
+    LEFT JOIN agency_member_review r
+      ON r.member_id = m.id
+      AND r.status = 'APPROVED'
+    WHERE tr.team_id = #{teamId}
+      AND tr.status = 'ACTIVE'
+      AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.display_name, m.avatar_url, m.job_title, tr.role_code
+    ORDER BY
+      CASE tr.role_code
+        WHEN 'CONSULTANT' THEN 1
+        WHEN 'PLANNER' THEN 2
+        WHEN 'WRITER' THEN 3
+        WHEN 'APPLY_SPECIALIST' THEN 4
+        WHEN 'VISA_SPECIALIST' THEN 5
+        WHEN 'AFTERCARE' THEN 6
+        ELSE 99
+      END,
+      m.id ASC
+  </select>
+
+  <select id="listMemberReviews" resultType="com.offerbridge.backend.dto.ReviewDtos$MemberReviewItem">
+    SELECT
+      r.id AS reviewId,
+      r.member_id AS memberId,
+      CASE WHEN r.anonymous = 1 THEN '匿名学生' ELSE COALESCE(sp.name, '学生') END AS studentName,
+      r.overall_rating AS overallRating,
+      r.professional_score AS professionalScore,
+      r.communication_score AS communicationScore,
+      r.material_score AS materialScore,
+      r.transparency_score AS transparencyScore,
+      r.responsibility_score AS responsibilityScore,
+      r.nps_score AS npsScore,
+      r.comment_text AS commentText,
+      DATE_FORMAT(r.created_at, '%Y-%m-%d %H:%i:%s') AS createdAt
+    FROM agency_member_review r
+    LEFT JOIN student_profile sp ON sp.user_id = r.student_user_id
+    WHERE r.team_id = #{teamId}
+      AND r.member_id = #{memberId}
+      AND r.status = 'APPROVED'
+    ORDER BY r.created_at DESC, r.id DESC
+    LIMIT 50
+  </select>
+
+  <select id="getOfferOutcomeStats" resultType="com.offerbridge.backend.dto.ReviewDtos$OfferOutcomeStats">
+    SELECT
+      COALESCE(SUM(CASE WHEN a.status_code IN ('ADMITTED', 'REJECTED') THEN 1 ELSE 0 END), 0) AS outcomeCount,
+      COALESCE(SUM(CASE WHEN a.status_code = 'ADMITTED' THEN 1 ELSE 0 END), 0) AS admittedCount,
+      COALESCE(SUM(CASE WHEN a.status_code = 'ADMITTED' AND s.qs_rank IS NOT NULL AND s.qs_rank &lt;= 100 THEN 1 ELSE 0 END), 0) AS highQualityOfferCount
+    FROM service_order o
+    LEFT JOIN student_application_list a ON a.user_id = o.student_user_id
+    LEFT JOIN program p ON p.id = a.program_id
+    LEFT JOIN school s ON s.id = p.school_id
+    WHERE o.team_id = #{teamId}
+      AND o.payment_status = 'PAID'
+  </select>
+
+  <select id="getProcessStats" resultType="com.offerbridge.backend.dto.ReviewDtos$ProcessStats">
+    SELECT
+      COUNT(st.id) AS totalStages,
+      COALESCE(SUM(CASE WHEN st.status = 'COMPLETED' THEN 1 ELSE 0 END), 0) AS completedStages,
+      COALESCE(SUM(CASE WHEN st.student_feedback IS NOT NULL AND st.student_feedback != '' THEN 1 ELSE 0 END), 0) AS rejectedStages,
+      COUNT(DISTINCT o.id) AS totalOrders,
+      COALESCE(COUNT(DISTINCT CASE WHEN o.order_status = 'COMPLETED' THEN o.id END), 0) AS completedOrders
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    LEFT JOIN service_stage st ON st.case_id = c.id
+    WHERE o.team_id = #{teamId}
+      AND o.payment_status = 'PAID'
+  </select>
+
+  <select id="getPlatformTrustStats" resultType="com.offerbridge.backend.dto.ReviewDtos$PlatformTrustStats">
+    SELECT
+      o.verification_status AS orgVerificationStatus,
+      COUNT(DISTINCT m.id) AS totalMembers,
+      COALESCE(COUNT(DISTINCT CASE WHEN vr.status = 'APPROVED' OR m.verified_badge_status = 'APPROVED' THEN m.id END), 0) AS approvedMembers,
+      COALESCE((
+        SELECT COUNT(1)
+        FROM refund_request rr
+        JOIN service_order so ON so.id = rr.order_id
+        WHERE so.team_id = t.id
+          AND rr.status IN ('REQUESTED', 'APPROVED')
+      ), 0) AS refundCount
+    FROM agency_team t
+    JOIN agency_org o ON o.id = t.org_id
+    LEFT JOIN agency_team_publisher_rel tr ON tr.team_id = t.id AND tr.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tr.member_id AND m.status = 'ACTIVE'
+    LEFT JOIN verification_record vr ON vr.user_id = m.user_id AND vr.verify_type = 'AGENT_MEMBER_CERT'
+    WHERE t.id = #{teamId}
+    GROUP BY t.id, o.verification_status
+  </select>
+
+  <insert id="upsertRatingSummary">
+    INSERT INTO agency_rating_summary(
+      scope_type, scope_id, team_id, org_id, member_id, total_score, student_review_score,
+      offer_outcome_score, process_performance_score, platform_trust_score, review_count, positive_rate, confidence_label
+    )
+    VALUES(
+      #{scopeType}, #{scopeId}, #{teamId}, #{orgId}, #{memberId}, #{totalScore}, #{studentReviewScore},
+      #{offerOutcomeScore}, #{processPerformanceScore}, #{platformTrustScore}, #{reviewCount}, #{positiveRate}, #{confidenceLabel}
+    )
+    ON DUPLICATE KEY UPDATE
+      team_id = VALUES(team_id),
+      org_id = VALUES(org_id),
+      member_id = VALUES(member_id),
+      total_score = VALUES(total_score),
+      student_review_score = VALUES(student_review_score),
+      offer_outcome_score = VALUES(offer_outcome_score),
+      process_performance_score = VALUES(process_performance_score),
+      platform_trust_score = VALUES(platform_trust_score),
+      review_count = VALUES(review_count),
+      positive_rate = VALUES(positive_rate),
+      confidence_label = VALUES(confidence_label)
+  </insert>
+
+  <select id="listOrgPublishedTeamIds" resultType="long">
+    SELECT id
+    FROM agency_team
+    WHERE org_id = #{orgId}
+      AND status = 'ACTIVE'
+      AND publish_status = 'PUBLISHED'
+    ORDER BY updated_at DESC, id DESC
+  </select>
+
+  <select id="listOrgMemberReviewStats" resultType="com.offerbridge.backend.dto.ReviewDtos$TeamMemberReviewStats">
+    SELECT
+      m.id AS memberId,
+      m.display_name AS displayName,
+      m.avatar_url AS avatarUrl,
+      m.job_title AS jobTitle,
+      COALESCE(pr.role_code, '') AS roleCode,
+      COALESCE(SUM(r.overall_rating), 0) AS reviewSum,
+      COALESCE(ROUND(AVG(r.overall_rating), 2), 0) AS avgRating,
+      COUNT(r.id) AS reviewCount,
+      COALESCE(SUM(CASE WHEN r.overall_rating &gt;= 4.5 THEN 1 ELSE 0 END), 0) AS positiveCount,
+      COALESCE(ROUND(SUM(CASE WHEN r.overall_rating &gt;= 4.5 THEN 1 ELSE 0 END) * 100 / NULLIF(COUNT(r.id), 0), 2), 0) AS positiveRate,
+      SUBSTRING_INDEX(GROUP_CONCAT(NULLIF(TRIM(r.comment_text), '') ORDER BY r.created_at DESC SEPARATOR ' / '), ' / ', 2) AS keywordSummary
+    FROM agency_member_profile m
+    LEFT JOIN agency_member_role_rel pr ON pr.member_id = m.id AND pr.is_primary = 1 AND pr.role_status = 'ACTIVE'
+    LEFT JOIN agency_member_review r ON r.member_id = m.id AND r.status = 'APPROVED'
+    WHERE m.org_id = #{orgId}
+      AND m.status = 'ACTIVE'
+    GROUP BY m.id, m.display_name, m.avatar_url, m.job_title, pr.role_code
+    ORDER BY reviewCount DESC, avgRating DESC, m.id DESC
+    LIMIT 20
+  </select>
+</mapper>

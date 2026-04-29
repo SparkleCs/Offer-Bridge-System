@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.ServiceStageAttachmentMapper">
+  <select id="listByOrderId" resultType="com.offerbridge.backend.dto.OrderDtos$StageAttachment">
+    SELECT
+      a.id AS id,
+      a.stage_id AS stageId,
+      a.file_name AS fileName,
+      a.file_url AS fileUrl,
+      a.content_type AS contentType,
+      a.mime_type AS mimeType,
+      a.size_bytes AS sizeBytes,
+      DATE_FORMAT(a.uploaded_at, '%Y-%m-%d %H:%i:%s') AS uploadedAt
+    FROM service_stage_attachment a
+    JOIN service_stage s ON s.id = a.stage_id
+    JOIN student_service_case c ON c.id = s.case_id
+    WHERE c.order_id = #{orderId}
+    ORDER BY a.stage_id ASC, a.sort_order ASC, a.id ASC
+  </select>
+
+  <delete id="deleteByStageId">
+    DELETE FROM service_stage_attachment
+    WHERE stage_id = #{stageId}
+  </delete>
+
+  <insert id="insertOne">
+    INSERT INTO service_stage_attachment(
+      stage_id, file_name, file_url, content_type, mime_type, size_bytes, uploaded_by_user_id, sort_order
+    )
+    VALUES(
+      #{stageId}, #{fileName}, #{fileUrl}, #{contentType}, #{mimeType}, #{sizeBytes}, #{uploadedByUserId}, #{sortOrder}
+    )
+  </insert>
+</mapper>
