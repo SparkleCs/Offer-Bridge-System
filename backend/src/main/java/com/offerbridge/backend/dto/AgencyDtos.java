@@ -375,6 +375,7 @@ public class AgencyDtos {
 
   public static class MemberProfileUpdateRequest {
     @NotBlank private String displayName;
+    private String wechatId;
     @NotBlank private String jobTitle;
     @NotBlank private String educationLevel;
     @NotBlank private String graduatedSchool;
@@ -388,6 +389,8 @@ public class AgencyDtos {
 
     public String getDisplayName() { return displayName; }
     public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
     public String getJobTitle() { return jobTitle; }
     public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
     public String getEducationLevel() { return educationLevel; }
@@ -415,6 +418,7 @@ public class AgencyDtos {
     private Long orgId;
     private String displayName;
     private String avatarUrl;
+    private String wechatId;
     private String jobTitle;
     private String educationLevel;
     private String graduatedSchool;
@@ -436,6 +440,8 @@ public class AgencyDtos {
     public void setDisplayName(String displayName) { this.displayName = displayName; }
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
     public String getJobTitle() { return jobTitle; }
     public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
     public String getEducationLevel() { return educationLevel; }
@@ -467,6 +473,13 @@ public class AgencyDtos {
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+  }
+
+  public static class MemberWechatUpdateRequest {
+    @NotBlank private String wechatId;
+
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
   }
 
   public static class MemberVerificationSubmitRequest {

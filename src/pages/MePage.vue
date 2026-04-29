@@ -32,6 +32,7 @@
           <el-row :gutter="12">
             <el-col :span="12"><el-form-item label="姓名"><el-input v-model="basicForm.name" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="邮箱"><el-input v-model="basicForm.email" /></el-form-item></el-col>
+            <el-col :span="12"><el-form-item label="微信号"><el-input v-model="basicForm.wechatId" placeholder="用于同意互换微信后展示" /></el-form-item></el-col>
             <el-col :span="12">
               <el-form-item label="学历层次">
                 <el-select v-model="basicForm.educationLevel">
@@ -69,6 +70,7 @@
         <div v-else class="display-grid">
           <div class="display-item"><span class="k">姓名</span><span class="v">{{ basicForm.name || '未填写' }}</span></div>
           <div class="display-item"><span class="k">邮箱</span><span class="v">{{ basicForm.email || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">微信号</span><span class="v">{{ basicForm.wechatId || '未填写' }}</span></div>
           <div class="display-item"><span class="k">学历层次</span><span class="v">{{ educationLabelMap[basicForm.educationLevel] || '未填写' }}</span></div>
           <div class="display-item"><span class="k">学校</span><span class="v">{{ basicForm.schoolName || '未填写' }}</span></div>
           <div class="display-item"><span class="k">当前专业</span><span class="v">{{ basicForm.major || '未填写' }}</span></div>
@@ -591,6 +593,7 @@ const latestServiceOrderDetail = ref<OrderDetail | null>(null)
 const basicForm = reactive({
   name: '',
   email: '',
+  wechatId: '',
   educationLevel: 'UNDERGRAD' as EducationLevel,
   schoolName: '',
   major: '',
@@ -957,6 +960,7 @@ async function loadData() {
     if (profile) {
       basicForm.name = profile.name || ''
       basicForm.email = profile.email || ''
+      basicForm.wechatId = profile.wechatId || ''
       basicForm.educationLevel = (profile.educationLevel || 'UNDERGRAD') as EducationLevel
       basicForm.schoolName = profile.schoolName || ''
       basicForm.major = profile.major || ''
@@ -1084,6 +1088,7 @@ async function saveBasic() {
     const profile = await updateStudentBasicProfile({
       name: basicForm.name,
       email: basicForm.email,
+      wechatId: basicForm.wechatId,
       educationLevel: basicForm.educationLevel,
       schoolName: basicForm.schoolName,
       major: basicForm.major,

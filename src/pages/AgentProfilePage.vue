@@ -10,6 +10,7 @@
         <el-row :gutter="14">
           <el-col :span="12"><el-form-item label="展示名"><el-input v-model="profile.displayName" placeholder="请输入展示名称" /></el-form-item></el-col>
           <el-col :span="12"><el-form-item label="岗位名"><el-input v-model="profile.jobTitle" placeholder="例如：留学咨询顾问" /></el-form-item></el-col>
+          <el-col :span="12"><el-form-item label="微信号"><el-input v-model="profile.wechatId" placeholder="用于同意互换微信后展示" /></el-form-item></el-col>
           <el-col :span="8">
             <el-form-item label="学历">
               <el-select v-model="profile.educationLevel" placeholder="请选择学历" class="full-select">
@@ -136,6 +137,7 @@ const specialCountryList = ref<string[]>([])
 
 const profile = reactive({
   displayName: '',
+  wechatId: '',
   jobTitle: '咨询顾问',
   educationLevel: '本科',
   graduatedSchool: '',
@@ -192,6 +194,7 @@ async function loadProfile() {
   try {
     const res = await getMyAgencyProfile()
     profile.displayName = res.displayName || ''
+    profile.wechatId = res.wechatId || ''
     profile.jobTitle = res.jobTitle || ''
     profile.educationLevel = res.educationLevel || ''
     profile.graduatedSchool = res.graduatedSchool || ''

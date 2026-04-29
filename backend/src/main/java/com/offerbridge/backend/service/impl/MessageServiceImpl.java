@@ -1,11 +1,20 @@
 package com.offerbridge.backend.service.impl;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.offerbridge.backend.dto.MessageDtos;
 import com.offerbridge.backend.entity.AgencyMemberProfile;
 import com.offerbridge.backend.entity.AgencyOrg;
 import com.offerbridge.backend.entity.AgencyTeam;
 import com.offerbridge.backend.entity.ServiceOrder;
+import com.offerbridge.backend.entity.StudentCompetitionExperience;
+import com.offerbridge.backend.entity.StudentExchangeExperience;
+import com.offerbridge.backend.entity.StudentLanguageScore;
+import com.offerbridge.backend.entity.StudentPublication;
 import com.offerbridge.backend.entity.StudentProfile;
+import com.offerbridge.backend.entity.StudentResearchExperience;
+import com.offerbridge.backend.entity.StudentTargetCountry;
+import com.offerbridge.backend.entity.StudentWorkExperience;
 import com.offerbridge.backend.entity.UserAccount;
 import com.offerbridge.backend.entity.VerificationRecord;
 import com.offerbridge.backend.entity.chat.ChatConversationDoc;
@@ -16,7 +25,14 @@ import com.offerbridge.backend.mapper.AgencyMemberPermissionRelMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.ServiceOrderMapper;
+import com.offerbridge.backend.mapper.StudentCompetitionExperienceMapper;
+import com.offerbridge.backend.mapper.StudentExchangeExperienceMapper;
+import com.offerbridge.backend.mapper.StudentLanguageScoreMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
+import com.offerbridge.backend.mapper.StudentPublicationMapper;
+import com.offerbridge.backend.mapper.StudentResearchExperienceMapper;
+import com.offerbridge.backend.mapper.StudentTargetCountryMapper;
+import com.offerbridge.backend.mapper.StudentWorkExperienceMapper;
 import com.offerbridge.backend.mapper.SystemNotificationMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
@@ -36,8 +52,11 @@ import org.springframework.util.StringUtils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class MessageServiceImpl implements MessageService {
@@ -46,8 +65,15 @@ public class MessageServiceImpl implements MessageService {
   private static final String MESSAGE_TEXT = "TEXT";
   private static final String MESSAGE_IMAGE = "IMAGE";
   private static final String MESSAGE_FILE = "FILE";
+  private static final String MESSAGE_ACTION_CARD = "ACTION_CARD";
   private static final String STATUS_UNREAD = "UNREAD";
   private static final String STATUS_READ = "READ";
+  private static final String ACTION_RESUME_ACCESS = "RESUME_ACCESS";
+  private static final String ACTION_PHONE_EXCHANGE = "PHONE_EXCHANGE";
+  private static final String ACTION_WECHAT_EXCHANGE = "WECHAT_EXCHANGE";
+  private static final String ACTION_PENDING = "PENDING";
+  private static final String ACTION_APPROVED = "APPROVED";
+  private static final String ACTION_REJECTED = "REJECTED";
   private static final String DEFAULT_GREETING = "您好，想咨询一下留学申请相关问题。";
   private static final String DEFAULT_AGENT_GREETING = "你好，我是留学顾问，看到你的申请方向比较匹配，想进一步了解你的需求。";
   private static final String FILTER_ALL = "all";
@@ -72,6 +98,14 @@ public class MessageServiceImpl implements MessageService {
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
   private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
   private final ServiceOrderMapper serviceOrderMapper;
+  private final StudentLanguageScoreMapper studentLanguageScoreMapper;
+  private final StudentTargetCountryMapper studentTargetCountryMapper;
+  private final StudentResearchExperienceMapper studentResearchExperienceMapper;
+  private final StudentPublicationMapper studentPublicationMapper;
+  private final StudentCompetitionExperienceMapper studentCompetitionExperienceMapper;
+  private final StudentWorkExperienceMapper studentWorkExperienceMapper;
+  private final StudentExchangeExperienceMapper studentExchangeExperienceMapper;
+  private final ObjectMapper objectMapper;
 
   public MessageServiceImpl(SystemNotificationMapper systemNotificationMapper,
                             ChatConversationRepository chatConversationRepository,
@@ -86,7 +120,15 @@ public class MessageServiceImpl implements MessageService {
                             AgencyOrgMapper agencyOrgMapper,
                             AgencyMemberProfileMapper agencyMemberProfileMapper,
                             AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
-                            ServiceOrderMapper serviceOrderMapper) {
+                            ServiceOrderMapper serviceOrderMapper,
+                            StudentLanguageScoreMapper studentLanguageScoreMapper,
+                            StudentTargetCountryMapper studentTargetCountryMapper,
+                            StudentResearchExperienceMapper studentResearchExperienceMapper,
+                            StudentPublicationMapper studentPublicationMapper,
+                            StudentCompetitionExperienceMapper studentCompetitionExperienceMapper,
+                            StudentWorkExperienceMapper studentWorkExperienceMapper,
+                            StudentExchangeExperienceMapper studentExchangeExperienceMapper,
+                            ObjectMapper objectMapper) {
     this.systemNotificationMapper = systemNotificationMapper;
     this.chatConversationRepository = chatConversationRepository;
     this.chatMessageRepository = chatMessageRepository;
@@ -101,6 +143,14 @@ public class MessageServiceImpl implements MessageService {
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
     this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
     this.serviceOrderMapper = serviceOrderMapper;
+    this.studentLanguageScoreMapper = studentLanguageScoreMapper;
+    this.studentTargetCountryMapper = studentTargetCountryMapper;
+    this.studentResearchExperienceMapper = studentResearchExperienceMapper;
+    this.studentPublicationMapper = studentPublicationMapper;
+    this.studentCompetitionExperienceMapper = studentCompetitionExperienceMapper;
+    this.studentWorkExperienceMapper = studentWorkExperienceMapper;
+    this.studentExchangeExperienceMapper = studentExchangeExperienceMapper;
+    this.objectMapper = objectMapper;
   }
 
   @Override
@@ -265,6 +315,131 @@ public class MessageServiceImpl implements MessageService {
   }
 
   @Override
+  public MessageDtos.ChatMessageItem startChatAction(Long userId, String conversationId, MessageDtos.ChatActionRequest request) {
+    ChatConversationDoc conversation = requireParticipant(userId, conversationId);
+    String actionType = normalizeActionType(request.getActionType());
+    boolean studentRequester = isStudentParticipant(conversation, userId);
+    Instant now = Instant.now();
+    String actionStatus = ACTION_PENDING;
+
+    if (ACTION_RESUME_ACCESS.equals(actionType) && studentRequester) {
+      grantConversationAction(conversation, actionType, now);
+      actionStatus = ACTION_APPROVED;
+    } else if (ACTION_PHONE_EXCHANGE.equals(actionType) && Boolean.TRUE.equals(conversation.getPhoneExchangeGranted())) {
+      actionStatus = ACTION_APPROVED;
+    } else if (ACTION_WECHAT_EXCHANGE.equals(actionType)) {
+      requireWechatForUser(conversation, userId);
+      if (Boolean.TRUE.equals(conversation.getWechatExchangeGranted())) {
+        actionStatus = ACTION_APPROVED;
+      }
+    }
+
+    String content = serializeActionPayload(actionType, actionStatus, userId, studentRequester ? ROLE_STUDENT : ROLE_AGENT_MEMBER, null, now, null);
+    ChatMessageDoc message = appendMessage(conversation, userId, MESSAGE_ACTION_CARD, content);
+    return toMessageItem(message, userId);
+  }
+
+  @Override
+  public MessageDtos.ChatMessageItem respondChatAction(Long userId, String conversationId, String actionId, MessageDtos.ChatActionRespondRequest request) {
+    ChatConversationDoc conversation = requireParticipant(userId, conversationId);
+    ChatMessageDoc message = chatMessageRepository.findById(actionId)
+      .orElseThrow(() -> new BizException("BIZ_NOT_FOUND", "请求卡片不存在"));
+    if (!conversationId.equals(message.getConversationId()) || !MESSAGE_ACTION_CARD.equals(message.getContentType())) {
+      throw new BizException("BIZ_BAD_REQUEST", "请求卡片不存在");
+    }
+    Map<String, Object> payload = parseActionPayload(message.getContent());
+    String actionType = String.valueOf(payload.getOrDefault("actionType", ""));
+    String actionStatus = String.valueOf(payload.getOrDefault("status", ""));
+    Long requesterUserId = toLong(payload.get("requesterUserId"));
+    if (!ACTION_PENDING.equals(actionStatus)) {
+      throw new BizException("BIZ_BAD_REQUEST", "该请求已处理");
+    }
+    if (Objects.equals(requesterUserId, userId)) {
+      throw new BizException("BIZ_BAD_REQUEST", "不能处理自己发起的请求");
+    }
+    if (ACTION_RESUME_ACCESS.equals(actionType) && !isStudentParticipant(conversation, userId)) {
+      throw new BizException("BIZ_FORBIDDEN", "仅学生可授权查看简历");
+    }
+
+    boolean approved = Boolean.TRUE.equals(request.getApproved());
+    Instant now = Instant.now();
+    String nextStatus = approved ? ACTION_APPROVED : ACTION_REJECTED;
+    if (approved) {
+      if (ACTION_WECHAT_EXCHANGE.equals(actionType)) {
+        requireWechatForUser(conversation, conversation.getStudentUserId());
+        requireWechatForUser(conversation, conversation.getAgentUserId());
+      }
+      grantConversationAction(conversation, actionType, now);
+    }
+    message.setContent(serializeActionPayload(
+      actionType,
+      nextStatus,
+      requesterUserId,
+      String.valueOf(payload.getOrDefault("requesterRole", "")),
+      userId,
+      toInstant(payload.get("requestedAt")),
+      now
+    ));
+    ChatMessageDoc saved = chatMessageRepository.save(message);
+    MessageDtos.ChatMessageItem studentPayload = toMessageItem(saved, conversation.getStudentUserId());
+    MessageDtos.ChatMessageItem agentPayload = toMessageItem(saved, conversation.getAgentUserId());
+    messagingTemplate.convertAndSendToUser(String.valueOf(conversation.getStudentUserId()), "/queue/chats", studentPayload);
+    messagingTemplate.convertAndSendToUser(String.valueOf(conversation.getAgentUserId()), "/queue/chats", agentPayload);
+    return toMessageItem(saved, userId);
+  }
+
+  @Override
+  public MessageDtos.StudentAcademicResumeView getStudentResume(Long userId, String conversationId) {
+    ChatConversationDoc conversation = requireParticipant(userId, conversationId);
+    if (!isStudentParticipant(conversation, userId) && !Boolean.TRUE.equals(conversation.getResumeAccessGranted())) {
+      throw new BizException("BIZ_FORBIDDEN", "学生尚未授权查看简历");
+    }
+    StudentProfile profile = studentProfileMapper.findByUserId(conversation.getStudentUserId());
+    if (profile == null) {
+      throw new BizException("BIZ_NOT_FOUND", "学生资料不存在");
+    }
+    MessageDtos.StudentAcademicResumeView view = new MessageDtos.StudentAcademicResumeView();
+    view.setStudentUserId(profile.getUserId());
+    view.setDisplayName(maskStudentName(profile.getName(), profile.getUserId()));
+    view.setEducationLevel(profile.getEducationLevel());
+    view.setSchoolName(profile.getSchoolName());
+    view.setMajor(profile.getMajor());
+    view.setGpaValue(profile.getGpaValue());
+    view.setGpaScale(profile.getGpaScale());
+    view.setRankValue(profile.getRankValue());
+    view.setTargetMajorText(profile.getTargetMajorText());
+    view.setIntakeTerm(profile.getIntakeTerm());
+    view.setLanguageScores(studentLanguageScoreMapper.listByUserId(profile.getUserId()).stream().map(this::toResumeLanguageScore).toList());
+    view.setTargetCountries(studentTargetCountryMapper.listByUserId(profile.getUserId()).stream().map(this::toResumeTargetCountry).toList());
+    view.setExchangeExperience(toResumeExchange(studentExchangeExperienceMapper.findByUserId(profile.getUserId())));
+    view.setResearchExperiences(buildResumeResearch(profile.getUserId()));
+    view.setCompetitionExperiences(studentCompetitionExperienceMapper.listByUserId(profile.getUserId()).stream().map(this::toResumeCompetition).toList());
+    view.setWorkExperiences(studentWorkExperienceMapper.listByUserId(profile.getUserId()).stream().map(this::toResumeWork).toList());
+    return view;
+  }
+
+  @Override
+  public MessageDtos.ContactExchangeView getExchangedContact(Long userId, String conversationId, String contactType) {
+    ChatConversationDoc conversation = requireParticipant(userId, conversationId);
+    String type = normalizeContactType(contactType);
+    if (ACTION_PHONE_EXCHANGE.equals(type) && !Boolean.TRUE.equals(conversation.getPhoneExchangeGranted())) {
+      throw new BizException("BIZ_FORBIDDEN", "双方尚未同意交换电话");
+    }
+    if (ACTION_WECHAT_EXCHANGE.equals(type) && !Boolean.TRUE.equals(conversation.getWechatExchangeGranted())) {
+      throw new BizException("BIZ_FORBIDDEN", "双方尚未同意交换微信");
+    }
+    boolean studentViewer = isStudentParticipant(conversation, userId);
+    Long ownUserId = studentViewer ? conversation.getStudentUserId() : conversation.getAgentUserId();
+    Long peerUserId = studentViewer ? conversation.getAgentUserId() : conversation.getStudentUserId();
+
+    MessageDtos.ContactExchangeView view = new MessageDtos.ContactExchangeView();
+    view.setContactType(type);
+    view.setOwnContact(ACTION_PHONE_EXCHANGE.equals(type) ? phoneForUser(ownUserId) : wechatForUser(conversation, ownUserId));
+    view.setPeerContact(ACTION_PHONE_EXCHANGE.equals(type) ? phoneForUser(peerUserId) : wechatForUser(conversation, peerUserId));
+    return view;
+  }
+
+  @Override
   public MessageDtos.MarkReadResult markChatRead(Long userId, String conversationId) {
     ChatConversationDoc conversation = requireParticipant(userId, conversationId);
     Instant now = Instant.now();
@@ -361,6 +536,9 @@ public class MessageServiceImpl implements MessageService {
     doc.setUnreadByAgent(0);
     doc.setStarredByStudent(false);
     doc.setStarredByAgent(false);
+    doc.setResumeAccessGranted(false);
+    doc.setPhoneExchangeGranted(false);
+    doc.setWechatExchangeGranted(false);
     doc.setCreatedAt(now);
     doc.setUpdatedAt(now);
     return chatConversationRepository.save(doc);
@@ -446,6 +624,9 @@ public class MessageServiceImpl implements MessageService {
     item.setStudentMessageCount(resolveMessageCount(doc, ROLE_STUDENT));
     item.setAgentMessageCount(resolveMessageCount(doc, ROLE_AGENT_MEMBER));
     item.setViewerStarred(Boolean.TRUE.equals(studentViewer ? doc.getStarredByStudent() : doc.getStarredByAgent()));
+    item.setResumeAccessGranted(Boolean.TRUE.equals(doc.getResumeAccessGranted()));
+    item.setPhoneExchangeGranted(Boolean.TRUE.equals(doc.getPhoneExchangeGranted()));
+    item.setWechatExchangeGranted(Boolean.TRUE.equals(doc.getWechatExchangeGranted()));
     ServiceOrder order = findRelatedOrder(doc);
     item.setRelatedOrderId(order == null ? null : order.getId());
     item.setRelatedOrderStatus(order == null ? null : order.getOrderStatus());
@@ -563,7 +744,7 @@ public class MessageServiceImpl implements MessageService {
     if (MESSAGE_TEXT.equals(contentType) && value.length() > 1000) {
       throw new BizException("BIZ_BAD_REQUEST", "消息内容不能超过1000字");
     }
-    if (!MESSAGE_TEXT.equals(contentType) && !isUploadUrl(value)) {
+    if (!MESSAGE_TEXT.equals(contentType) && !MESSAGE_ACTION_CARD.equals(contentType) && !isUploadUrl(value)) {
       throw new BizException("BIZ_BAD_REQUEST", "附件地址不合法");
     }
     return value;
@@ -585,7 +766,209 @@ public class MessageServiceImpl implements MessageService {
   private String buildLastMessage(String contentType, String content) {
     if (MESSAGE_IMAGE.equals(contentType)) return "[图片]";
     if (MESSAGE_FILE.equals(contentType)) return "[文件] " + fileNameFromUrl(content);
+    if (MESSAGE_ACTION_CARD.equals(contentType)) return buildActionLastMessage(content);
     return content;
+  }
+
+  private String buildActionLastMessage(String content) {
+    Map<String, Object> payload = parseActionPayload(content);
+    String actionType = String.valueOf(payload.getOrDefault("actionType", ""));
+    if (ACTION_RESUME_ACCESS.equals(actionType)) return "[简历请求]";
+    if (ACTION_PHONE_EXCHANGE.equals(actionType)) return "[电话互换]";
+    if (ACTION_WECHAT_EXCHANGE.equals(actionType)) return "[微信互换]";
+    return "[互动请求]";
+  }
+
+  private String normalizeActionType(String value) {
+    if (!StringUtils.hasText(value)) {
+      throw new BizException("BIZ_BAD_REQUEST", "请选择请求类型");
+    }
+    String type = value.trim().toUpperCase();
+    if (ACTION_RESUME_ACCESS.equals(type) || ACTION_PHONE_EXCHANGE.equals(type) || ACTION_WECHAT_EXCHANGE.equals(type)) {
+      return type;
+    }
+    throw new BizException("BIZ_BAD_REQUEST", "请求类型不支持");
+  }
+
+  private String normalizeContactType(String value) {
+    String type = normalizeActionType(value);
+    if (ACTION_PHONE_EXCHANGE.equals(type) || ACTION_WECHAT_EXCHANGE.equals(type)) {
+      return type;
+    }
+    throw new BizException("BIZ_BAD_REQUEST", "联系方式类型不支持");
+  }
+
+  private String serializeActionPayload(String actionType,
+                                        String status,
+                                        Long requesterUserId,
+                                        String requesterRole,
+                                        Long responderUserId,
+                                        Instant requestedAt,
+                                        Instant respondedAt) {
+    Map<String, Object> payload = new LinkedHashMap<>();
+    payload.put("actionType", actionType);
+    payload.put("status", status);
+    payload.put("requesterUserId", requesterUserId);
+    payload.put("requesterRole", requesterRole);
+    payload.put("responderUserId", responderUserId);
+    payload.put("requestedAt", requestedAt == null ? Instant.now().toString() : requestedAt.toString());
+    payload.put("respondedAt", respondedAt == null ? null : respondedAt.toString());
+    try {
+      return objectMapper.writeValueAsString(payload);
+    } catch (Exception ex) {
+      throw new BizException("BIZ_INTERNAL_ERROR", "系统异常");
+    }
+  }
+
+  private Map<String, Object> parseActionPayload(String content) {
+    try {
+      return objectMapper.readValue(content, new TypeReference<Map<String, Object>>() {});
+    } catch (Exception ex) {
+      throw new BizException("BIZ_BAD_REQUEST", "请求卡片内容异常");
+    }
+  }
+
+  private void grantConversationAction(ChatConversationDoc conversation, String actionType, Instant now) {
+    if (ACTION_RESUME_ACCESS.equals(actionType)) {
+      conversation.setResumeAccessGranted(true);
+      conversation.setResumeAccessUpdatedAt(now);
+    } else if (ACTION_PHONE_EXCHANGE.equals(actionType)) {
+      conversation.setPhoneExchangeGranted(true);
+      conversation.setPhoneExchangeUpdatedAt(now);
+    } else if (ACTION_WECHAT_EXCHANGE.equals(actionType)) {
+      conversation.setWechatExchangeGranted(true);
+      conversation.setWechatExchangeUpdatedAt(now);
+    }
+    chatConversationRepository.save(conversation);
+  }
+
+  private Long toLong(Object value) {
+    if (value == null) return null;
+    if (value instanceof Number number) return number.longValue();
+    try {
+      return Long.valueOf(String.valueOf(value));
+    } catch (Exception ex) {
+      return null;
+    }
+  }
+
+  private Instant toInstant(Object value) {
+    if (value == null) return Instant.now();
+    try {
+      return Instant.parse(String.valueOf(value));
+    } catch (Exception ex) {
+      return Instant.now();
+    }
+  }
+
+  private String phoneForUser(Long userId) {
+    UserAccount user = userAccountMapper.findById(userId);
+    if (user == null || !StringUtils.hasText(user.getPhone())) {
+      throw new BizException("BIZ_NOT_FOUND", "联系方式不存在");
+    }
+    return user.getPhone();
+  }
+
+  private String wechatForUser(ChatConversationDoc conversation, Long userId) {
+    String wechatId;
+    if (Objects.equals(userId, conversation.getStudentUserId())) {
+      StudentProfile profile = studentProfileMapper.findByUserId(userId);
+      wechatId = profile == null ? null : profile.getWechatId();
+    } else if (Objects.equals(userId, conversation.getAgentUserId())) {
+      AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+      wechatId = member == null ? null : member.getWechatId();
+    } else {
+      throw new BizException("BIZ_FORBIDDEN", "无权查看该联系方式");
+    }
+    if (!StringUtils.hasText(wechatId)) {
+      throw new BizException("BIZ_BAD_REQUEST", "请先完善微信号");
+    }
+    return wechatId.trim();
+  }
+
+  private void requireWechatForUser(ChatConversationDoc conversation, Long userId) {
+    wechatForUser(conversation, userId);
+  }
+
+  private String maskStudentName(String name, Long userId) {
+    if (StringUtils.hasText(name)) {
+      return name.trim().substring(0, 1) + "同学";
+    }
+    return "学生" + userId;
+  }
+
+  private MessageDtos.LanguageScoreItem toResumeLanguageScore(StudentLanguageScore score) {
+    MessageDtos.LanguageScoreItem item = new MessageDtos.LanguageScoreItem();
+    item.setLanguageType(score.getLanguageType());
+    item.setScore(score.getScore());
+    return item;
+  }
+
+  private MessageDtos.TargetCountryItem toResumeTargetCountry(StudentTargetCountry country) {
+    MessageDtos.TargetCountryItem item = new MessageDtos.TargetCountryItem();
+    item.setCountryName(country.getCountryName());
+    return item;
+  }
+
+  private MessageDtos.ExchangeExperienceItem toResumeExchange(StudentExchangeExperience entity) {
+    if (entity == null) return null;
+    MessageDtos.ExchangeExperienceItem item = new MessageDtos.ExchangeExperienceItem();
+    item.setCountryName(entity.getCountryName());
+    item.setUniversityName(entity.getUniversityName());
+    item.setGpaValue(entity.getGpaValue());
+    item.setMajorCourses(entity.getMajorCourses());
+    item.setStartDate(entity.getStartDate());
+    item.setEndDate(entity.getEndDate());
+    return item;
+  }
+
+  private List<MessageDtos.ResearchItem> buildResumeResearch(Long studentUserId) {
+    List<StudentPublication> publications = studentPublicationMapper.listByUserId(studentUserId);
+    Map<Long, List<MessageDtos.PublicationItem>> publicationMap = publications.stream()
+      .collect(Collectors.groupingBy(StudentPublication::getResearchId, LinkedHashMap::new, Collectors.mapping(this::toResumePublication, Collectors.toList())));
+    return studentResearchExperienceMapper.listByUserId(studentUserId).stream().map(item -> {
+      MessageDtos.ResearchItem view = new MessageDtos.ResearchItem();
+      view.setId(item.getId());
+      view.setProjectName(item.getProjectName());
+      view.setStartDate(item.getStartDate());
+      view.setEndDate(item.getEndDate());
+      view.setContentSummary(item.getContentSummary());
+      view.setHasPublication(item.getHasPublication());
+      view.setPublications(publicationMap.getOrDefault(item.getId(), List.of()));
+      return view;
+    }).toList();
+  }
+
+  private MessageDtos.PublicationItem toResumePublication(StudentPublication publication) {
+    MessageDtos.PublicationItem item = new MessageDtos.PublicationItem();
+    item.setTitle(publication.getTitle());
+    item.setAuthorRole(publication.getAuthorRole());
+    item.setJournalName(publication.getJournalName());
+    item.setPublishedYear(publication.getPublishedYear());
+    return item;
+  }
+
+  private MessageDtos.CompetitionItem toResumeCompetition(StudentCompetitionExperience entity) {
+    MessageDtos.CompetitionItem item = new MessageDtos.CompetitionItem();
+    item.setId(entity.getId());
+    item.setCompetitionName(entity.getCompetitionName());
+    item.setCompetitionLevel(entity.getCompetitionLevel());
+    item.setAward(entity.getAward());
+    item.setRoleDesc(entity.getRoleDesc());
+    item.setEventDate(entity.getEventDate());
+    return item;
+  }
+
+  private MessageDtos.WorkItem toResumeWork(StudentWorkExperience entity) {
+    MessageDtos.WorkItem item = new MessageDtos.WorkItem();
+    item.setId(entity.getId());
+    item.setCompanyName(entity.getCompanyName());
+    item.setPositionName(entity.getPositionName());
+    item.setStartDate(entity.getStartDate());
+    item.setEndDate(entity.getEndDate());
+    item.setKeywords(entity.getKeywords());
+    item.setContentSummary(entity.getContentSummary());
+    return item;
   }
 
   private String fileNameFromUrl(String value) {

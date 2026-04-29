@@ -28,6 +28,7 @@ public class StudentDtos {
     private String name;
     @Email
     private String email;
+    private String wechatId;
     private String educationLevel;
     private String schoolName;
     private String major;
@@ -44,6 +45,8 @@ public class StudentDtos {
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
     public String getEducationLevel() { return educationLevel; }
     public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
     public String getSchoolName() { return schoolName; }
@@ -87,11 +90,20 @@ public class StudentDtos {
     public void setRankValue(Integer rankValue) { this.rankValue = rankValue; }
   }
 
+  public static class WechatUpdateRequest {
+    @NotBlank
+    private String wechatId;
+
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
+  }
+
   public static class ProfileView {
     private Long userId;
     private String phone;
     private String name;
     private String email;
+    private String wechatId;
     private String educationLevel;
     private String schoolName;
     private String major;
@@ -116,6 +128,8 @@ public class StudentDtos {
     public void setName(String name) { this.name = name; }
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+    public String getWechatId() { return wechatId; }
+    public void setWechatId(String wechatId) { this.wechatId = wechatId; }
     public String getEducationLevel() { return educationLevel; }
     public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
     public String getSchoolName() { return schoolName; }

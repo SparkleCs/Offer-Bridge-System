@@ -8,6 +8,7 @@
     <result column="display_name" property="displayName"/>
     <result column="avatar_url" property="avatarUrl"/>
     <result column="real_name" property="realName"/>
+    <result column="wechat_id" property="wechatId"/>
     <result column="job_title" property="jobTitle"/>
     <result column="education_level" property="educationLevel"/>
     <result column="graduated_school" property="graduatedSchool"/>
@@ -24,7 +25,7 @@
   </resultMap>
 
   <select id="findByUserId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, wechat_id, job_title, education_level, graduated_school, major,
            years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
            profile_audit_status, status
     FROM agency_member_profile
@@ -33,7 +34,7 @@
   </select>
 
   <select id="findById" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, wechat_id, job_title, education_level, graduated_school, major,
            years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
            profile_audit_status, status
     FROM agency_member_profile
@@ -42,7 +43,7 @@
   </select>
 
   <select id="findByOrgAndUserId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, wechat_id, job_title, education_level, graduated_school, major,
            years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
            profile_audit_status, status
     FROM agency_member_profile
@@ -51,7 +52,7 @@
   </select>
 
   <select id="findByOrgAndMemberId" resultMap="BaseMap">
-    SELECT id, user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+    SELECT id, user_id, org_id, display_name, avatar_url, real_name, wechat_id, job_title, education_level, graduated_school, major,
            years_of_experience, special_countries, special_directions, bio, service_style_tags, public_status, verified_badge_status,
            profile_audit_status, status
     FROM agency_member_profile
@@ -113,11 +114,11 @@
 
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id">
     INSERT INTO agency_member_profile(
-      user_id, org_id, display_name, avatar_url, real_name, job_title, education_level, graduated_school, major,
+      user_id, org_id, display_name, avatar_url, real_name, wechat_id, job_title, education_level, graduated_school, major,
       years_of_experience, special_countries, special_directions, bio, service_style_tags,
       public_status, verified_badge_status, status
     ) VALUES(
-      #{userId}, #{orgId}, #{displayName}, #{avatarUrl}, #{realName}, #{jobTitle}, #{educationLevel}, #{graduatedSchool}, #{major},
+      #{userId}, #{orgId}, #{displayName}, #{avatarUrl}, #{realName}, #{wechatId}, #{jobTitle}, #{educationLevel}, #{graduatedSchool}, #{major},
       #{yearsOfExperience}, #{specialCountries}, #{specialDirections}, #{bio}, #{serviceStyleTags},
       #{publicStatus}, #{verifiedBadgeStatus}, #{status}
     )
@@ -128,6 +129,7 @@
     SET display_name = #{displayName},
         avatar_url = #{avatarUrl},
         real_name = #{realName},
+        wechat_id = #{wechatId},
         job_title = #{jobTitle},
         education_level = #{educationLevel},
         graduated_school = #{graduatedSchool},
@@ -147,6 +149,7 @@
     UPDATE agency_member_profile
     SET display_name = #{displayName},
         avatar_url = #{avatarUrl},
+        wechat_id = #{wechatId},
         job_title = #{jobTitle},
         education_level = #{educationLevel},
         graduated_school = #{graduatedSchool},
@@ -175,6 +178,12 @@
   <update id="updateAvatarByUserId">
     UPDATE agency_member_profile
     SET avatar_url = #{avatarUrl}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateWechatIdByUserId">
+    UPDATE agency_member_profile
+    SET wechat_id = #{wechatId}
     WHERE user_id = #{userId}
   </update>
 

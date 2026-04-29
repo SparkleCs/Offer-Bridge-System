@@ -5,6 +5,7 @@ import com.offerbridge.backend.dto.StudentDtos;
 public interface StudentService {
   StudentDtos.ProfileView getProfile(Long userId);
   StudentDtos.ProfileView updateBasicProfile(Long userId, StudentDtos.ProfileBasicUpdateRequest request);
+  StudentDtos.ProfileView updateWechat(Long userId, StudentDtos.WechatUpdateRequest request);
   StudentDtos.ProfileView updateAcademicProfile(Long userId, StudentDtos.ProfileAcademicUpdateRequest request);
   StudentDtos.ResearchView getResearch(Long userId);
   StudentDtos.ResearchView saveResearch(Long userId, StudentDtos.ResearchSaveRequest request);

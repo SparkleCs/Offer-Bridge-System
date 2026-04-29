@@ -237,6 +237,7 @@ public class AgencyServiceImpl implements AgencyService {
     requireOrgApproved(org);
     AgencyMemberProfile member = requireOrgMember(org.getId(), memberId);
     member.setDisplayName(request.getDisplayName().trim());
+    member.setWechatId(trimToNull(request.getWechatId()));
     member.setJobTitle(request.getJobTitle().trim());
     member.setEducationLevel(request.getEducationLevel().trim());
     member.setGraduatedSchool(request.getGraduatedSchool().trim());
@@ -623,6 +624,17 @@ public class AgencyServiceImpl implements AgencyService {
       throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
     }
     agencyMemberProfileMapper.updateAvatarByUserId(userId, request.getAvatarUrl().trim());
+  }
+
+  @Override
+  @Transactional
+  public void updateMyWechat(Long userId, AgencyDtos.MemberWechatUpdateRequest request) {
+    requireRole(requireUser(userId), "AGENT_MEMBER");
+    AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
+    if (member == null) {
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在");
+    }
+    agencyMemberProfileMapper.updateWechatIdByUserId(userId, request.getWechatId().trim());
   }
 
   @Override
@@ -1096,6 +1108,7 @@ public class AgencyServiceImpl implements AgencyService {
     view.setOrgId(member.getOrgId());
     view.setDisplayName(member.getDisplayName());
     view.setAvatarUrl(member.getAvatarUrl());
+    view.setWechatId(member.getWechatId());
     view.setJobTitle(member.getJobTitle());
     view.setEducationLevel(member.getEducationLevel());
     view.setGraduatedSchool(member.getGraduatedSchool());

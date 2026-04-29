@@ -203,6 +203,12 @@ public class AgencyController {
     return ApiResponse.ok();
   }
 
+  @PutMapping("/members/me/wechat")
+  public ApiResponse<Void> updateMyWechat(@Valid @RequestBody AgencyDtos.MemberWechatUpdateRequest request) {
+    agencyService.updateMyWechat(AuthContext.getUserId(), request);
+    return ApiResponse.ok();
+  }
+
   @PostMapping("/members/me/verification/submit")
   public ApiResponse<Void> submitMyVerification(@Valid @RequestBody AgencyDtos.MemberVerificationSubmitRequest request) {
     agencyService.submitMyVerification(AuthContext.getUserId(), request);

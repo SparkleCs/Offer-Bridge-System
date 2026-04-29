@@ -37,6 +37,12 @@ public class ChatConversationDoc {
   private Integer unreadByAgent;
   private Boolean starredByStudent;
   private Boolean starredByAgent;
+  private Boolean resumeAccessGranted;
+  private Boolean phoneExchangeGranted;
+  private Boolean wechatExchangeGranted;
+  private Instant resumeAccessUpdatedAt;
+  private Instant phoneExchangeUpdatedAt;
+  private Instant wechatExchangeUpdatedAt;
   private Instant createdAt;
   private Instant updatedAt;
 
@@ -78,6 +84,18 @@ public class ChatConversationDoc {
   public void setStarredByStudent(Boolean starredByStudent) { this.starredByStudent = starredByStudent; }
   public Boolean getStarredByAgent() { return starredByAgent; }
   public void setStarredByAgent(Boolean starredByAgent) { this.starredByAgent = starredByAgent; }
+  public Boolean getResumeAccessGranted() { return resumeAccessGranted; }
+  public void setResumeAccessGranted(Boolean resumeAccessGranted) { this.resumeAccessGranted = resumeAccessGranted; }
+  public Boolean getPhoneExchangeGranted() { return phoneExchangeGranted; }
+  public void setPhoneExchangeGranted(Boolean phoneExchangeGranted) { this.phoneExchangeGranted = phoneExchangeGranted; }
+  public Boolean getWechatExchangeGranted() { return wechatExchangeGranted; }
+  public void setWechatExchangeGranted(Boolean wechatExchangeGranted) { this.wechatExchangeGranted = wechatExchangeGranted; }
+  public Instant getResumeAccessUpdatedAt() { return resumeAccessUpdatedAt; }
+  public void setResumeAccessUpdatedAt(Instant resumeAccessUpdatedAt) { this.resumeAccessUpdatedAt = resumeAccessUpdatedAt; }
+  public Instant getPhoneExchangeUpdatedAt() { return phoneExchangeUpdatedAt; }
+  public void setPhoneExchangeUpdatedAt(Instant phoneExchangeUpdatedAt) { this.phoneExchangeUpdatedAt = phoneExchangeUpdatedAt; }
+  public Instant getWechatExchangeUpdatedAt() { return wechatExchangeUpdatedAt; }
+  public void setWechatExchangeUpdatedAt(Instant wechatExchangeUpdatedAt) { this.wechatExchangeUpdatedAt = wechatExchangeUpdatedAt; }
   public Instant getCreatedAt() { return createdAt; }
   public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
   public Instant getUpdatedAt() { return updatedAt; }

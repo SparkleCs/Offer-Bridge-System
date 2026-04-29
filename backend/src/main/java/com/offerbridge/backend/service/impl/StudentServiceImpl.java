@@ -105,6 +105,7 @@ public class StudentServiceImpl implements StudentService {
 
     profile.setName(request.getName());
     profile.setEmail(request.getEmail());
+    profile.setWechatId(trimToNull(request.getWechatId()));
     profile.setEducationLevel(request.getEducationLevel());
     profile.setSchoolName(request.getSchoolName());
     profile.setMajor(request.getMajor());
@@ -129,6 +130,18 @@ public class StudentServiceImpl implements StudentService {
     List<StudentTargetCountry> countries = studentTargetCountryMapper.listByUserId(userId);
     StudentProfile latest = studentProfileMapper.findByUserId(userId);
 
+    return toView(user, latest, scores, countries);
+  }
+
+  @Override
+  @Transactional
+  public StudentDtos.ProfileView updateWechat(Long userId, StudentDtos.WechatUpdateRequest request) {
+    UserAccount user = requireUser(userId);
+    ensureProfile(userId);
+    studentProfileMapper.updateWechatId(userId, request.getWechatId().trim());
+    StudentProfile latest = studentProfileMapper.findByUserId(userId);
+    List<StudentLanguageScore> scores = studentLanguageScoreMapper.listByUserId(userId);
+    List<StudentTargetCountry> countries = studentTargetCountryMapper.listByUserId(userId);
     return toView(user, latest, scores, countries);
   }
 
@@ -407,6 +420,7 @@ public class StudentServiceImpl implements StudentService {
     view.setPhone(user.getPhone());
     view.setName(profile.getName());
     view.setEmail(profile.getEmail());
+    view.setWechatId(profile.getWechatId());
     view.setEducationLevel(profile.getEducationLevel());
     view.setSchoolName(profile.getSchoolName());
     view.setMajor(profile.getMajor());
@@ -564,5 +578,10 @@ public class StudentServiceImpl implements StudentService {
 
   private boolean notBlank(String value) {
     return value != null && !value.isBlank();
+  }
+
+  private String trimToNull(String value) {
+    if (value == null || value.isBlank()) return null;
+    return value.trim();
   }
 }

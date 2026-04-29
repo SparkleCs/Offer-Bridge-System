@@ -35,6 +35,7 @@ public interface AgencyService {
   AgencyDtos.MemberVerificationStatusView getMyVerificationStatus(Long userId);
   void updateMyProfile(Long userId, AgencyDtos.MemberProfileUpdateRequest request);
   void updateMyAvatar(Long userId, AgencyDtos.MemberAvatarUpdateRequest request);
+  void updateMyWechat(Long userId, AgencyDtos.MemberWechatUpdateRequest request);
   void submitMyVerification(Long userId, AgencyDtos.MemberVerificationSubmitRequest request);
   void submitMyProfileForAudit(Long userId);
   void updateMyRoles(Long userId, AgencyDtos.MemberRolesUpdateRequest request);

@@ -79,6 +79,36 @@ public class MessageController {
     return ApiResponse.ok(messageService.sendChatMessage(AuthContext.getUserId(), conversationId, request));
   }
 
+  @PostMapping("/chats/{conversationId}/actions")
+  public ApiResponse<MessageDtos.ChatMessageItem> startChatAction(
+    @PathVariable String conversationId,
+    @Valid @RequestBody MessageDtos.ChatActionRequest request
+  ) {
+    return ApiResponse.ok(messageService.startChatAction(AuthContext.getUserId(), conversationId, request));
+  }
+
+  @PostMapping("/chats/{conversationId}/actions/{actionId}/respond")
+  public ApiResponse<MessageDtos.ChatMessageItem> respondChatAction(
+    @PathVariable String conversationId,
+    @PathVariable String actionId,
+    @Valid @RequestBody MessageDtos.ChatActionRespondRequest request
+  ) {
+    return ApiResponse.ok(messageService.respondChatAction(AuthContext.getUserId(), conversationId, actionId, request));
+  }
+
+  @GetMapping("/chats/{conversationId}/student-resume")
+  public ApiResponse<MessageDtos.StudentAcademicResumeView> getStudentResume(@PathVariable String conversationId) {
+    return ApiResponse.ok(messageService.getStudentResume(AuthContext.getUserId(), conversationId));
+  }
+
+  @GetMapping("/chats/{conversationId}/contacts/{type}")
+  public ApiResponse<MessageDtos.ContactExchangeView> getExchangedContact(
+    @PathVariable String conversationId,
+    @PathVariable String type
+  ) {
+    return ApiResponse.ok(messageService.getExchangedContact(AuthContext.getUserId(), conversationId, type));
+  }
+
   @PostMapping("/chats/{conversationId}/read")
   public ApiResponse<MessageDtos.MarkReadResult> markChatRead(@PathVariable String conversationId) {
     return ApiResponse.ok(messageService.markChatRead(AuthContext.getUserId(), conversationId));

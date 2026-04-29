@@ -7,6 +7,7 @@ public class AgencyMemberProfile {
   private String displayName;
   private String avatarUrl;
   private String realName;
+  private String wechatId;
   private String jobTitle;
   private String educationLevel;
   private String graduatedSchool;
@@ -33,6 +34,8 @@ public class AgencyMemberProfile {
   public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
   public String getRealName() { return realName; }
   public void setRealName(String realName) { this.realName = realName; }
+  public String getWechatId() { return wechatId; }
+  public void setWechatId(String wechatId) { this.wechatId = wechatId; }
   public String getJobTitle() { return jobTitle; }
   public void setJobTitle(String jobTitle) { this.jobTitle = jobTitle; }
   public String getEducationLevel() { return educationLevel; }

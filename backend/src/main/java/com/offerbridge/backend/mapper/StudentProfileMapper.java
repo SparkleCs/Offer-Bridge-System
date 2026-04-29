@@ -18,4 +18,5 @@ public interface StudentProfileMapper {
                                                               @Param("subjectCategoryCode") String subjectCategoryCode);
   int insertEmpty(@Param("userId") Long userId);
   int updateProfile(StudentProfile profile);
+  int updateWechatId(@Param("userId") Long userId, @Param("wechatId") String wechatId);
 }

@@ -144,6 +144,7 @@ export interface InvitationResult {
 
 export interface MemberProfilePayload {
   displayName: string
+  wechatId?: string
   jobTitle: string
   educationLevel: string
   graduatedSchool: string
@@ -179,6 +180,7 @@ export interface MemberSelfProfile {
   orgId: number
   displayName: string
   avatarUrl?: string | null
+  wechatId?: string | null
   jobTitle: string
   educationLevel: string
   graduatedSchool: string

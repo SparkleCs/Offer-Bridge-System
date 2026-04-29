@@ -41,6 +41,11 @@ public class StudentController {
     return ApiResponse.ok(studentService.updateBasicProfile(AuthContext.getUserId(), request));
   }
 
+  @PutMapping("/profile/wechat")
+  public ApiResponse<StudentDtos.ProfileView> updateWechat(@Valid @RequestBody StudentDtos.WechatUpdateRequest request) {
+    return ApiResponse.ok(studentService.updateWechat(AuthContext.getUserId(), request));
+  }
+
   @PutMapping("/profile/academic")
   public ApiResponse<StudentDtos.ProfileView> updateAcademicProfile(@Valid @RequestBody StudentDtos.ProfileAcademicUpdateRequest request) {
     return ApiResponse.ok(studentService.updateAcademicProfile(AuthContext.getUserId(), request));

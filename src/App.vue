@@ -3,7 +3,7 @@
     <router-view />
   </template>
   <el-container v-else class="app-shell">
-    <el-header class="topbar">
+    <el-header class="topbar" :class="{ 'topbar--home': route.path === '/' }">
       <div class="topbar-inner">
         <button class="brand" @click="go('/')">
           <span class="brand-dot"></span>
@@ -45,7 +45,7 @@
       </div>
     </el-header>
 
-    <el-main class="main-content">
+    <el-main class="main-content" :class="{ 'main-content--home': route.path === '/' }">
       <router-view />
     </el-main>
 

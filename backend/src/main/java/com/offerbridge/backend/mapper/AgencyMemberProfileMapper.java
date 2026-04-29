@@ -21,6 +21,7 @@ public interface AgencyMemberProfileMapper {
   int updateStatusById(@Param("id") Long id, @Param("status") String status);
   int updateProfileAuditStatusByUserId(@Param("userId") Long userId, @Param("profileAuditStatus") String profileAuditStatus);
   int updateAvatarByUserId(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
+  int updateWechatIdByUserId(@Param("userId") Long userId, @Param("wechatId") String wechatId);
 
   List<AgencyDtos.DiscoveryMemberItem> listDiscovery(@Param("roleCode") String roleCode,
                                                       @Param("country") String country,

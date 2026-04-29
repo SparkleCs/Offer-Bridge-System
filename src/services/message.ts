@@ -5,10 +5,14 @@ import type {
   ChatPagedResult,
   ChatStartResult,
   ChatUnreadSummary,
+  ChatActionRequest,
+  ChatActionRespondPayload,
+  ContactExchangeView,
   AgentStartChatPayload,
   MarkSystemNotificationReadPayload,
   MarkSystemNotificationReadResult,
   SendChatMessagePayload,
+  StudentAcademicResume,
   StartChatPayload,
   SystemNotificationPagedResult
 } from '../types/message'
@@ -64,6 +68,28 @@ export function sendChatMessage(conversationId: string, payload: SendChatMessage
     method: 'POST',
     body: JSON.stringify(payload)
   }, true)
+}
+
+export function startChatAction(conversationId: string, payload: ChatActionRequest) {
+  return apiRequest<ChatMessageItem>(`/api/v1/messages/chats/${conversationId}/actions`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function respondChatAction(conversationId: string, actionId: string, payload: ChatActionRespondPayload) {
+  return apiRequest<ChatMessageItem>(`/api/v1/messages/chats/${conversationId}/actions/${actionId}/respond`, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  }, true)
+}
+
+export function getStudentResume(conversationId: string) {
+  return apiRequest<StudentAcademicResume>(`/api/v1/messages/chats/${conversationId}/student-resume`, { method: 'GET' }, true)
+}
+
+export function getExchangedContact(conversationId: string, type: 'PHONE_EXCHANGE' | 'WECHAT_EXCHANGE') {
+  return apiRequest<ContactExchangeView>(`/api/v1/messages/chats/${conversationId}/contacts/${type}`, { method: 'GET' }, true)
 }
 
 export function uploadChatFile(file: File) {

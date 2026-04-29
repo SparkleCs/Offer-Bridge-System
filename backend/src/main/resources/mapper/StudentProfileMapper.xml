@@ -6,6 +6,7 @@
     <result column="user_id" property="userId"/>
     <result column="name" property="name"/>
     <result column="email" property="email"/>
+    <result column="wechat_id" property="wechatId"/>
     <result column="education_level" property="educationLevel"/>
     <result column="school_name" property="schoolName"/>
     <result column="major" property="major"/>
@@ -21,7 +22,7 @@
   </resultMap>
 
   <select id="findByUserId" resultMap="BaseMap">
-    SELECT id, user_id, name, email, education_level, school_name, major, gpa_value, gpa_scale,
+    SELECT id, user_id, name, email, wechat_id, education_level, school_name, major, gpa_value, gpa_scale,
            rank_value, target_major_text, intake_term, budget_currency, budget_min, budget_max, budget_note
     FROM student_profile
     WHERE user_id = #{userId}
@@ -29,7 +30,7 @@
   </select>
 
   <select id="listByUserIds" resultMap="BaseMap">
-    SELECT id, user_id, name, email, education_level, school_name, major, gpa_value, gpa_scale,
+    SELECT id, user_id, name, email, wechat_id, education_level, school_name, major, gpa_value, gpa_scale,
            rank_value, target_major_text, intake_term, budget_currency, budget_min, budget_max, budget_note
     FROM student_profile
     WHERE user_id IN
@@ -153,6 +154,7 @@
     UPDATE student_profile
     SET name = #{name},
         email = #{email},
+        wechat_id = #{wechatId},
         education_level = #{educationLevel},
         school_name = #{schoolName},
         major = #{major},
@@ -165,6 +167,12 @@
         budget_min = #{budgetMin},
         budget_max = #{budgetMax},
         budget_note = #{budgetNote}
+    WHERE user_id = #{userId}
+  </update>
+
+  <update id="updateWechatId">
+    UPDATE student_profile
+    SET wechat_id = #{wechatId}
     WHERE user_id = #{userId}
   </update>
 </mapper>

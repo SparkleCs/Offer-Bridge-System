@@ -23,6 +23,10 @@ body {
     var(--bg);
 }
 
+body {
+  overflow-x: hidden;
+}
+
 #app {
   min-height: 100vh;
 }
@@ -41,14 +45,21 @@ body {
   border-bottom: 1px solid var(--line);
 }
 
+.topbar--home {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(160%) blur(18px);
+  border-bottom-color: rgba(230, 235, 244, 0.62);
+}
+
 .topbar-inner {
-  max-width: 1180px;
+  max-width: 1240px;
   height: 100%;
   margin: 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  padding: 0 18px;
 }
 
 .brand {
@@ -63,6 +74,10 @@ body {
   cursor: pointer;
 }
 
+.topbar--home .brand {
+  font-size: 19px;
+}
+
 .brand-dot {
   width: 11px;
   height: 11px;
@@ -74,6 +89,7 @@ body {
 .main-menu {
   border-bottom: 0;
   min-width: 480px;
+  background: transparent;
 }
 
 .main-menu.el-menu--horizontal > .el-menu-item {
@@ -108,6 +124,11 @@ body {
   width: 100%;
   margin: 0 auto;
   padding: 28px 16px 36px;
+}
+
+.main-content--home {
+  max-width: none;
+  padding: 0;
 }
 
 .footer {

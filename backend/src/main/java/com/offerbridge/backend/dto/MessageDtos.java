@@ -2,6 +2,7 @@ package com.offerbridge.backend.dto;
 
 import java.time.LocalDateTime;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.List;
 
 public class MessageDtos {
@@ -133,6 +134,9 @@ public class MessageDtos {
     private int studentMessageCount;
     private int agentMessageCount;
     private boolean viewerStarred;
+    private boolean resumeAccessGranted;
+    private boolean phoneExchangeGranted;
+    private boolean wechatExchangeGranted;
     private String relatedOrderStatus;
     private Long relatedOrderId;
     private int unreadCount;
@@ -187,6 +191,12 @@ public class MessageDtos {
     public void setAgentMessageCount(int agentMessageCount) { this.agentMessageCount = agentMessageCount; }
     public boolean isViewerStarred() { return viewerStarred; }
     public void setViewerStarred(boolean viewerStarred) { this.viewerStarred = viewerStarred; }
+    public boolean isResumeAccessGranted() { return resumeAccessGranted; }
+    public void setResumeAccessGranted(boolean resumeAccessGranted) { this.resumeAccessGranted = resumeAccessGranted; }
+    public boolean isPhoneExchangeGranted() { return phoneExchangeGranted; }
+    public void setPhoneExchangeGranted(boolean phoneExchangeGranted) { this.phoneExchangeGranted = phoneExchangeGranted; }
+    public boolean isWechatExchangeGranted() { return wechatExchangeGranted; }
+    public void setWechatExchangeGranted(boolean wechatExchangeGranted) { this.wechatExchangeGranted = wechatExchangeGranted; }
     public String getRelatedOrderStatus() { return relatedOrderStatus; }
     public void setRelatedOrderStatus(String relatedOrderStatus) { this.relatedOrderStatus = relatedOrderStatus; }
     public Long getRelatedOrderId() { return relatedOrderId; }
@@ -251,5 +261,211 @@ public class MessageDtos {
 
     public long getUnreadCount() { return unreadCount; }
     public void setUnreadCount(long unreadCount) { this.unreadCount = unreadCount; }
+  }
+
+  public static class ChatActionRequest {
+    private String actionType;
+
+    public String getActionType() { return actionType; }
+    public void setActionType(String actionType) { this.actionType = actionType; }
+  }
+
+  public static class ChatActionRespondRequest {
+    private Boolean approved;
+
+    public Boolean getApproved() { return approved; }
+    public void setApproved(Boolean approved) { this.approved = approved; }
+  }
+
+  public static class ContactExchangeView {
+    private String contactType;
+    private String ownContact;
+    private String peerContact;
+
+    public String getContactType() { return contactType; }
+    public void setContactType(String contactType) { this.contactType = contactType; }
+    public String getOwnContact() { return ownContact; }
+    public void setOwnContact(String ownContact) { this.ownContact = ownContact; }
+    public String getPeerContact() { return peerContact; }
+    public void setPeerContact(String peerContact) { this.peerContact = peerContact; }
+  }
+
+  public static class StudentAcademicResumeView {
+    private Long studentUserId;
+    private String displayName;
+    private String educationLevel;
+    private String schoolName;
+    private String major;
+    private BigDecimal gpaValue;
+    private String gpaScale;
+    private Integer rankValue;
+    private List<LanguageScoreItem> languageScores;
+    private String targetMajorText;
+    private String intakeTerm;
+    private List<TargetCountryItem> targetCountries;
+    private ExchangeExperienceItem exchangeExperience;
+    private List<ResearchItem> researchExperiences;
+    private List<CompetitionItem> competitionExperiences;
+    private List<WorkItem> workExperiences;
+
+    public Long getStudentUserId() { return studentUserId; }
+    public void setStudentUserId(Long studentUserId) { this.studentUserId = studentUserId; }
+    public String getDisplayName() { return displayName; }
+    public void setDisplayName(String displayName) { this.displayName = displayName; }
+    public String getEducationLevel() { return educationLevel; }
+    public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
+    public String getSchoolName() { return schoolName; }
+    public void setSchoolName(String schoolName) { this.schoolName = schoolName; }
+    public String getMajor() { return major; }
+    public void setMajor(String major) { this.major = major; }
+    public BigDecimal getGpaValue() { return gpaValue; }
+    public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
+    public String getGpaScale() { return gpaScale; }
+    public void setGpaScale(String gpaScale) { this.gpaScale = gpaScale; }
+    public Integer getRankValue() { return rankValue; }
+    public void setRankValue(Integer rankValue) { this.rankValue = rankValue; }
+    public List<LanguageScoreItem> getLanguageScores() { return languageScores; }
+    public void setLanguageScores(List<LanguageScoreItem> languageScores) { this.languageScores = languageScores; }
+    public String getTargetMajorText() { return targetMajorText; }
+    public void setTargetMajorText(String targetMajorText) { this.targetMajorText = targetMajorText; }
+    public String getIntakeTerm() { return intakeTerm; }
+    public void setIntakeTerm(String intakeTerm) { this.intakeTerm = intakeTerm; }
+    public List<TargetCountryItem> getTargetCountries() { return targetCountries; }
+    public void setTargetCountries(List<TargetCountryItem> targetCountries) { this.targetCountries = targetCountries; }
+    public ExchangeExperienceItem getExchangeExperience() { return exchangeExperience; }
+    public void setExchangeExperience(ExchangeExperienceItem exchangeExperience) { this.exchangeExperience = exchangeExperience; }
+    public List<ResearchItem> getResearchExperiences() { return researchExperiences; }
+    public void setResearchExperiences(List<ResearchItem> researchExperiences) { this.researchExperiences = researchExperiences; }
+    public List<CompetitionItem> getCompetitionExperiences() { return competitionExperiences; }
+    public void setCompetitionExperiences(List<CompetitionItem> competitionExperiences) { this.competitionExperiences = competitionExperiences; }
+    public List<WorkItem> getWorkExperiences() { return workExperiences; }
+    public void setWorkExperiences(List<WorkItem> workExperiences) { this.workExperiences = workExperiences; }
+  }
+
+  public static class LanguageScoreItem {
+    private String languageType;
+    private BigDecimal score;
+
+    public String getLanguageType() { return languageType; }
+    public void setLanguageType(String languageType) { this.languageType = languageType; }
+    public BigDecimal getScore() { return score; }
+    public void setScore(BigDecimal score) { this.score = score; }
+  }
+
+  public static class TargetCountryItem {
+    private String countryName;
+
+    public String getCountryName() { return countryName; }
+    public void setCountryName(String countryName) { this.countryName = countryName; }
+  }
+
+  public static class PublicationItem {
+    private String title;
+    private String authorRole;
+    private String journalName;
+    private Integer publishedYear;
+
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
+    public String getAuthorRole() { return authorRole; }
+    public void setAuthorRole(String authorRole) { this.authorRole = authorRole; }
+    public String getJournalName() { return journalName; }
+    public void setJournalName(String journalName) { this.journalName = journalName; }
+    public Integer getPublishedYear() { return publishedYear; }
+    public void setPublishedYear(Integer publishedYear) { this.publishedYear = publishedYear; }
+  }
+
+  public static class ResearchItem {
+    private Long id;
+    private String projectName;
+    private String startDate;
+    private String endDate;
+    private String contentSummary;
+    private Boolean hasPublication;
+    private List<PublicationItem> publications;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getProjectName() { return projectName; }
+    public void setProjectName(String projectName) { this.projectName = projectName; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
+    public String getContentSummary() { return contentSummary; }
+    public void setContentSummary(String contentSummary) { this.contentSummary = contentSummary; }
+    public Boolean getHasPublication() { return hasPublication; }
+    public void setHasPublication(Boolean hasPublication) { this.hasPublication = hasPublication; }
+    public List<PublicationItem> getPublications() { return publications; }
+    public void setPublications(List<PublicationItem> publications) { this.publications = publications; }
+  }
+
+  public static class CompetitionItem {
+    private Long id;
+    private String competitionName;
+    private String competitionLevel;
+    private String award;
+    private String roleDesc;
+    private String eventDate;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getCompetitionName() { return competitionName; }
+    public void setCompetitionName(String competitionName) { this.competitionName = competitionName; }
+    public String getCompetitionLevel() { return competitionLevel; }
+    public void setCompetitionLevel(String competitionLevel) { this.competitionLevel = competitionLevel; }
+    public String getAward() { return award; }
+    public void setAward(String award) { this.award = award; }
+    public String getRoleDesc() { return roleDesc; }
+    public void setRoleDesc(String roleDesc) { this.roleDesc = roleDesc; }
+    public String getEventDate() { return eventDate; }
+    public void setEventDate(String eventDate) { this.eventDate = eventDate; }
+  }
+
+  public static class WorkItem {
+    private Long id;
+    private String companyName;
+    private String positionName;
+    private String startDate;
+    private String endDate;
+    private String keywords;
+    private String contentSummary;
+
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+    public String getCompanyName() { return companyName; }
+    public void setCompanyName(String companyName) { this.companyName = companyName; }
+    public String getPositionName() { return positionName; }
+    public void setPositionName(String positionName) { this.positionName = positionName; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
+    public String getKeywords() { return keywords; }
+    public void setKeywords(String keywords) { this.keywords = keywords; }
+    public String getContentSummary() { return contentSummary; }
+    public void setContentSummary(String contentSummary) { this.contentSummary = contentSummary; }
+  }
+
+  public static class ExchangeExperienceItem {
+    private String countryName;
+    private String universityName;
+    private BigDecimal gpaValue;
+    private String majorCourses;
+    private String startDate;
+    private String endDate;
+
+    public String getCountryName() { return countryName; }
+    public void setCountryName(String countryName) { this.countryName = countryName; }
+    public String getUniversityName() { return universityName; }
+    public void setUniversityName(String universityName) { this.universityName = universityName; }
+    public BigDecimal getGpaValue() { return gpaValue; }
+    public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
+    public String getMajorCourses() { return majorCourses; }
+    public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+    public String getStartDate() { return startDate; }
+    public void setStartDate(String startDate) { this.startDate = startDate; }
+    public String getEndDate() { return endDate; }
+    public void setEndDate(String endDate) { this.endDate = endDate; }
   }
 }

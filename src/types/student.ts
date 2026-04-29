@@ -52,6 +52,7 @@ export interface StudentProfile {
   phone: string
   name: string | null
   email: string | null
+  wechatId: string | null
   educationLevel: EducationLevel | null
   schoolName: string | null
   major: string | null
@@ -72,6 +73,7 @@ export interface StudentProfile {
 export interface UpdateStudentBasicPayload {
   name: string
   email: string
+  wechatId?: string
   educationLevel: EducationLevel
   schoolName: string
   major: string

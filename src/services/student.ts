@@ -27,6 +27,17 @@ export function updateStudentBasicProfile(payload: UpdateStudentBasicPayload) {
   )
 }
 
+export function updateStudentWechat(wechatId: string) {
+  return apiRequest<StudentProfile>(
+    '/api/v1/student/profile/wechat',
+    {
+      method: 'PUT',
+      body: JSON.stringify({ wechatId })
+    },
+    true
+  )
+}
+
 export function updateStudentAcademicProfile(payload: UpdateStudentAcademicPayload) {
   return apiRequest<StudentProfile>(
     '/api/v1/student/profile/academic',

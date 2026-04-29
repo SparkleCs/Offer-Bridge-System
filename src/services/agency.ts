@@ -206,6 +206,13 @@ export function updateMyAvatar(payload: MemberAvatarUpdatePayload) {
   }, true)
 }
 
+export function updateMyWechat(wechatId: string) {
+  return apiRequest<void>('/api/v1/agency/members/me/wechat', {
+    method: 'PUT',
+    body: JSON.stringify({ wechatId })
+  }, true)
+}
+
 export function submitMyProfileForAudit() {
   return apiRequest<void>('/api/v1/agency/members/me/profile/submit', { method: 'PUT' }, true)
 }
