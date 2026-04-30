@@ -7,12 +7,14 @@
     <result column="competition_name" property="competitionName"/>
     <result column="competition_level" property="competitionLevel"/>
     <result column="award" property="award"/>
+    <result column="award_level" property="awardLevel"/>
+    <result column="relevance_level" property="relevanceLevel"/>
     <result column="role_desc" property="roleDesc"/>
     <result column="event_date" property="eventDate"/>
   </resultMap>
 
   <select id="listByUserId" resultMap="BaseMap">
-    SELECT id, user_id, competition_name, competition_level, award, role_desc, event_date
+    SELECT id, user_id, competition_name, competition_level, award, award_level, relevance_level, role_desc, event_date
     FROM student_competition_experience
     WHERE user_id = #{userId}
     ORDER BY id ASC
@@ -24,7 +26,11 @@
   </delete>
 
   <insert id="insertOne">
-    INSERT INTO student_competition_experience(user_id, competition_name, competition_level, award, role_desc, event_date)
-    VALUES(#{userId}, #{competitionName}, #{competitionLevel}, #{award}, #{roleDesc}, #{eventDate})
+    INSERT INTO student_competition_experience(
+      user_id, competition_name, competition_level, award, award_level, relevance_level, role_desc, event_date
+    )
+    VALUES(
+      #{userId}, #{competitionName}, #{competitionLevel}, #{award}, #{awardLevel}, #{relevanceLevel}, #{roleDesc}, #{eventDate}
+    )
   </insert>
 </mapper>

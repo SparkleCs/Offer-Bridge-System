@@ -10,6 +10,7 @@ public class StudentProfile {
   private String wechatId;
   private String educationLevel;
   private String schoolName;
+  private String undergraduateSchoolTier;
   private String major;
   private BigDecimal gpaValue;
   private String gpaScale;
@@ -35,6 +36,8 @@ public class StudentProfile {
   public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
   public String getSchoolName() { return schoolName; }
   public void setSchoolName(String schoolName) { this.schoolName = schoolName; }
+  public String getUndergraduateSchoolTier() { return undergraduateSchoolTier; }
+  public void setUndergraduateSchoolTier(String undergraduateSchoolTier) { this.undergraduateSchoolTier = undergraduateSchoolTier; }
   public String getMajor() { return major; }
   public void setMajor(String major) { this.major = major; }
   public BigDecimal getGpaValue() { return gpaValue; }

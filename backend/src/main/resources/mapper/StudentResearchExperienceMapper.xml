@@ -5,14 +5,19 @@
     <id column="id" property="id"/>
     <result column="user_id" property="userId"/>
     <result column="project_name" property="projectName"/>
+    <result column="role_name" property="roleName"/>
+    <result column="role_level" property="roleLevel"/>
+    <result column="relevance_level" property="relevanceLevel"/>
     <result column="start_date" property="startDate"/>
     <result column="end_date" property="endDate"/>
+    <result column="duration_months" property="durationMonths"/>
     <result column="content_summary" property="contentSummary"/>
     <result column="has_publication" property="hasPublication"/>
   </resultMap>
 
   <select id="listByUserId" resultMap="BaseMap">
-    SELECT id, user_id, project_name, start_date, end_date, content_summary, has_publication
+    SELECT id, user_id, project_name, role_name, role_level, relevance_level, start_date, end_date,
+           duration_months, content_summary, has_publication
     FROM student_research_experience
     WHERE user_id = #{userId}
     ORDER BY id ASC
@@ -25,10 +30,12 @@
 
   <insert id="insertOne" useGeneratedKeys="true" keyProperty="id" keyColumn="id">
     INSERT INTO student_research_experience(
-      user_id, project_name, start_date, end_date, content_summary, has_publication
+      user_id, project_name, role_name, role_level, relevance_level, start_date, end_date,
+      duration_months, content_summary, has_publication
     )
     VALUES(
-      #{userId}, #{projectName}, #{startDate}, #{endDate}, #{contentSummary}, #{hasPublication}
+      #{userId}, #{projectName}, #{roleName}, #{roleLevel}, #{relevanceLevel}, #{startDate}, #{endDate},
+      #{durationMonths}, #{contentSummary}, #{hasPublication}
     )
   </insert>
 </mapper>

@@ -2,6 +2,7 @@ package com.offerbridge.backend.service.impl;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.offerbridge.backend.dto.StudentDtos;
+import com.offerbridge.backend.entity.StudentBackgroundScore;
 import com.offerbridge.backend.entity.StudentCompetitionExperience;
 import com.offerbridge.backend.entity.StudentExchangeExperience;
 import com.offerbridge.backend.entity.StudentLanguageScore;
@@ -25,7 +26,10 @@ import com.offerbridge.backend.mapper.StudentVerificationMaterialMapper;
 import com.offerbridge.backend.mapper.StudentWorkExperienceMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
+import com.offerbridge.backend.service.StudentBackgroundScoreService;
 import com.offerbridge.backend.service.StudentService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +44,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class StudentServiceImpl implements StudentService {
+  private static final Logger log = LoggerFactory.getLogger(StudentServiceImpl.class);
   private static final Set<String> ALLOWED_LANGUAGE_TYPES = Set.of("CET4", "CET6", "TOEFL", "IELTS", "PTE");
   private static final Set<String> ALLOWED_GPA_SCALES = Set.of("FOUR_POINT", "PERCENTAGE");
   private static final Set<String> ALLOWED_EDUCATION_LEVELS = Set.of("HIGH_SCHOOL", "COLLEGE", "UNDERGRAD", "MASTER", "PHD", "OTHER");
@@ -55,6 +60,7 @@ public class StudentServiceImpl implements StudentService {
   private final StudentExchangeExperienceMapper studentExchangeExperienceMapper;
   private final StudentVerificationMaterialMapper studentVerificationMaterialMapper;
   private final VerificationRecordMapper verificationRecordMapper;
+  private final StudentBackgroundScoreService studentBackgroundScoreService;
   private final ObjectMapper objectMapper;
 
   public StudentServiceImpl(UserAccountMapper userAccountMapper,
@@ -68,6 +74,7 @@ public class StudentServiceImpl implements StudentService {
                             StudentExchangeExperienceMapper studentExchangeExperienceMapper,
                             StudentVerificationMaterialMapper studentVerificationMaterialMapper,
                             VerificationRecordMapper verificationRecordMapper,
+                            StudentBackgroundScoreService studentBackgroundScoreService,
                             ObjectMapper objectMapper) {
     this.userAccountMapper = userAccountMapper;
     this.studentProfileMapper = studentProfileMapper;
@@ -80,6 +87,7 @@ public class StudentServiceImpl implements StudentService {
     this.studentExchangeExperienceMapper = studentExchangeExperienceMapper;
     this.studentVerificationMaterialMapper = studentVerificationMaterialMapper;
     this.verificationRecordMapper = verificationRecordMapper;
+    this.studentBackgroundScoreService = studentBackgroundScoreService;
     this.objectMapper = objectMapper;
   }
 
@@ -108,6 +116,7 @@ public class StudentServiceImpl implements StudentService {
     profile.setWechatId(trimToNull(request.getWechatId()));
     profile.setEducationLevel(request.getEducationLevel());
     profile.setSchoolName(request.getSchoolName());
+    profile.setUndergraduateSchoolTier(trimToNull(request.getUndergraduateSchoolTier()));
     profile.setMajor(request.getMajor());
     profile.setTargetMajorText(request.getTargetMajorText());
     profile.setIntakeTerm(request.getIntakeTerm());
@@ -129,6 +138,7 @@ public class StudentServiceImpl implements StudentService {
     List<StudentLanguageScore> scores = studentLanguageScoreMapper.listByUserId(userId);
     List<StudentTargetCountry> countries = studentTargetCountryMapper.listByUserId(userId);
     StudentProfile latest = studentProfileMapper.findByUserId(userId);
+    refreshBackgroundScoreQuietly(userId, "basic-profile");
 
     return toView(user, latest, scores, countries);
   }
@@ -168,6 +178,7 @@ public class StudentServiceImpl implements StudentService {
     List<StudentLanguageScore> scores = studentLanguageScoreMapper.listByUserId(userId);
     List<StudentTargetCountry> countries = studentTargetCountryMapper.listByUserId(userId);
     StudentProfile latest = studentProfileMapper.findByUserId(userId);
+    refreshBackgroundScoreQuietly(userId, "academic-profile");
     return toView(user, latest, scores, countries);
   }
 
@@ -190,8 +201,12 @@ public class StudentServiceImpl implements StudentService {
       StudentResearchExperience experience = new StudentResearchExperience();
       experience.setUserId(userId);
       experience.setProjectName(item.getProjectName());
+      experience.setRoleName(item.getRoleName());
+      experience.setRoleLevel(item.getRoleLevel());
+      experience.setRelevanceLevel(item.getRelevanceLevel());
       experience.setStartDate(item.getStartDate());
       experience.setEndDate(item.getEndDate());
+      experience.setDurationMonths(item.getDurationMonths());
       experience.setContentSummary(item.getContentSummary());
       experience.setHasPublication(Boolean.TRUE.equals(item.getHasPublication()));
       studentResearchExperienceMapper.insertOne(experience);
@@ -203,13 +218,18 @@ public class StudentServiceImpl implements StudentService {
           entity.setResearchId(experience.getId());
           entity.setTitle(pub.getTitle());
           entity.setAuthorRole(pub.getAuthorRole());
+          entity.setAuthorOrder(pub.getAuthorOrder());
           entity.setJournalName(pub.getJournalName());
+          entity.setPublicationLevel(pub.getPublicationLevel());
+          entity.setJournalPartition(pub.getJournalPartition());
           entity.setPublishedYear(pub.getPublishedYear());
+          entity.setIndexedInfo(pub.getIndexedInfo());
           studentPublicationMapper.insertOne(entity);
         }
       }
     }
 
+    refreshBackgroundScoreQuietly(userId, "research");
     return buildResearchView(userId);
   }
 
@@ -235,10 +255,13 @@ public class StudentServiceImpl implements StudentService {
       entity.setCompetitionName(item.getCompetitionName());
       entity.setCompetitionLevel(item.getCompetitionLevel());
       entity.setAward(item.getAward());
+      entity.setAwardLevel(item.getAwardLevel());
+      entity.setRelevanceLevel(item.getRelevanceLevel());
       entity.setRoleDesc(item.getRoleDesc());
       entity.setEventDate(item.getEventDate());
       studentCompetitionExperienceMapper.insertOne(entity);
     }
+    refreshBackgroundScoreQuietly(userId, "competition");
     return getCompetition(userId);
   }
 
@@ -260,14 +283,19 @@ public class StudentServiceImpl implements StudentService {
       StudentWorkExperience entity = new StudentWorkExperience();
       entity.setUserId(userId);
       entity.setCompanyName(item.getCompanyName());
+      entity.setCompanyTier(item.getCompanyTier());
       entity.setPositionName(item.getPositionName());
+      entity.setRelevanceLevel(item.getRelevanceLevel());
+      entity.setTitleLevel(item.getTitleLevel());
       entity.setStartDate(item.getStartDate());
       entity.setEndDate(item.getEndDate());
+      entity.setDurationMonths(item.getDurationMonths());
       entity.setKeywords(item.getKeywords());
       entity.setContentSummary(item.getContentSummary());
       studentWorkExperienceMapper.insertOne(entity);
     }
 
+    refreshBackgroundScoreQuietly(userId, "work");
     return buildWorkView(userId);
   }
 
@@ -287,12 +315,29 @@ public class StudentServiceImpl implements StudentService {
     entity.setUserId(userId);
     entity.setCountryName(request.getCountryName().trim());
     entity.setUniversityName(request.getUniversityName().trim());
+    entity.setSchoolTier(trimToNull(request.getSchoolTier()));
     entity.setGpaValue(request.getGpaValue());
     entity.setMajorCourses(request.getMajorCourses().trim());
+    entity.setRelevanceLevel(trimToNull(request.getRelevanceLevel()));
     entity.setStartDate(request.getStartDate().trim());
     entity.setEndDate(request.getEndDate().trim());
+    entity.setDurationMonths(request.getDurationMonths());
     studentExchangeExperienceMapper.upsert(entity);
+    refreshBackgroundScoreQuietly(userId, "exchange");
     return toExchangeItem(studentExchangeExperienceMapper.findByUserId(userId));
+  }
+
+  @Override
+  public StudentDtos.BackgroundScoreView getBackgroundScore(Long userId) {
+    requireUser(userId);
+    return toBackgroundScoreView(studentBackgroundScoreService.getOrRefreshScore(userId));
+  }
+
+  @Override
+  @Transactional
+  public StudentDtos.BackgroundScoreView refreshBackgroundScore(Long userId) {
+    requireUser(userId);
+    return toBackgroundScoreView(studentBackgroundScoreService.refreshScore(userId));
   }
 
   @Override
@@ -369,8 +414,12 @@ public class StudentServiceImpl implements StudentService {
       StudentDtos.ResearchItem item = new StudentDtos.ResearchItem();
       item.setId(exp.getId());
       item.setProjectName(exp.getProjectName());
+      item.setRoleName(exp.getRoleName());
+      item.setRoleLevel(exp.getRoleLevel());
+      item.setRelevanceLevel(exp.getRelevanceLevel());
       item.setStartDate(exp.getStartDate());
       item.setEndDate(exp.getEndDate());
+      item.setDurationMonths(exp.getDurationMonths());
       item.setContentSummary(exp.getContentSummary());
       item.setHasPublication(Boolean.TRUE.equals(exp.getHasPublication()));
       item.setPublications(publicationMap.getOrDefault(exp.getId(), List.of()));
@@ -389,9 +438,13 @@ public class StudentServiceImpl implements StudentService {
       StudentDtos.WorkItem item = new StudentDtos.WorkItem();
       item.setId(work.getId());
       item.setCompanyName(work.getCompanyName());
+      item.setCompanyTier(work.getCompanyTier());
       item.setPositionName(work.getPositionName());
+      item.setRelevanceLevel(work.getRelevanceLevel());
+      item.setTitleLevel(work.getTitleLevel());
       item.setStartDate(work.getStartDate());
       item.setEndDate(work.getEndDate());
+      item.setDurationMonths(work.getDurationMonths());
       item.setKeywords(work.getKeywords());
       item.setContentSummary(work.getContentSummary());
       return item;
@@ -423,6 +476,7 @@ public class StudentServiceImpl implements StudentService {
     view.setWechatId(profile.getWechatId());
     view.setEducationLevel(profile.getEducationLevel());
     view.setSchoolName(profile.getSchoolName());
+    view.setUndergraduateSchoolTier(profile.getUndergraduateSchoolTier());
     view.setMajor(profile.getMajor());
     view.setGpaValue(profile.getGpaValue());
     view.setGpaScale(profile.getGpaScale());
@@ -464,8 +518,12 @@ public class StudentServiceImpl implements StudentService {
     StudentDtos.PublicationItem item = new StudentDtos.PublicationItem();
     item.setTitle(publication.getTitle());
     item.setAuthorRole(publication.getAuthorRole());
+    item.setAuthorOrder(publication.getAuthorOrder());
     item.setJournalName(publication.getJournalName());
+    item.setPublicationLevel(publication.getPublicationLevel());
+    item.setJournalPartition(publication.getJournalPartition());
     item.setPublishedYear(publication.getPublishedYear());
+    item.setIndexedInfo(publication.getIndexedInfo());
     return item;
   }
 
@@ -475,6 +533,8 @@ public class StudentServiceImpl implements StudentService {
     item.setCompetitionName(entity.getCompetitionName());
     item.setCompetitionLevel(entity.getCompetitionLevel());
     item.setAward(entity.getAward());
+    item.setAwardLevel(entity.getAwardLevel());
+    item.setRelevanceLevel(entity.getRelevanceLevel());
     item.setRoleDesc(entity.getRoleDesc());
     item.setEventDate(entity.getEventDate());
     return item;
@@ -487,11 +547,38 @@ public class StudentServiceImpl implements StudentService {
     }
     item.setCountryName(entity.getCountryName());
     item.setUniversityName(entity.getUniversityName());
+    item.setSchoolTier(entity.getSchoolTier());
     item.setGpaValue(entity.getGpaValue());
     item.setMajorCourses(entity.getMajorCourses());
+    item.setRelevanceLevel(entity.getRelevanceLevel());
     item.setStartDate(entity.getStartDate());
     item.setEndDate(entity.getEndDate());
+    item.setDurationMonths(entity.getDurationMonths());
     return item;
+  }
+
+  private StudentDtos.BackgroundScoreView toBackgroundScoreView(StudentBackgroundScore score) {
+    StudentDtos.BackgroundScoreView view = new StudentDtos.BackgroundScoreView();
+    view.setGpaScore(score.getGpaScore());
+    view.setLanguageScore(score.getLanguageScore());
+    view.setPublicationScore(score.getPublicationScore());
+    view.setResearchScore(score.getResearchScore());
+    view.setInternshipScore(score.getInternshipScore());
+    view.setExchangeScore(score.getExchangeScore());
+    view.setCompetitionScore(score.getCompetitionScore());
+    view.setUndergraduateSchoolScore(score.getUndergraduateSchoolScore());
+    view.setOverallAcademicScore(score.getOverallAcademicScore());
+    view.setScoreVersion(score.getScoreVersion());
+    view.setScoreDetailJson(score.getScoreDetailJson());
+    return view;
+  }
+
+  private void refreshBackgroundScoreQuietly(Long userId, String source) {
+    try {
+      studentBackgroundScoreService.refreshScore(userId);
+    } catch (Exception ex) {
+      log.warn("Student background score refresh failed after {} save, userId={}", source, userId, ex);
+    }
   }
 
   private void validateLanguageScores(List<StudentDtos.LanguageScoreItem> items) {

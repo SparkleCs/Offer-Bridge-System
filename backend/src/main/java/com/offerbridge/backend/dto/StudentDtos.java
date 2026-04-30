@@ -31,6 +31,7 @@ public class StudentDtos {
     private String wechatId;
     private String educationLevel;
     private String schoolName;
+    private String undergraduateSchoolTier;
     private String major;
     private String targetMajorText;
     private String intakeTerm;
@@ -51,6 +52,8 @@ public class StudentDtos {
     public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
     public String getSchoolName() { return schoolName; }
     public void setSchoolName(String schoolName) { this.schoolName = schoolName; }
+    public String getUndergraduateSchoolTier() { return undergraduateSchoolTier; }
+    public void setUndergraduateSchoolTier(String undergraduateSchoolTier) { this.undergraduateSchoolTier = undergraduateSchoolTier; }
     public String getMajor() { return major; }
     public void setMajor(String major) { this.major = major; }
     public String getTargetMajorText() { return targetMajorText; }
@@ -106,6 +109,7 @@ public class StudentDtos {
     private String wechatId;
     private String educationLevel;
     private String schoolName;
+    private String undergraduateSchoolTier;
     private String major;
     private BigDecimal gpaValue;
     private String gpaScale;
@@ -134,6 +138,8 @@ public class StudentDtos {
     public void setEducationLevel(String educationLevel) { this.educationLevel = educationLevel; }
     public String getSchoolName() { return schoolName; }
     public void setSchoolName(String schoolName) { this.schoolName = schoolName; }
+    public String getUndergraduateSchoolTier() { return undergraduateSchoolTier; }
+    public void setUndergraduateSchoolTier(String undergraduateSchoolTier) { this.undergraduateSchoolTier = undergraduateSchoolTier; }
     public String getMajor() { return major; }
     public void setMajor(String major) { this.major = major; }
     public BigDecimal getGpaValue() { return gpaValue; }
@@ -174,6 +180,10 @@ public class StudentDtos {
     private String title;
     private String authorRole;
     private String journalName;
+    private String authorOrder;
+    private String publicationLevel;
+    private String journalPartition;
+    private String indexedInfo;
     private Integer publishedYear;
 
     public String getTitle() { return title; }
@@ -182,6 +192,14 @@ public class StudentDtos {
     public void setAuthorRole(String authorRole) { this.authorRole = authorRole; }
     public String getJournalName() { return journalName; }
     public void setJournalName(String journalName) { this.journalName = journalName; }
+    public String getAuthorOrder() { return authorOrder; }
+    public void setAuthorOrder(String authorOrder) { this.authorOrder = authorOrder; }
+    public String getPublicationLevel() { return publicationLevel; }
+    public void setPublicationLevel(String publicationLevel) { this.publicationLevel = publicationLevel; }
+    public String getJournalPartition() { return journalPartition; }
+    public void setJournalPartition(String journalPartition) { this.journalPartition = journalPartition; }
+    public String getIndexedInfo() { return indexedInfo; }
+    public void setIndexedInfo(String indexedInfo) { this.indexedInfo = indexedInfo; }
     public Integer getPublishedYear() { return publishedYear; }
     public void setPublishedYear(Integer publishedYear) { this.publishedYear = publishedYear; }
   }
@@ -189,8 +207,12 @@ public class StudentDtos {
   public static class ResearchItem {
     private Long id;
     private String projectName;
+    private String roleName;
+    private String roleLevel;
+    private String relevanceLevel;
     private String startDate;
     private String endDate;
+    private Integer durationMonths;
     private String contentSummary;
     @NotNull
     private Boolean hasPublication;
@@ -201,10 +223,18 @@ public class StudentDtos {
     public void setId(Long id) { this.id = id; }
     public String getProjectName() { return projectName; }
     public void setProjectName(String projectName) { this.projectName = projectName; }
+    public String getRoleName() { return roleName; }
+    public void setRoleName(String roleName) { this.roleName = roleName; }
+    public String getRoleLevel() { return roleLevel; }
+    public void setRoleLevel(String roleLevel) { this.roleLevel = roleLevel; }
+    public String getRelevanceLevel() { return relevanceLevel; }
+    public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }
     public void setEndDate(String endDate) { this.endDate = endDate; }
+    public Integer getDurationMonths() { return durationMonths; }
+    public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
     public String getContentSummary() { return contentSummary; }
     public void setContentSummary(String contentSummary) { this.contentSummary = contentSummary; }
     public Boolean getHasPublication() { return hasPublication; }
@@ -234,6 +264,8 @@ public class StudentDtos {
     private String competitionName;
     private String competitionLevel;
     private String award;
+    private String awardLevel;
+    private String relevanceLevel;
     private String roleDesc;
     private String eventDate;
 
@@ -245,6 +277,10 @@ public class StudentDtos {
     public void setCompetitionLevel(String competitionLevel) { this.competitionLevel = competitionLevel; }
     public String getAward() { return award; }
     public void setAward(String award) { this.award = award; }
+    public String getAwardLevel() { return awardLevel; }
+    public void setAwardLevel(String awardLevel) { this.awardLevel = awardLevel; }
+    public String getRelevanceLevel() { return relevanceLevel; }
+    public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
     public String getRoleDesc() { return roleDesc; }
     public void setRoleDesc(String roleDesc) { this.roleDesc = roleDesc; }
     public String getEventDate() { return eventDate; }
@@ -270,9 +306,13 @@ public class StudentDtos {
   public static class WorkItem {
     private Long id;
     private String companyName;
+    private String companyTier;
     private String positionName;
+    private String relevanceLevel;
+    private String titleLevel;
     private String startDate;
     private String endDate;
+    private Integer durationMonths;
     private String keywords;
     private String contentSummary;
 
@@ -280,12 +320,20 @@ public class StudentDtos {
     public void setId(Long id) { this.id = id; }
     public String getCompanyName() { return companyName; }
     public void setCompanyName(String companyName) { this.companyName = companyName; }
+    public String getCompanyTier() { return companyTier; }
+    public void setCompanyTier(String companyTier) { this.companyTier = companyTier; }
     public String getPositionName() { return positionName; }
     public void setPositionName(String positionName) { this.positionName = positionName; }
+    public String getRelevanceLevel() { return relevanceLevel; }
+    public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
+    public String getTitleLevel() { return titleLevel; }
+    public void setTitleLevel(String titleLevel) { this.titleLevel = titleLevel; }
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }
     public void setEndDate(String endDate) { this.endDate = endDate; }
+    public Integer getDurationMonths() { return durationMonths; }
+    public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
     public String getKeywords() { return keywords; }
     public void setKeywords(String keywords) { this.keywords = keywords; }
     public String getContentSummary() { return contentSummary; }
@@ -311,23 +359,32 @@ public class StudentDtos {
   public static class ExchangeExperienceItem {
     private String countryName;
     private String universityName;
+    private String schoolTier;
     private BigDecimal gpaValue;
     private String majorCourses;
+    private String relevanceLevel;
     private String startDate;
     private String endDate;
+    private Integer durationMonths;
 
     public String getCountryName() { return countryName; }
     public void setCountryName(String countryName) { this.countryName = countryName; }
     public String getUniversityName() { return universityName; }
     public void setUniversityName(String universityName) { this.universityName = universityName; }
+    public String getSchoolTier() { return schoolTier; }
+    public void setSchoolTier(String schoolTier) { this.schoolTier = schoolTier; }
     public BigDecimal getGpaValue() { return gpaValue; }
     public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
     public String getMajorCourses() { return majorCourses; }
     public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+    public String getRelevanceLevel() { return relevanceLevel; }
+    public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }
     public void setEndDate(String endDate) { this.endDate = endDate; }
+    public Integer getDurationMonths() { return durationMonths; }
+    public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
   }
 
   public static class ExchangeExperienceSaveRequest {
@@ -335,28 +392,37 @@ public class StudentDtos {
     private String countryName;
     @NotBlank
     private String universityName;
+    private String schoolTier;
     @NotNull
     @DecimalMin(value = "0", inclusive = true)
     private BigDecimal gpaValue;
     @NotBlank
     private String majorCourses;
+    private String relevanceLevel;
     @NotBlank
     private String startDate;
     @NotBlank
     private String endDate;
+    private Integer durationMonths;
 
     public String getCountryName() { return countryName; }
     public void setCountryName(String countryName) { this.countryName = countryName; }
     public String getUniversityName() { return universityName; }
     public void setUniversityName(String universityName) { this.universityName = universityName; }
+    public String getSchoolTier() { return schoolTier; }
+    public void setSchoolTier(String schoolTier) { this.schoolTier = schoolTier; }
     public BigDecimal getGpaValue() { return gpaValue; }
     public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
     public String getMajorCourses() { return majorCourses; }
     public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+    public String getRelevanceLevel() { return relevanceLevel; }
+    public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
     public String getStartDate() { return startDate; }
     public void setStartDate(String startDate) { this.startDate = startDate; }
     public String getEndDate() { return endDate; }
     public void setEndDate(String endDate) { this.endDate = endDate; }
+    public Integer getDurationMonths() { return durationMonths; }
+    public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
   }
 
   public static class DebugSourceCheckView {
@@ -379,6 +445,43 @@ public class StudentDtos {
     public void setWorkTable(String workTable) { this.workTable = workTable; }
     public String getExchangeTable() { return exchangeTable; }
     public void setExchangeTable(String exchangeTable) { this.exchangeTable = exchangeTable; }
+  }
+
+  public static class BackgroundScoreView {
+    private BigDecimal gpaScore;
+    private BigDecimal languageScore;
+    private BigDecimal publicationScore;
+    private BigDecimal researchScore;
+    private BigDecimal internshipScore;
+    private BigDecimal exchangeScore;
+    private BigDecimal competitionScore;
+    private BigDecimal undergraduateSchoolScore;
+    private BigDecimal overallAcademicScore;
+    private String scoreVersion;
+    private String scoreDetailJson;
+
+    public BigDecimal getGpaScore() { return gpaScore; }
+    public void setGpaScore(BigDecimal gpaScore) { this.gpaScore = gpaScore; }
+    public BigDecimal getLanguageScore() { return languageScore; }
+    public void setLanguageScore(BigDecimal languageScore) { this.languageScore = languageScore; }
+    public BigDecimal getPublicationScore() { return publicationScore; }
+    public void setPublicationScore(BigDecimal publicationScore) { this.publicationScore = publicationScore; }
+    public BigDecimal getResearchScore() { return researchScore; }
+    public void setResearchScore(BigDecimal researchScore) { this.researchScore = researchScore; }
+    public BigDecimal getInternshipScore() { return internshipScore; }
+    public void setInternshipScore(BigDecimal internshipScore) { this.internshipScore = internshipScore; }
+    public BigDecimal getExchangeScore() { return exchangeScore; }
+    public void setExchangeScore(BigDecimal exchangeScore) { this.exchangeScore = exchangeScore; }
+    public BigDecimal getCompetitionScore() { return competitionScore; }
+    public void setCompetitionScore(BigDecimal competitionScore) { this.competitionScore = competitionScore; }
+    public BigDecimal getUndergraduateSchoolScore() { return undergraduateSchoolScore; }
+    public void setUndergraduateSchoolScore(BigDecimal undergraduateSchoolScore) { this.undergraduateSchoolScore = undergraduateSchoolScore; }
+    public BigDecimal getOverallAcademicScore() { return overallAcademicScore; }
+    public void setOverallAcademicScore(BigDecimal overallAcademicScore) { this.overallAcademicScore = overallAcademicScore; }
+    public String getScoreVersion() { return scoreVersion; }
+    public void setScoreVersion(String scoreVersion) { this.scoreVersion = scoreVersion; }
+    public String getScoreDetailJson() { return scoreDetailJson; }
+    public void setScoreDetailJson(String scoreDetailJson) { this.scoreDetailJson = scoreDetailJson; }
   }
 
   public static class VerificationSubmitRequest {

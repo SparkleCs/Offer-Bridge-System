@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.SchoolTierDictionaryMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.SchoolTierDictionary">
+    <id column="id" property="id"/>
+    <result column="school_name" property="schoolName"/>
+    <result column="school_alias" property="schoolAlias"/>
+    <result column="tier_code" property="tierCode"/>
+    <result column="tier_score" property="tierScore"/>
+  </resultMap>
+
+  <select id="findBySchoolName" resultMap="BaseMap">
+    SELECT id, school_name, school_alias, tier_code, tier_score
+    FROM school_tier_dictionary
+    WHERE school_name = #{schoolName}
+       OR school_alias = #{schoolName}
+       OR #{schoolName} LIKE CONCAT('%', school_name, '%')
+       OR (school_alias IS NOT NULL AND #{schoolName} LIKE CONCAT('%', school_alias, '%'))
+    ORDER BY tier_score DESC, CHAR_LENGTH(school_name) DESC
+    LIMIT 1
+  </select>
+</mapper>

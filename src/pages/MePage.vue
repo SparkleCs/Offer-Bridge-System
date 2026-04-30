@@ -43,6 +43,13 @@
               </el-form-item>
             </el-col>
             <el-col :span="12"><el-form-item label="学校"><el-input v-model="basicForm.schoolName" /></el-form-item></el-col>
+            <el-col :span="12">
+              <el-form-item label="本科院校层级">
+                <el-select v-model="basicForm.undergraduateSchoolTier" clearable placeholder="请选择">
+                  <el-option v-for="item in undergraduateTierOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
             <el-col :span="12"><el-form-item label="当前专业"><el-input v-model="basicForm.major" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="意向专业"><el-input v-model="basicForm.targetMajorText" placeholder="例如：计算机科学/数据科学" /></el-form-item></el-col>
             <el-col :span="12"><el-form-item label="入学季"><el-input v-model="basicForm.intakeTerm" placeholder="例如：2027 Fall" /></el-form-item></el-col>
@@ -75,6 +82,7 @@
           <div class="display-item"><span class="k">微信号</span><span class="v">{{ basicForm.wechatId || '未填写' }}</span></div>
           <div class="display-item"><span class="k">学历层次</span><span class="v">{{ educationLabelMap[basicForm.educationLevel] || '未填写' }}</span></div>
           <div class="display-item"><span class="k">学校</span><span class="v">{{ basicForm.schoolName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">本科院校层级</span><span class="v">{{ optionLabel(undergraduateTierOptions, basicForm.undergraduateSchoolTier) }}</span></div>
           <div class="display-item"><span class="k">当前专业</span><span class="v">{{ basicForm.major || '未填写' }}</span></div>
           <div class="display-item"><span class="k">意向专业</span><span class="v">{{ basicForm.targetMajorText || '未填写' }}</span></div>
           <div class="display-item"><span class="k">入学季</span><span class="v">{{ basicForm.intakeTerm || '未填写' }}</span></div>
@@ -241,6 +249,13 @@
             </el-col>
             <el-col :span="12"><el-form-item label="大学"><el-input v-model="exchangeForm.universityName" placeholder="请输入交换大学" /></el-form-item></el-col>
             <el-col :span="12">
+              <el-form-item label="交换学校层级">
+                <el-select v-model="exchangeForm.schoolTier" clearable placeholder="请选择">
+                  <el-option v-for="item in schoolTierOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
               <el-form-item label="GPA（4分满分）">
                 <el-input-number
                   v-model="exchangeForm.gpaValue"
@@ -249,6 +264,18 @@
                   :step="0.01"
                   controls-position="right"
                 />
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="课程相关度">
+                <el-select v-model="exchangeForm.relevanceLevel" clearable placeholder="请选择">
+                  <el-option v-for="item in relevanceOptions" :key="item.value" :label="item.label" :value="item.value" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="8">
+              <el-form-item label="交换时长（月）">
+                <el-input-number v-model="exchangeForm.durationMonths" :min="0" :max="60" controls-position="right" />
               </el-form-item>
             </el-col>
             <el-col :span="6"><el-form-item label="开始时间"><el-input v-model="exchangeForm.startDate" placeholder="如：2025-09" /></el-form-item></el-col>
@@ -266,7 +293,10 @@
         <div v-else class="display-grid">
           <div class="display-item"><span class="k">国家</span><span class="v">{{ exchangeForm.countryName || '未填写' }}</span></div>
           <div class="display-item"><span class="k">大学</span><span class="v">{{ exchangeForm.universityName || '未填写' }}</span></div>
+          <div class="display-item"><span class="k">学校层级</span><span class="v">{{ optionLabel(schoolTierOptions, exchangeForm.schoolTier) }}</span></div>
           <div class="display-item"><span class="k">GPA</span><span class="v">{{ exchangeForm.gpaValue ?? '未填写' }}</span></div>
+          <div class="display-item"><span class="k">课程相关度</span><span class="v">{{ optionLabel(relevanceOptions, exchangeForm.relevanceLevel) }}</span></div>
+          <div class="display-item"><span class="k">交换时长</span><span class="v">{{ exchangeForm.durationMonths ?? '未填写' }}</span></div>
           <div class="display-item"><span class="k">开始时间</span><span class="v">{{ exchangeForm.startDate || '未填写' }}</span></div>
           <div class="display-item"><span class="k">结束时间</span><span class="v">{{ exchangeForm.endDate || '未填写' }}</span></div>
           <div class="display-item full"><span class="k">主修课程</span><span class="v">{{ exchangeForm.majorCourses || '未填写' }}</span></div>
@@ -296,6 +326,20 @@
             </div>
             <el-row :gutter="12">
               <el-col :span="12"><el-input v-model="item.projectName" placeholder="项目名称" /></el-col>
+              <el-col :span="12"><el-input v-model="item.roleName" placeholder="承担角色" /></el-col>
+              <el-col :span="8">
+                <el-select v-model="item.roleLevel" clearable placeholder="角色等级">
+                  <el-option v-for="option in researchRoleOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-select v-model="item.relevanceLevel" clearable placeholder="项目相关度">
+                  <el-option v-for="option in relevanceOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-input-number v-model="item.durationMonths" :min="0" :max="120" controls-position="right" placeholder="持续月数" />
+              </el-col>
               <el-col :span="6"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
               <el-col :span="6"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
             </el-row>
@@ -309,8 +353,18 @@
               </div>
               <div v-for="(pub, pubIndex) in item.publications" :key="pubIndex" class="pub-row">
                 <el-input v-model="pub.title" placeholder="论文标题" />
-                <el-input v-model="pub.authorRole" placeholder="作者身份" />
+                <el-select v-model="pub.authorOrder" clearable placeholder="作者身份">
+                  <el-option v-for="option in authorOrderOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+                <el-input v-model="pub.authorRole" placeholder="作者备注（通讯/共同一作）" />
                 <el-input v-model="pub.journalName" placeholder="期刊/会议" />
+                <el-select v-model="pub.publicationLevel" clearable placeholder="论文等级">
+                  <el-option v-for="option in publicationLevelOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+                <el-select v-model="pub.journalPartition" clearable placeholder="分区/级别">
+                  <el-option v-for="option in journalPartitionOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+                <el-input v-model="pub.indexedInfo" placeholder="索引信息" />
                 <el-input-number v-model="pub.publishedYear" :min="1900" :max="2100" controls-position="right" />
                 <el-button text type="danger" @click="removePublication(index, pubIndex)">删除</el-button>
               </div>
@@ -322,6 +376,9 @@
           <article v-for="(item, index) in researchForm.items" :key="`r-${index}`" class="summary-card">
             <div class="summary-title">{{ item.projectName || `科研经历 ${index + 1}` }}</div>
             <div class="summary-meta">{{ item.startDate || '开始时间待补充' }} - {{ item.endDate || '结束时间待补充' }}</div>
+            <div class="summary-meta">
+              {{ optionLabel(researchRoleOptions, item.roleLevel) }} · {{ optionLabel(relevanceOptions, item.relevanceLevel) }} · {{ item.durationMonths ? `${item.durationMonths}个月` : '时长待补充' }}
+            </div>
             <p class="summary-desc">{{ item.contentSummary || '暂无内容摘要' }}</p>
             <div class="summary-meta">论文发表：{{ item.hasPublication ? `有（${item.publications?.length || 0} 篇）` : '无' }}</div>
           </article>
@@ -351,9 +408,23 @@
             </div>
             <el-row :gutter="12">
               <el-col :span="8"><el-input v-model="item.competitionName" placeholder="竞赛名称" /></el-col>
-              <el-col :span="6"><el-input v-model="item.competitionLevel" placeholder="级别" /></el-col>
-              <el-col :span="6"><el-input v-model="item.award" placeholder="奖项" /></el-col>
-              <el-col :span="4"><el-input v-model="item.eventDate" placeholder="时间" /></el-col>
+              <el-col :span="8">
+                <el-select v-model="item.competitionLevel" clearable placeholder="竞赛级别">
+                  <el-option v-for="option in competitionLevelOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-select v-model="item.awardLevel" clearable placeholder="获奖等级">
+                  <el-option v-for="option in awardLevelOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-select v-model="item.relevanceLevel" clearable placeholder="专业相关度">
+                  <el-option v-for="option in relevanceOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8"><el-input v-model="item.eventDate" placeholder="时间" /></el-col>
+              <el-col :span="8"><el-input v-model="item.award" placeholder="奖项备注（如：省一、全国二等奖，可选）" /></el-col>
             </el-row>
             <el-input v-model="item.roleDesc" type="textarea" :autosize="{ minRows: 2, maxRows: 8 }" placeholder="职责说明" class="mt8" />
           </div>
@@ -362,7 +433,10 @@
           <el-empty v-if="!competitionForm.items.length" description="暂无竞赛经历" />
           <article v-for="(item, index) in competitionForm.items" :key="`c-${index}`" class="summary-card">
             <div class="summary-title">{{ item.competitionName || `竞赛 ${index + 1}` }}</div>
-            <div class="summary-meta">{{ item.eventDate || '时间待补充' }} · {{ item.competitionLevel || '级别待补充' }} · {{ item.award || '奖项待补充' }}</div>
+            <div class="summary-meta">
+              {{ item.eventDate || '时间待补充' }} · {{ optionLabel(competitionLevelOptions, item.competitionLevel) }} · {{ optionLabel(awardLevelOptions, item.awardLevel) }} · {{ optionLabel(relevanceOptions, item.relevanceLevel) }}
+            </div>
+            <div v-if="item.award" class="summary-meta">备注：{{ item.award }}</div>
             <p class="summary-desc">{{ item.roleDesc || '暂无职责说明' }}</p>
           </article>
         </div>
@@ -394,6 +468,24 @@
               <el-col :span="6"><el-input v-model="item.positionName" placeholder="岗位" /></el-col>
               <el-col :span="5"><el-input v-model="item.startDate" placeholder="开始时间" /></el-col>
               <el-col :span="5"><el-input v-model="item.endDate" placeholder="结束时间" /></el-col>
+              <el-col :span="8">
+                <el-select v-model="item.companyTier" clearable placeholder="公司层级">
+                  <el-option v-for="option in companyTierOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-select v-model="item.relevanceLevel" clearable placeholder="岗位相关度">
+                  <el-option v-for="option in relevanceOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-select v-model="item.titleLevel" clearable placeholder="岗位含金量">
+                  <el-option v-for="option in titleLevelOptions" :key="option.value" :label="option.label" :value="option.value" />
+                </el-select>
+              </el-col>
+              <el-col :span="8">
+                <el-input-number v-model="item.durationMonths" :min="0" :max="120" controls-position="right" placeholder="实习月数" />
+              </el-col>
             </el-row>
             <el-input v-model="item.keywords" placeholder="关键词（逗号分隔）" class="mt8" />
             <el-input
@@ -410,6 +502,9 @@
           <article v-for="(item, index) in workForm.items" :key="`w-${index}`" class="summary-card">
             <div class="summary-title">{{ item.companyName || `工作经历 ${index + 1}` }} · {{ item.positionName || '岗位待补充' }}</div>
             <div class="summary-meta">{{ item.startDate || '开始时间待补充' }} - {{ item.endDate || '结束时间待补充' }}</div>
+            <div class="summary-meta">
+              {{ optionLabel(companyTierOptions, item.companyTier) }} · {{ optionLabel(relevanceOptions, item.relevanceLevel) }} · {{ optionLabel(titleLevelOptions, item.titleLevel) }} · {{ item.durationMonths ? `${item.durationMonths}个月` : '时长待补充' }}
+            </div>
             <div class="summary-meta">关键词：{{ item.keywords || '未填写' }}</div>
             <p class="summary-desc">{{ item.contentSummary || '暂无内容摘要' }}</p>
           </article>
@@ -580,6 +675,95 @@ const educationOptions: Array<{ label: string; value: EducationLevel }> = [
 
 const languageOptions: LanguageType[] = ['CET4', 'CET6', 'TOEFL', 'IELTS', 'PTE']
 
+const undergraduateTierOptions = [
+  { label: 'C9', value: 'C9' },
+  { label: '985', value: '985' },
+  { label: '211', value: '211' },
+  { label: '双一流', value: 'DOUBLE_FIRST_CLASS' },
+  { label: '普通本科', value: 'NORMAL_UNDERGRAD' },
+  { label: '大专', value: 'JUNIOR_COLLEGE' },
+  { label: '海外本科', value: 'OVERSEAS' },
+  { label: '未知', value: 'UNKNOWN' }
+]
+
+const schoolTierOptions = [
+  { label: 'Top 30 / 头部院校', value: 'TOP_30' },
+  { label: 'Top 100 / 知名院校', value: 'TOP_100' },
+  { label: '普通院校', value: 'NORMAL_UNDERGRAD' },
+  { label: '海外本科/交换院校', value: 'OVERSEAS' },
+  { label: '未知', value: 'UNKNOWN' }
+]
+
+const relevanceOptions = [
+  { label: '高度相关', value: 'HIGH' },
+  { label: '部分相关', value: 'MEDIUM' },
+  { label: '弱相关', value: 'LOW' },
+  { label: '不相关', value: 'NONE' }
+]
+
+const researchRoleOptions = [
+  { label: '核心负责人', value: 'CORE' },
+  { label: '主要参与者', value: 'MAJOR' },
+  { label: '普通参与者', value: 'PARTICIPANT' },
+  { label: '课程/短期项目', value: 'COURSE' }
+]
+
+const authorOrderOptions = [
+  { label: '一作', value: 'FIRST_AUTHOR' },
+  { label: '二作', value: 'SECOND_AUTHOR' },
+  { label: '三作及以后', value: 'OTHER_AUTHOR' },
+  { label: '在投/未确定', value: 'SUBMITTED' }
+]
+
+const publicationLevelOptions = [
+  { label: '顶会/高水平会议', value: 'TOP_CONFERENCE' },
+  { label: 'SCI', value: 'SCI' },
+  { label: 'EI', value: 'EI' },
+  { label: 'CSSCI/核心', value: 'CORE_JOURNAL' },
+  { label: '普通期刊', value: 'NORMAL_JOURNAL' },
+  { label: '普通会议', value: 'NORMAL_CONFERENCE' },
+  { label: '在投', value: 'SUBMITTED' }
+]
+
+const journalPartitionOptions = [
+  { label: '一区 / Q1', value: 'Q1' },
+  { label: '二区 / Q2', value: 'Q2' },
+  { label: '三区 / Q3', value: 'Q3' },
+  { label: '四区 / Q4', value: 'Q4' },
+  { label: '无分区', value: 'NONE' }
+]
+
+const competitionLevelOptions = [
+  { label: '国际级', value: 'INTERNATIONAL' },
+  { label: '国家级', value: 'NATIONAL' },
+  { label: '省部级', value: 'PROVINCIAL' },
+  { label: '校级', value: 'SCHOOL' },
+  { label: '普通参与', value: 'PARTICIPANT' }
+]
+
+const awardLevelOptions = [
+  { label: '一等奖/冠军', value: 'FIRST' },
+  { label: '二等奖', value: 'SECOND' },
+  { label: '三等奖', value: 'THIRD' },
+  { label: '优胜/入围', value: 'FINALIST' },
+  { label: '参与', value: 'PARTICIPANT' }
+]
+
+const companyTierOptions = [
+  { label: '头部大厂/顶级机构', value: 'TOP' },
+  { label: '知名行业公司', value: 'KNOWN' },
+  { label: '普通公司', value: 'NORMAL' },
+  { label: '小型公司/校内实习', value: 'SMALL' },
+  { label: '未知', value: 'UNKNOWN' }
+]
+
+const titleLevelOptions = [
+  { label: '核心岗位/高含金量', value: 'HIGH' },
+  { label: '常规专业岗位', value: 'MEDIUM' },
+  { label: '辅助岗位', value: 'LOW' },
+  { label: '未知', value: 'UNKNOWN' }
+]
+
 const savingBasic = ref(false)
 const savingAcademic = ref(false)
 const savingExchange = ref(false)
@@ -600,6 +784,7 @@ const basicForm = reactive({
   wechatId: '',
   educationLevel: 'UNDERGRAD' as EducationLevel,
   schoolName: '',
+  undergraduateSchoolTier: '',
   major: '',
   targetMajorText: '',
   intakeTerm: '',
@@ -623,10 +808,13 @@ const workForm = reactive({ items: [] as WorkItem[] })
 const exchangeForm = reactive<ExchangeExperience>({
   countryName: '',
   universityName: '',
+  schoolTier: '',
   gpaValue: null,
   majorCourses: '',
+  relevanceLevel: '',
   startDate: '',
-  endDate: ''
+  endDate: '',
+  durationMonths: null
 })
 
 const applicationList = reactive({
@@ -678,6 +866,11 @@ const budgetSummaryText = computed(() => {
   if (min !== null) return `${currency} ${min} 起`
   return `${currency} 至 ${max}`
 })
+
+function optionLabel(options: Array<{ label: string; value: string }>, value?: string | null) {
+  if (!value) return '未填写'
+  return options.find((item) => item.value === value)?.label || value
+}
 
 const gpaStep = computed(() => (academicForm.gpaScale === 'PERCENTAGE' ? 1 : 0.01))
 const gpaMax = computed(() => (academicForm.gpaScale === 'PERCENTAGE' ? 100 : 4))
@@ -808,8 +1001,12 @@ function removeLanguageScore(index: number) {
 function createResearchItem(): ResearchItem {
   return {
     projectName: '',
+    roleName: '',
+    roleLevel: null,
+    relevanceLevel: null,
     startDate: '',
     endDate: '',
+    durationMonths: null,
     contentSummary: '',
     hasPublication: false,
     publications: []
@@ -820,7 +1017,11 @@ function createPublication(): PublicationItem {
   return {
     title: '',
     authorRole: '',
+    authorOrder: null,
     journalName: '',
+    publicationLevel: null,
+    journalPartition: null,
+    indexedInfo: '',
     publishedYear: null
   }
 }
@@ -846,6 +1047,8 @@ function addCompetition() {
     competitionName: '',
     competitionLevel: '',
     award: '',
+    awardLevel: null,
+    relevanceLevel: null,
     roleDesc: '',
     eventDate: ''
   })
@@ -858,9 +1061,13 @@ function removeCompetition(index: number) {
 function addWork() {
   workForm.items.push({
     companyName: '',
+    companyTier: null,
     positionName: '',
+    relevanceLevel: null,
+    titleLevel: null,
     startDate: '',
     endDate: '',
+    durationMonths: null,
     keywords: '',
     contentSummary: ''
   })
@@ -967,6 +1174,7 @@ async function loadData() {
       basicForm.wechatId = profile.wechatId || ''
       basicForm.educationLevel = (profile.educationLevel || 'UNDERGRAD') as EducationLevel
       basicForm.schoolName = profile.schoolName || ''
+      basicForm.undergraduateSchoolTier = profile.undergraduateSchoolTier || ''
       basicForm.major = profile.major || ''
       basicForm.targetMajorText = profile.targetMajorText || ''
       basicForm.intakeTerm = profile.intakeTerm || ''
@@ -1004,10 +1212,13 @@ async function loadData() {
         const data = value as ExchangeExperience
         exchangeForm.countryName = data.countryName || ''
         exchangeForm.universityName = data.universityName || ''
+        exchangeForm.schoolTier = data.schoolTier || ''
         exchangeForm.gpaValue = data.gpaValue ?? null
         exchangeForm.majorCourses = data.majorCourses || ''
+        exchangeForm.relevanceLevel = data.relevanceLevel || ''
         exchangeForm.startDate = data.startDate || ''
         exchangeForm.endDate = data.endDate || ''
+        exchangeForm.durationMonths = data.durationMonths ?? null
       }
     },
     {
@@ -1095,6 +1306,7 @@ async function saveBasic() {
       wechatId: basicForm.wechatId,
       educationLevel: basicForm.educationLevel,
       schoolName: basicForm.schoolName,
+      undergraduateSchoolTier: basicForm.undergraduateSchoolTier || null,
       major: basicForm.major,
       targetMajorText: basicForm.targetMajorText,
       intakeTerm: basicForm.intakeTerm,
@@ -1153,17 +1365,23 @@ async function saveExchange() {
     const result = await saveStudentExchangeExperience({
       countryName: exchangeForm.countryName,
       universityName: exchangeForm.universityName,
+      schoolTier: exchangeForm.schoolTier || null,
       gpaValue: exchangeForm.gpaValue,
       majorCourses: exchangeForm.majorCourses,
+      relevanceLevel: exchangeForm.relevanceLevel || null,
       startDate: exchangeForm.startDate,
-      endDate: exchangeForm.endDate
+      endDate: exchangeForm.endDate,
+      durationMonths: exchangeForm.durationMonths
     })
     exchangeForm.countryName = result.countryName || ''
     exchangeForm.universityName = result.universityName || ''
+    exchangeForm.schoolTier = result.schoolTier || ''
     exchangeForm.gpaValue = result.gpaValue ?? null
     exchangeForm.majorCourses = result.majorCourses || ''
+    exchangeForm.relevanceLevel = result.relevanceLevel || ''
     exchangeForm.startDate = result.startDate || ''
     exchangeForm.endDate = result.endDate || ''
+    exchangeForm.durationMonths = result.durationMonths ?? null
     ElMessage.success('交换经历已保存')
     finishEdit('exchange')
   } catch (error) {

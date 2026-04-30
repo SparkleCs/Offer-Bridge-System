@@ -93,6 +93,16 @@ public class StudentController {
     return ApiResponse.ok(studentService.saveExchangeExperience(AuthContext.getUserId(), request));
   }
 
+  @GetMapping("/background-score")
+  public ApiResponse<StudentDtos.BackgroundScoreView> getBackgroundScore() {
+    return ApiResponse.ok(studentService.getBackgroundScore(AuthContext.getUserId()));
+  }
+
+  @PostMapping("/background-score/refresh")
+  public ApiResponse<StudentDtos.BackgroundScoreView> refreshBackgroundScore() {
+    return ApiResponse.ok(studentService.refreshBackgroundScore(AuthContext.getUserId()));
+  }
+
   @PostMapping("/verification/submit")
   public ApiResponse<Void> submitVerification(@Valid @RequestBody StudentDtos.VerificationSubmitRequest request) {
     studentService.submitVerification(AuthContext.getUserId(), request);

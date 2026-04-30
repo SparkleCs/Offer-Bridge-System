@@ -6,28 +6,41 @@
     <result column="user_id" property="userId"/>
     <result column="country_name" property="countryName"/>
     <result column="university_name" property="universityName"/>
+    <result column="school_tier" property="schoolTier"/>
     <result column="gpa_value" property="gpaValue"/>
     <result column="major_courses" property="majorCourses"/>
+    <result column="relevance_level" property="relevanceLevel"/>
     <result column="start_date" property="startDate"/>
     <result column="end_date" property="endDate"/>
+    <result column="duration_months" property="durationMonths"/>
   </resultMap>
 
   <select id="findByUserId" resultMap="BaseMap">
-    SELECT id, user_id, country_name, university_name, gpa_value, major_courses, start_date, end_date
+    SELECT id, user_id, country_name, university_name, school_tier, gpa_value, major_courses,
+           relevance_level, start_date, end_date, duration_months
     FROM student_exchange_experience
     WHERE user_id = #{userId}
     LIMIT 1
   </select>
 
   <insert id="upsert">
-    INSERT INTO student_exchange_experience(user_id, country_name, university_name, gpa_value, major_courses, start_date, end_date)
-    VALUES(#{userId}, #{countryName}, #{universityName}, #{gpaValue}, #{majorCourses}, #{startDate}, #{endDate})
+    INSERT INTO student_exchange_experience(
+      user_id, country_name, university_name, school_tier, gpa_value, major_courses,
+      relevance_level, start_date, end_date, duration_months
+    )
+    VALUES(
+      #{userId}, #{countryName}, #{universityName}, #{schoolTier}, #{gpaValue}, #{majorCourses},
+      #{relevanceLevel}, #{startDate}, #{endDate}, #{durationMonths}
+    )
     ON DUPLICATE KEY UPDATE
       country_name = VALUES(country_name),
       university_name = VALUES(university_name),
+      school_tier = VALUES(school_tier),
       gpa_value = VALUES(gpa_value),
       major_courses = VALUES(major_courses),
+      relevance_level = VALUES(relevance_level),
       start_date = VALUES(start_date),
-      end_date = VALUES(end_date)
+      end_date = VALUES(end_date),
+      duration_months = VALUES(duration_months)
   </insert>
 </mapper>

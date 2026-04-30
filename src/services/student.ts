@@ -1,5 +1,6 @@
 import { apiRequest } from './http'
 import type {
+  BackgroundScoreView,
   CompetitionView,
   ExchangeExperience,
   ResearchView,
@@ -107,6 +108,14 @@ export function saveStudentExchangeExperience(payload: ExchangeExperience) {
     },
     true
   )
+}
+
+export function getStudentBackgroundScore() {
+  return apiRequest<BackgroundScoreView>('/api/v1/student/background-score', { method: 'GET' }, true)
+}
+
+export function refreshStudentBackgroundScore() {
+  return apiRequest<BackgroundScoreView>('/api/v1/student/background-score/refresh', { method: 'POST' }, true)
 }
 
 export function submitStudentVerification(payload: VerificationSubmitPayload) {

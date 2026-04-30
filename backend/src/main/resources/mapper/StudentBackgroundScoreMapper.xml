@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentBackgroundScoreMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.StudentBackgroundScore">
+    <id column="id" property="id"/>
+    <result column="user_id" property="userId"/>
+    <result column="gpa_score" property="gpaScore"/>
+    <result column="language_score" property="languageScore"/>
+    <result column="publication_score" property="publicationScore"/>
+    <result column="research_score" property="researchScore"/>
+    <result column="internship_score" property="internshipScore"/>
+    <result column="exchange_score" property="exchangeScore"/>
+    <result column="competition_score" property="competitionScore"/>
+    <result column="undergraduate_school_score" property="undergraduateSchoolScore"/>
+    <result column="overall_academic_score" property="overallAcademicScore"/>
+    <result column="score_version" property="scoreVersion"/>
+    <result column="score_detail_json" property="scoreDetailJson"/>
+  </resultMap>
+
+  <select id="findByUserId" resultMap="BaseMap">
+    SELECT id, user_id, gpa_score, language_score, publication_score, research_score, internship_score,
+           exchange_score, competition_score, undergraduate_school_score, overall_academic_score,
+           score_version, score_detail_json
+    FROM student_background_score
+    WHERE user_id = #{userId}
+    LIMIT 1
+  </select>
+
+  <insert id="upsert">
+    INSERT INTO student_background_score(
+      user_id, gpa_score, language_score, publication_score, research_score, internship_score,
+      exchange_score, competition_score, undergraduate_school_score, overall_academic_score, score_version, score_detail_json
+    )
+    VALUES(
+      #{userId}, #{gpaScore}, #{languageScore}, #{publicationScore}, #{researchScore}, #{internshipScore},
+      #{exchangeScore}, #{competitionScore}, #{undergraduateSchoolScore}, #{overallAcademicScore}, #{scoreVersion}, #{scoreDetailJson}
+    )
+    ON DUPLICATE KEY UPDATE
+      gpa_score = VALUES(gpa_score),
+      language_score = VALUES(language_score),
+      publication_score = VALUES(publication_score),
+      research_score = VALUES(research_score),
+      internship_score = VALUES(internship_score),
+      exchange_score = VALUES(exchange_score),
+      competition_score = VALUES(competition_score),
+      undergraduate_school_score = VALUES(undergraduate_school_score),
+      overall_academic_score = VALUES(overall_academic_score),
+      score_version = VALUES(score_version),
+      score_detail_json = VALUES(score_detail_json)
+  </insert>
+</mapper>

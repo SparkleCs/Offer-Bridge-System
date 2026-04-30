@@ -6,12 +6,17 @@
     <result column="research_id" property="researchId"/>
     <result column="title" property="title"/>
     <result column="author_role" property="authorRole"/>
+    <result column="author_order" property="authorOrder"/>
     <result column="journal_name" property="journalName"/>
+    <result column="publication_level" property="publicationLevel"/>
+    <result column="journal_partition" property="journalPartition"/>
     <result column="published_year" property="publishedYear"/>
+    <result column="indexed_info" property="indexedInfo"/>
   </resultMap>
 
   <select id="listByUserId" resultMap="BaseMap">
-    SELECT p.id, p.research_id, p.title, p.author_role, p.journal_name, p.published_year
+    SELECT p.id, p.research_id, p.title, p.author_role, p.author_order, p.journal_name,
+           p.publication_level, p.journal_partition, p.published_year, p.indexed_info
     FROM student_publication p
     INNER JOIN student_research_experience r ON r.id = p.research_id
     WHERE r.user_id = #{userId}
@@ -26,7 +31,13 @@
   </delete>
 
   <insert id="insertOne">
-    INSERT INTO student_publication(research_id, title, author_role, journal_name, published_year)
-    VALUES(#{researchId}, #{title}, #{authorRole}, #{journalName}, #{publishedYear})
+    INSERT INTO student_publication(
+      research_id, title, author_role, author_order, journal_name, publication_level,
+      journal_partition, published_year, indexed_info
+    )
+    VALUES(
+      #{researchId}, #{title}, #{authorRole}, #{authorOrder}, #{journalName}, #{publicationLevel},
+      #{journalPartition}, #{publishedYear}, #{indexedInfo}
+    )
   </insert>
 </mapper>

@@ -14,15 +14,23 @@ export interface TargetCountryItem {
 export interface PublicationItem {
   title: string
   authorRole: string
+  authorOrder?: string | null
   journalName: string
+  publicationLevel?: string | null
+  journalPartition?: string | null
+  indexedInfo?: string | null
   publishedYear: number | null
 }
 
 export interface ResearchItem {
   id?: number
   projectName: string
+  roleName?: string | null
+  roleLevel?: string | null
+  relevanceLevel?: string | null
   startDate: string
   endDate: string
+  durationMonths?: number | null
   contentSummary: string
   hasPublication: boolean
   publications: PublicationItem[]
@@ -33,6 +41,8 @@ export interface CompetitionItem {
   competitionName: string
   competitionLevel: string
   award: string
+  awardLevel?: string | null
+  relevanceLevel?: string | null
   roleDesc: string
   eventDate: string
 }
@@ -40,9 +50,13 @@ export interface CompetitionItem {
 export interface WorkItem {
   id?: number
   companyName: string
+  companyTier?: string | null
   positionName: string
+  relevanceLevel?: string | null
+  titleLevel?: string | null
   startDate: string
   endDate: string
+  durationMonths?: number | null
   keywords: string
   contentSummary: string
 }
@@ -55,6 +69,7 @@ export interface StudentProfile {
   wechatId: string | null
   educationLevel: EducationLevel | null
   schoolName: string | null
+  undergraduateSchoolTier: string | null
   major: string | null
   gpaValue: number | null
   gpaScale: GpaScale | null
@@ -76,6 +91,7 @@ export interface UpdateStudentBasicPayload {
   wechatId?: string
   educationLevel: EducationLevel
   schoolName: string
+  undergraduateSchoolTier?: string | null
   major: string
   targetMajorText: string
   intakeTerm: string
@@ -108,10 +124,27 @@ export interface WorkView {
 export interface ExchangeExperience {
   countryName: string
   universityName: string
+  schoolTier?: string | null
   gpaValue: number | null
   majorCourses: string
+  relevanceLevel?: string | null
   startDate: string
   endDate: string
+  durationMonths?: number | null
+}
+
+export interface BackgroundScoreView {
+  gpaScore: number
+  languageScore: number
+  publicationScore: number
+  researchScore: number
+  internshipScore: number
+  exchangeScore: number
+  competitionScore: number
+  undergraduateSchoolScore: number
+  overallAcademicScore: number
+  scoreVersion: string
+  scoreDetailJson: string | null
 }
 
 export interface VerificationSubmitPayload {

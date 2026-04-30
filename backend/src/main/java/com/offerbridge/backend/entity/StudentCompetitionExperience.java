@@ -6,6 +6,8 @@ public class StudentCompetitionExperience {
   private String competitionName;
   private String competitionLevel;
   private String award;
+  private String awardLevel;
+  private String relevanceLevel;
   private String roleDesc;
   private String eventDate;
 
@@ -19,6 +21,10 @@ public class StudentCompetitionExperience {
   public void setCompetitionLevel(String competitionLevel) { this.competitionLevel = competitionLevel; }
   public String getAward() { return award; }
   public void setAward(String award) { this.award = award; }
+  public String getAwardLevel() { return awardLevel; }
+  public void setAwardLevel(String awardLevel) { this.awardLevel = awardLevel; }
+  public String getRelevanceLevel() { return relevanceLevel; }
+  public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
   public String getRoleDesc() { return roleDesc; }
   public void setRoleDesc(String roleDesc) { this.roleDesc = roleDesc; }
   public String getEventDate() { return eventDate; }

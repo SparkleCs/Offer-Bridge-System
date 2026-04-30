@@ -7,10 +7,13 @@ public class StudentExchangeExperience {
   private Long userId;
   private String countryName;
   private String universityName;
+  private String schoolTier;
   private BigDecimal gpaValue;
   private String majorCourses;
+  private String relevanceLevel;
   private String startDate;
   private String endDate;
+  private Integer durationMonths;
 
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
@@ -20,12 +23,18 @@ public class StudentExchangeExperience {
   public void setCountryName(String countryName) { this.countryName = countryName; }
   public String getUniversityName() { return universityName; }
   public void setUniversityName(String universityName) { this.universityName = universityName; }
+  public String getSchoolTier() { return schoolTier; }
+  public void setSchoolTier(String schoolTier) { this.schoolTier = schoolTier; }
   public BigDecimal getGpaValue() { return gpaValue; }
   public void setGpaValue(BigDecimal gpaValue) { this.gpaValue = gpaValue; }
   public String getMajorCourses() { return majorCourses; }
   public void setMajorCourses(String majorCourses) { this.majorCourses = majorCourses; }
+  public String getRelevanceLevel() { return relevanceLevel; }
+  public void setRelevanceLevel(String relevanceLevel) { this.relevanceLevel = relevanceLevel; }
   public String getStartDate() { return startDate; }
   public void setStartDate(String startDate) { this.startDate = startDate; }
   public String getEndDate() { return endDate; }
   public void setEndDate(String endDate) { this.endDate = endDate; }
+  public Integer getDurationMonths() { return durationMonths; }
+  public void setDurationMonths(Integer durationMonths) { this.durationMonths = durationMonths; }
 }
