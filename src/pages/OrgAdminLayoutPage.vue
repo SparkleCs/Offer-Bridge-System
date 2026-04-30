@@ -15,6 +15,10 @@
       <div class="nav-divider"></div>
 
       <el-menu :default-active="route.path" class="menu" @select="go">
+        <el-menu-item index="/org-admin/company">
+          <el-icon class="menu-icon"><OfficeBuilding /></el-icon>
+          <span>公司信息</span>
+        </el-menu-item>
         <el-menu-item index="/org-admin/verification">
           <el-icon class="menu-icon"><Checked /></el-icon>
           <span>公司认证</span>
@@ -26,10 +30,6 @@
         <el-menu-item index="/org-admin/permissions">
           <el-icon class="menu-icon"><Key /></el-icon>
           <span>权限管理</span>
-        </el-menu-item>
-        <el-menu-item index="/org-admin/company">
-          <el-icon class="menu-icon"><OfficeBuilding /></el-icon>
-          <span>公司信息</span>
         </el-menu-item>
       </el-menu>
 

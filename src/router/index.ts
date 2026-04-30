@@ -27,7 +27,7 @@ const routes = [
     component: () => import('../pages/OrgAdminLayoutPage.vue'),
     meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG'] },
     children: [
-      { path: '', redirect: '/org-admin/verification' },
+      { path: '', redirect: '/org-admin/company' },
       { path: 'verification', name: 'org-admin-verification', component: () => import('../pages/OrgVerificationPage.vue') },
       { path: 'members', name: 'org-admin-members', component: () => import('../pages/OrgMembersPage.vue') },
       { path: 'permissions', name: 'org-admin-permissions', component: () => import('../pages/OrgPermissionsPage.vue') },
@@ -87,9 +87,9 @@ router.beforeEach((to) => {
   const role = authStore.authMeta?.role
 
   if (role === 'AGENT_ORG') {
-    if (to.path === '/auth') return '/org-admin/verification'
-    if (to.path === '/admin-auth') return '/org-admin/verification'
-    if (!to.path.startsWith('/org-admin')) return '/org-admin/verification'
+    if (to.path === '/auth') return '/org-admin/company'
+    if (to.path === '/admin-auth') return '/org-admin/company'
+    if (!to.path.startsWith('/org-admin')) return '/org-admin/company'
     return true
   }
   if (role === 'AGENT_MEMBER') {

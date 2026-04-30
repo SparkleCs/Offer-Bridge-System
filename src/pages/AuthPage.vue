@@ -152,7 +152,7 @@ function isValidPassword(value: string) {
 
 async function routeAfterLogin(role: string) {
   if (role === 'AGENT_ORG') {
-    await router.push('/org-admin/verification')
+    await router.push('/org-admin/company')
   } else if (role === 'AGENT_MEMBER') {
     await router.push('/agent-workbench/communication')
   } else {
