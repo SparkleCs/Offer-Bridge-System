@@ -145,6 +145,36 @@
     ORDER BY sp.user_id DESC
   </select>
 
+  <select id="listAgencyTeamStudentRecommendationCandidates" resultType="com.offerbridge.backend.dto.RecommendationDtos$AgencyTeamStudentRecommendationCandidate">
+    SELECT
+      sp.user_id AS studentUserId,
+      CASE
+        WHEN sp.name IS NOT NULL AND sp.name != '' THEN CONCAT(SUBSTRING(sp.name, 1, 1), '同学')
+        ELSE CONCAT('学生-', LPAD(sp.user_id, 4, '0'))
+      END AS displayName,
+      sp.education_level AS educationLevel,
+      sp.school_name AS schoolName,
+      sp.major AS major,
+      sp.gpa_value AS gpaValue,
+      sp.gpa_scale AS gpaScale,
+      sp.budget_min AS budgetMin,
+      sp.budget_max AS budgetMax,
+      GROUP_CONCAT(DISTINCT CONCAT(sls.language_type, ' ', TRIM(TRAILING '.00' FROM sls.score)) ORDER BY sls.id SEPARATOR ' / ') AS languageSummary,
+      GROUP_CONCAT(DISTINCT stc.country_name ORDER BY stc.id SEPARATOR '、') AS targetCountries,
+      sp.target_major_text AS targetMajorText,
+      sp.intake_term AS intakeTerm
+    FROM student_profile sp
+    JOIN user_account ua ON ua.id = sp.user_id AND ua.role = 'STUDENT' AND ua.status = 'ACTIVE'
+    JOIN verification_record vrn ON vrn.user_id = sp.user_id AND vrn.verify_type = 'REAL_NAME' AND vrn.status = 'APPROVED'
+    JOIN verification_record vre ON vre.user_id = sp.user_id AND vre.verify_type = 'EDUCATION' AND vre.status = 'APPROVED'
+    LEFT JOIN student_target_country stc ON stc.user_id = sp.user_id
+    LEFT JOIN student_language_score sls ON sls.user_id = sp.user_id
+    GROUP BY sp.user_id, sp.name, sp.education_level, sp.school_name, sp.major, sp.gpa_value, sp.gpa_scale,
+             sp.budget_min, sp.budget_max, sp.target_major_text, sp.intake_term
+    ORDER BY sp.user_id DESC
+    LIMIT 500
+  </select>
+
   <insert id="insertEmpty">
     INSERT INTO student_profile(user_id)
     VALUES(#{userId})

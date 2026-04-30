@@ -1,6 +1,7 @@
 package com.offerbridge.backend.mapper;
 
 import com.offerbridge.backend.dto.AgencyDtos;
+import com.offerbridge.backend.dto.RecommendationDtos;
 import com.offerbridge.backend.entity.AgencyTeam;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -22,6 +23,7 @@ public interface AgencyTeamMapper {
                                                          @Param("city") String city,
                                                          @Param("roleCode") String roleCode,
                                                          @Param("serviceTag") String serviceTag);
+  List<RecommendationDtos.StudentAgencyTeamRecommendationCandidate> listStudentAgencyTeamRecommendationCandidates();
   AgencyDtos.DiscoveryTeamDetail findDiscoveryTeamDetail(@Param("teamId") Long teamId);
   List<AgencyDtos.DiscoveryTeamMemberItem> listDiscoveryTeamMembers(@Param("teamId") Long teamId);
   List<AgencyDtos.TeamProductPublisherItem> listActivePublisherMembers(@Param("teamId") Long teamId);

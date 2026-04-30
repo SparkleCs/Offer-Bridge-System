@@ -1,6 +1,11 @@
 <template>
   <section class="agency-page fade-up">
     <header class="agency-filter-bar">
+      <div class="mode-tabs">
+        <button class="mode-tab" :class="{ active: listMode === 'recommend' }" @click="switchMode('recommend')">推荐</button>
+        <button class="mode-tab" :class="{ active: listMode === 'all' }" @click="switchMode('all')">全部中介</button>
+        <span v-if="recommendHint" class="recommend-hint">{{ recommendHint }}</span>
+      </div>
       <div class="search-line">
         <el-input
           v-model="filters.keyword"
@@ -8,46 +13,46 @@
           size="large"
           placeholder="搜索团队名、机构名、介绍关键词"
           clearable
-          @keyup.enter="loadTeams"
+          @keyup.enter="loadAllTeamsFromUserAction"
         >
           <template #prefix>
             <span class="icon">🔎</span>
           </template>
         </el-input>
-        <el-select v-model="filters.sort" class="sort-select" @change="loadTeams">
+        <el-select v-model="filters.sort" class="sort-select" @change="loadAllTeamsFromUserAction">
           <el-option label="综合相关" value="relevance" />
           <el-option label="评分优先" value="rating_desc" />
           <el-option label="最新上架" value="published_desc" />
         </el-select>
-        <el-button type="primary" size="large" class="search-btn" @click="loadTeams" :loading="loadingList">搜索</el-button>
+        <el-button type="primary" size="large" class="search-btn" @click="loadAllTeamsFromUserAction" :loading="loadingList">搜索</el-button>
       </div>
 
       <div class="chip-row">
-        <el-select v-model="filters.country" clearable placeholder="国家" class="chip" @change="loadTeams">
+        <el-select v-model="filters.country" clearable placeholder="国家" class="chip" @change="loadAllTeamsFromUserAction">
           <el-option label="美国" value="美国" />
           <el-option label="英国" value="英国" />
           <el-option label="澳大利亚" value="澳大利亚" />
           <el-option label="新西兰" value="新西兰" />
         </el-select>
 
-        <el-select v-model="filters.direction" clearable placeholder="方向" class="chip" @change="loadTeams">
+        <el-select v-model="filters.direction" clearable placeholder="方向" class="chip" @change="loadAllTeamsFromUserAction">
           <el-option v-for="item in directionOptions" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
 
-        <el-select v-model="filters.minRating" clearable placeholder="评分" class="chip" @change="loadTeams">
+        <el-select v-model="filters.minRating" clearable placeholder="评分" class="chip" @change="loadAllTeamsFromUserAction">
           <el-option label="4.0 分及以上" :value="4" />
           <el-option label="4.3 分及以上" :value="4.3" />
           <el-option label="4.5 分及以上" :value="4.5" />
         </el-select>
 
-        <el-select v-model="filters.budgetBucket" clearable placeholder="预算" class="chip" @change="loadTeams">
+        <el-select v-model="filters.budgetBucket" clearable placeholder="预算" class="chip" @change="loadAllTeamsFromUserAction">
           <el-option label="3万以下" value="LT_30000" />
           <el-option label="3万-5万" value="30000_50000" />
           <el-option label="5万-8万" value="50000_80000" />
           <el-option label="8万以上" value="80000_PLUS" />
         </el-select>
 
-        <el-input v-model="filters.city" clearable placeholder="城市" class="chip" @keyup.enter="loadTeams" />
+        <el-input v-model="filters.city" clearable placeholder="城市" class="chip" @keyup.enter="loadAllTeamsFromUserAction" />
 
         <el-button text class="clear-btn" @click="clearFilters">清空</el-button>
       </div>
@@ -66,7 +71,10 @@
           @click="selectTeam(team.teamId)"
         >
           <div class="team-top">
-            <h3>{{ team.teamName }}</h3>
+            <div class="team-title-wrap">
+              <h3>{{ team.teamName }}</h3>
+              <span v-if="isRecommendedTeam(team)" class="recommend-badge">推荐</span>
+            </div>
             <span class="price">{{ team.priceTextPlaceholder || '价格待上线' }}</span>
           </div>
 
@@ -183,20 +191,24 @@ import { useRoute, useRouter } from 'vue-router'
 import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
 import { startChat } from '../services/message'
 import { createServiceOrder } from '../services/order'
+import { listStudentAgencyTeamRecommendations } from '../services/recommendation'
 import { getTeamMemberReviewSummaries, getTeamRatingSummaries, getTeamRatingSummary } from '../services/review'
 import { getStudentVerificationStatus } from '../services/student'
 import { useAuthStore } from '../stores/auth'
 import type { DiscoveryTeamDetail, DiscoveryTeamItem } from '../types/agency'
+import type { StudentAgencyTeamRecommendationItem } from '../types/recommendation'
 import type { RatingSummary, TeamMemberReviewSummary } from '../types/review'
 import { confirmLoginRequired } from '../utils/authPrompt'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+type AgencyListMode = 'recommend' | 'all'
+type AgencyTeamListItem = DiscoveryTeamItem | StudentAgencyTeamRecommendationItem
 
 const loadingList = ref(false)
 const loadingDetail = ref(false)
-const teams = ref<DiscoveryTeamItem[]>([])
+const teams = ref<AgencyTeamListItem[]>([])
 const selectedTeamId = ref<number | null>(null)
 const detail = ref<DiscoveryTeamDetail | null>(null)
 const detailCache = new Map<number, DiscoveryTeamDetail>()
@@ -208,6 +220,8 @@ const pendingChatTeam = ref<{ teamId: number; teamName: string } | null>(null)
 const startingChat = ref(false)
 const creatingOrder = ref(false)
 const activeRating = ref<RatingSummary | null>(null)
+const listMode = ref<AgencyListMode>(route.query.mode === 'all' ? 'all' : 'recommend')
+const recommendHint = ref('')
 
 const roleOptions = [
   { label: '咨询顾问', value: 'CONSULTANT' },
@@ -259,7 +273,12 @@ function scoreText(value?: number | null) {
 async function loadTeams() {
   loadingList.value = true
   try {
-    teams.value = await listDiscoveryTeams(filters)
+    recommendHint.value = ''
+    if (listMode.value === 'recommend') {
+      await loadRecommendedTeams()
+    } else {
+      teams.value = await listDiscoveryTeams(filters)
+    }
     if (teams.value.length === 0) {
       selectedTeamId.value = null
       detail.value = null
@@ -280,6 +299,46 @@ async function loadTeams() {
   } finally {
     loadingList.value = false
   }
+}
+
+async function loadRecommendedTeams() {
+  const isStudent = authStore.authMeta?.role === 'STUDENT'
+  if (!authStore.isLoggedIn || !isStudent) {
+    recommendHint.value = '登录学生账号并完善档案后，可查看智能推荐。'
+    teams.value = await listDiscoveryTeams(filters)
+    return
+  }
+  try {
+    const recommended = await listStudentAgencyTeamRecommendations()
+    if (recommended.length === 0) {
+      recommendHint.value = '暂未生成推荐，先展示全部中介。完善目标国家、专业方向和预算后会更准。'
+      teams.value = await listDiscoveryTeams(filters)
+      return
+    }
+    teams.value = recommended
+  } catch (error: any) {
+    recommendHint.value = error?.message || '推荐暂不可用，已展示全部中介。'
+    teams.value = await listDiscoveryTeams(filters)
+  }
+}
+
+function loadAllTeamsFromUserAction() {
+  if (listMode.value !== 'all') {
+    listMode.value = 'all'
+    syncModeQuery()
+  }
+  loadTeams()
+}
+
+function switchMode(mode: AgencyListMode) {
+  if (listMode.value === mode) return
+  listMode.value = mode
+  syncModeQuery()
+  loadTeams()
+}
+
+function syncModeQuery() {
+  router.replace({ query: { ...route.query, mode: listMode.value } }).catch(() => null)
 }
 
 async function loadTeamRatings() {
@@ -341,7 +400,11 @@ function clearFilters() {
   filters.budgetBucket = ''
   filters.city = ''
   filters.sort = 'relevance'
-  loadTeams()
+  loadAllTeamsFromUserAction()
+}
+
+function isRecommendedTeam(team: AgencyTeamListItem): team is StudentAgencyTeamRecommendationItem {
+  return listMode.value === 'recommend' && 'recommendScore' in team
 }
 
 async function openGreetingDialog(team: { teamId: number; teamName: string }) {
@@ -427,6 +490,36 @@ loadTeams()
   box-shadow: 0 12px 28px rgba(10, 24, 40, 0.24);
 }
 
+.mode-tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.mode-tab {
+  height: 34px;
+  border: 1px solid rgba(215, 236, 249, 0.45);
+  border-radius: 999px;
+  padding: 0 18px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7ecf9;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.mode-tab.active {
+  background: #dff7ff;
+  color: #15516a;
+  border-color: #7dd4ef;
+}
+
+.recommend-hint {
+  color: #cfe8f4;
+  font-size: 13px;
+}
+
 .search-line {
   display: grid;
   grid-template-columns: 1fr 130px 120px;
@@ -503,10 +596,25 @@ loadTeams()
   gap: 8px;
 }
 
+.team-title-wrap {
+  min-width: 0;
+}
+
 .team-top h3 {
   margin: 0;
   font-size: 18px;
   color: #2c445d;
+}
+
+.recommend-badge {
+  display: inline-flex;
+  margin-top: 8px;
+  border-radius: 999px;
+  padding: 3px 9px;
+  background: #e4f8ef;
+  color: #178254;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .price {
@@ -540,6 +648,7 @@ loadTeams()
   gap: 10px;
   color: #60768e;
   font-size: 12px;
+  flex-wrap: wrap;
 }
 
 .card-actions {

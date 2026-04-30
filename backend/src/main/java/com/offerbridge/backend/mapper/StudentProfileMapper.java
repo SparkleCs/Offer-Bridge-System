@@ -1,6 +1,7 @@
 package com.offerbridge.backend.mapper;
 
 import com.offerbridge.backend.dto.AgencyDtos;
+import com.offerbridge.backend.dto.RecommendationDtos;
 import com.offerbridge.backend.entity.StudentProfile;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -16,6 +17,7 @@ public interface StudentProfileMapper {
                                                               @Param("educationLevel") String educationLevel,
                                                               @Param("scoreBucket") String scoreBucket,
                                                               @Param("subjectCategoryCode") String subjectCategoryCode);
+  List<RecommendationDtos.AgencyTeamStudentRecommendationCandidate> listAgencyTeamStudentRecommendationCandidates();
   int insertEmpty(@Param("userId") Long userId);
   int updateProfile(StudentProfile profile);
   int updateWechatId(@Param("userId") Long userId, @Param("wechatId") String wechatId);
