@@ -141,6 +141,36 @@
         </div>
       </section>
 
+      <section id="aiReport" class="page-card section-card">
+        <div class="section-head-inline">
+          <h2>AI择校报告</h2>
+          <el-button type="primary" :loading="generatingAiReport" @click="generateAiReport">生成AI择校报告</el-button>
+        </div>
+        <el-empty v-if="!latestAiReport && !generatingAiReport" description="暂无AI择校报告" />
+        <div v-else-if="latestAiReport" class="ai-report-summary">
+          <div class="ai-summary-head">
+            <div>
+              <strong>AI申请竞争力评估</strong>
+              <p>{{ latestAiReport.overallSummary }}</p>
+            </div>
+            <span>{{ formatAiDate(latestAiReport.generatedAt) }}</span>
+          </div>
+          <div class="ai-rec-grid">
+            <article v-for="item in latestAiReport.recommendations.slice(0, 6)" :key="item.programId" class="ai-rec-card">
+              <div class="ai-rec-title">{{ item.schoolName }}</div>
+              <div class="ai-rec-sub">{{ item.programName }}</div>
+              <div class="ai-rec-meta">AI匹配度 {{ item.mlScore }} · 录取概率估计 {{ probabilityText(item.admissionProbabilityEstimate) }} · {{ item.matchTier }}</div>
+            </article>
+          </div>
+          <div v-if="latestAiReport.improvementSuggestions.length" class="ai-suggestions">
+            <div v-for="item in latestAiReport.improvementSuggestions.slice(0, 3)" :key="`${item.priority}-${item.action}`">
+              <strong>{{ item.priority }}</strong>
+              <span>{{ item.action }}：{{ item.reason }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section id="academic" class="page-card section-card">
         <div class="section-head-inline section-head-edit">
           <h2>学术背景</h2>
@@ -588,6 +618,7 @@ import type { UploadRequestOptions } from 'element-plus'
 import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../services/http'
+import { generateAiRecommendations, getLatestAiReport } from '../services/ai'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 import {
   getStudentCompetition,
@@ -623,6 +654,7 @@ import type {
   WorkItem
 } from '../types/student'
 import type { ApplicationListItem } from '../types/university'
+import type { AiReportView } from '../types/ai'
 import type { OrderDetail, StageItem } from '../types/order'
 
 interface LoadErrorItem {
@@ -638,6 +670,8 @@ const centerPaneRef = ref<HTMLElement | null>(null)
 const activeSection = ref('basic')
 const rankInputText = ref('')
 const loadErrors = ref<LoadErrorItem[]>([])
+const latestAiReport = ref<AiReportView | null>(null)
+const generatingAiReport = ref(false)
 const editingMap = reactive<Record<EditableSection, boolean>>({
   basic: false,
   academic: false,
@@ -653,6 +687,7 @@ const navItems = [
   { id: 'security', label: '账号安全' },
   { id: 'basic', label: '基础信息' },
   { id: 'applicationList', label: '申请清单' },
+  { id: 'aiReport', label: 'AI报告' },
   { id: 'academic', label: '学术背景' },
   { id: 'exchange', label: '交换经历' },
   { id: 'research', label: '科研经历' },
@@ -1163,6 +1198,29 @@ function readErrorMessage(error: unknown) {
   return '未知错误'
 }
 
+function probabilityText(value?: number | null) {
+  if (value === undefined || value === null) return '-'
+  return `${Math.round(Number(value) * 100)}%`
+}
+
+function formatAiDate(value?: string | null) {
+  if (!value) return '-'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+async function generateAiReport() {
+  generatingAiReport.value = true
+  try {
+    latestAiReport.value = await generateAiRecommendations()
+    ElMessage.success('AI择校报告已生成')
+  } catch (error) {
+    latestAiReport.value = null
+    ElMessage.error(readErrorMessage(error))
+  } finally {
+    generatingAiReport.value = false
+  }
+}
+
 async function loadData() {
   loadErrors.value = []
 
@@ -1260,6 +1318,13 @@ async function loadData() {
       onSuccess: (value) => {
         const data = value as { items: ApplicationListItem[] }
         applicationList.items = data.items || []
+      }
+    },
+    {
+      source: 'ai-report',
+      request: getLatestAiReport,
+      onSuccess: (value) => {
+        latestAiReport.value = value as AiReportView | null
       }
     },
     {
@@ -1789,6 +1854,81 @@ onMounted(() => {
 
 .table-scroll-wrap :deep(.el-table) {
   min-width: 660px;
+}
+
+.ai-report-summary {
+  display: grid;
+  gap: 12px;
+}
+
+.ai-summary-head {
+  border: 1px solid #d6e5f4;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f7fbff;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-summary-head strong {
+  color: #284467;
+}
+
+.ai-summary-head p {
+  margin: 4px 0 0;
+  color: #607895;
+}
+
+.ai-summary-head span {
+  color: #7a8aa3;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ai-rec-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.ai-rec-card {
+  border: 1px solid rgba(176, 202, 236, 0.55);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.ai-rec-title {
+  font-weight: 700;
+  color: #2a4265;
+}
+
+.ai-rec-sub,
+.ai-rec-meta {
+  margin-top: 4px;
+  color: #7088a9;
+  font-size: 12px;
+}
+
+.ai-rec-meta {
+  color: #0f6fb8;
+  font-weight: 700;
+}
+
+.ai-suggestions {
+  display: grid;
+  gap: 6px;
+  color: #496384;
+}
+
+.ai-suggestions div {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-suggestions strong {
+  color: #1f6bff;
 }
 
 .lang-tag {

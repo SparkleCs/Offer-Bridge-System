@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.AiProgramRecommendationMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.AiProgramRecommendation">
+    <id column="id" property="id"/>
+    <result column="report_id" property="reportId"/>
+    <result column="program_id" property="programId"/>
+    <result column="match_score" property="matchScore"/>
+    <result column="match_tier" property="matchTier"/>
+    <result column="probability_estimate" property="probabilityEstimate"/>
+    <result column="confidence_level" property="confidenceLevel"/>
+    <result column="reason_tags_json" property="reasonTagsJson"/>
+    <result column="ai_summary" property="aiSummary"/>
+    <result column="created_at" property="createdAt"/>
+  </resultMap>
+
+  <insert id="insertOne">
+    INSERT INTO ai_program_recommendation(
+      report_id, program_id, match_score, match_tier, probability_estimate,
+      confidence_level, reason_tags_json, ai_summary
+    )
+    VALUES(
+      #{reportId}, #{programId}, #{matchScore}, #{matchTier}, #{probabilityEstimate},
+      #{confidenceLevel}, #{reasonTagsJson}, #{aiSummary}
+    )
+  </insert>
+
+  <select id="listByReportId" resultMap="BaseMap">
+    SELECT id, report_id, program_id, match_score, match_tier, probability_estimate,
+           confidence_level, reason_tags_json, ai_summary, created_at
+    FROM ai_program_recommendation
+    WHERE report_id = #{reportId}
+    ORDER BY probability_estimate DESC, match_score DESC, id ASC
+  </select>
+</mapper>

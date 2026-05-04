@@ -6,6 +6,10 @@ dist/
 coverage/
 .vite/
 backend/target/
+__pycache__/
+*.pyc
+.venv/
+ai-service/.venv/
 
 # Environment files
 .env

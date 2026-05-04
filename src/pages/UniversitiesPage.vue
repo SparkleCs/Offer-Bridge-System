@@ -4,7 +4,24 @@
       <p class="crumb">首页 / 院校</p>
       <h2 class="section-title">院校</h2>
       <p class="section-desc">以筛选为主：国家、学科领域、专业方向、QS 排名，快速定位学校与项目并加入申请清单。</p>
+      <div class="ai-actions">
+        <el-button type="primary" :loading="generatingAi" @click="generateAiReport">生成AI择校报告</el-button>
+        <span v-if="aiReport" class="ai-status">最新报告：{{ aiReport.status }} · {{ formatDate(aiReport.generatedAt) }}</span>
+      </div>
     </div>
+
+    <section v-if="aiReport" class="ai-report-panel">
+      <div>
+        <div class="ai-report-title">AI申请竞争力评估</div>
+        <p>{{ aiReport.overallSummary }}</p>
+      </div>
+      <div class="ai-report-metrics">
+        <div v-for="item in aiReport.recommendations.slice(0, 3)" :key="item.programId" class="ai-mini-card">
+          <strong>{{ item.schoolName }}</strong>
+          <span>{{ item.matchTier }} · {{ probabilityText(item.admissionProbabilityEstimate) }}</span>
+        </div>
+      </div>
+    </section>
 
     <div class="filter-panel">
       <div class="filter-row">
@@ -114,6 +131,9 @@
                 <div class="program-sub">
                   方向：{{ program.directionName }} · 类型：{{ displayStudyMode(program.studyMode) }} · 学制：{{ program.durationMonths || '-' }} 月
                 </div>
+                <div v-if="aiRecommendationByProgram.get(program.id)" class="program-ai-line">
+                  AI匹配度 {{ aiRecommendationByProgram.get(program.id)?.mlScore }} · 录取概率估计 {{ probabilityText(aiRecommendationByProgram.get(program.id)?.admissionProbabilityEstimate) }} · {{ aiRecommendationByProgram.get(program.id)?.matchTier }}
+                </div>
               </div>
               <el-button type="primary" plain size="small" :loading="addingProgramId === program.id" @click="addToList(program.id)">
                 加入申请清单
@@ -144,8 +164,10 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../services/http'
+import { generateAiRecommendations, getLatestAiReport } from '../services/ai'
 import { addApplication, getUniversityMeta, listPrograms, listSchools } from '../services/university'
 import { useAuthStore } from '../stores/auth'
+import type { AiReportView } from '../types/ai'
 import type { FilterOption, ProgramListItem, SchoolListItem, UniversityMeta } from '../types/university'
 import { confirmLoginRequired } from '../utils/authPrompt'
 
@@ -172,8 +194,10 @@ const filters = reactive({
 
 const rankPreset = ref<RankPreset>('ALL')
 const loading = ref(false)
+const generatingAi = ref(false)
 const addingProgramId = ref<number | null>(null)
 const schools = ref<SchoolListItem[]>([])
+const aiReport = ref<AiReportView | null>(null)
 const currentPage = ref(1)
 const pageSize = 10
 const pageTopRef = ref<HTMLElement | null>(null)
@@ -188,6 +212,13 @@ const totalSchools = computed(() => schools.value.length)
 const pagedSchools = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   return schools.value.slice(start, start + pageSize)
+})
+const aiRecommendationByProgram = computed(() => {
+  const map = new Map<number, AiReportView['recommendations'][number]>()
+  for (const item of aiReport.value?.recommendations || []) {
+    map.set(item.programId, item)
+  }
+  return map
 })
 
 function readError(error: unknown) {
@@ -204,6 +235,16 @@ function displayStudyMode(studyMode: string) {
 function formatTuitionRange(min: number | null, max: number | null, currency: string | null) {
   if (min === null && max === null) return '-'
   return `${currency || ''} ${min ?? '-'} - ${max ?? '-'}`
+}
+
+function probabilityText(value?: number | null) {
+  if (value === undefined || value === null) return '-'
+  return `${Math.round(Number(value) * 100)}%`
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return '-'
+  return value.replace('T', ' ').slice(0, 16)
 }
 
 function splitTags(text: string | null) {
@@ -335,6 +376,32 @@ async function addToList(programId: number) {
   }
 }
 
+async function loadLatestAiReport() {
+  if (!authStore.isLoggedIn) return
+  try {
+    aiReport.value = await getLatestAiReport()
+  } catch {
+    aiReport.value = null
+  }
+}
+
+async function generateAiReport() {
+  if (!authStore.isLoggedIn) {
+    await confirmLoginRequired(router, '生成AI择校报告')
+    return
+  }
+  generatingAi.value = true
+  try {
+    aiReport.value = await generateAiRecommendations()
+    ElMessage.success('AI择校报告已生成')
+  } catch (error) {
+    aiReport.value = null
+    ElMessage.error(readError(error))
+  } finally {
+    generatingAi.value = false
+  }
+}
+
 onMounted(async () => {
   try {
     const result = await getUniversityMeta()
@@ -342,6 +409,7 @@ onMounted(async () => {
     meta.subjectCategories = result.subjectCategories
     meta.directions = result.directions
     meta.applicationStatuses = result.applicationStatuses
+    await loadLatestAiReport()
     await search()
   } catch (error) {
     ElMessage.error(readError(error))
@@ -364,6 +432,61 @@ onMounted(async () => {
   display: grid;
   gap: 6px;
   padding: 6px 2px 2px;
+}
+
+.ai-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.ai-status {
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.ai-report-panel {
+  border: 1px solid #c7d8ea;
+  border-radius: 8px;
+  padding: 14px;
+  background: #f6fbff;
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
+  gap: 14px;
+}
+
+.ai-report-title {
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.ai-report-panel p {
+  margin: 0;
+  color: var(--text-sub);
+}
+
+.ai-report-metrics {
+  display: grid;
+  gap: 8px;
+}
+
+.ai-mini-card {
+  border: 1px solid #d6e5f4;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-sub);
+  font-size: 13px;
+}
+
+.ai-mini-card strong {
+  color: var(--text-main);
 }
 
 .crumb {
@@ -626,7 +749,18 @@ onMounted(async () => {
   font-size: 13px;
 }
 
+.program-ai-line {
+  margin-top: 5px;
+  color: #0f6fb8;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 @media (max-width: 960px) {
+  .ai-report-panel {
+    grid-template-columns: 1fr;
+  }
+
   .filter-row {
     grid-template-columns: 1fr;
     align-items: flex-start;

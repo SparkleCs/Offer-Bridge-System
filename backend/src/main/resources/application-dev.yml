@@ -52,3 +52,5 @@ app:
     return-url: ${ALIPAY_RETURN_URL:http://localhost:5173/orders}
     app-private-key: ${ALIPAY_APP_PRIVATE_KEY:}
     alipay-public-key: ${ALIPAY_PUBLIC_KEY:}
+  ai:
+    service-url: ${AI_SERVICE_URL:http://127.0.0.1:8001}
