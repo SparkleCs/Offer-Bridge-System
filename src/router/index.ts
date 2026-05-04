@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { isAccessTokenExpiring } from '../services/http'
 
 const routes = [
   { path: '/', name: 'home', component: () => import('../pages/HomePage.vue') },
@@ -51,6 +52,7 @@ const routes = [
     ]
   },
   { path: '/agency-center', name: 'agency-center', component: () => import('../pages/AgencyCenterPage.vue'), meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG', 'AGENT_MEMBER'] } },
+  { path: '/agency-favorites', name: 'agency-favorites', component: () => import('../pages/AgencyFavoritesPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/messages', name: 'messages', component: () => import('../pages/MessagesPage.vue'), meta: { requiresAuth: true } },
   { path: '/me', name: 'me', component: () => import('../pages/MePage.vue'), meta: { requiresAuth: true } },
   { path: '/forum', name: 'forum', component: () => import('../pages/ForumPage.vue') },
@@ -75,10 +77,14 @@ router.beforeEach(async (to) => {
   const requiresAuth = Boolean(to.meta?.requiresAuth)
   if (!requiresAuth) return true
 
-  if (authStore.isLoggedIn) return true
+  if (authStore.isLoggedIn && !isAccessTokenExpiring(authStore.accessToken)) {
+    return true
+  }
 
   const refreshed = await authStore.refreshSession()
-  if (refreshed) return true
+  if (refreshed) {
+    return true
+  }
   return '/auth'
 })
 

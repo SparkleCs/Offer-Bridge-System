@@ -137,6 +137,7 @@
       t.team_intro AS teamIntro,
       o.org_name AS orgName,
       o.city AS city,
+      o.logo_url AS logoUrl,
       t.service_country_scope AS serviceCountryScope,
       t.service_major_scope AS serviceMajorScope,
       COALESCE(SUM(mm.case_count), 0) AS caseCount,
@@ -207,7 +208,7 @@
       <if test="serviceTag != null and serviceTag != ''">
         AND mm.service_tags LIKE CONCAT('%', #{serviceTag}, '%')
       </if>
-    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.city, t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
+    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.city, o.logo_url, t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
     ORDER BY avgRating DESC, successRate DESC, caseCount DESC, t.id DESC
     LIMIT 200
   </select>

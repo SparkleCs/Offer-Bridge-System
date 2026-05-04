@@ -31,7 +31,8 @@
               </div>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item @click="go('/me')">进入个人中心</el-dropdown-item>
+                  <el-dropdown-item @click="go('/me')">个人中心</el-dropdown-item>
+                  <el-dropdown-item v-if="currentRole === 'STUDENT'" @click="go('/agency-favorites')">中介收藏</el-dropdown-item>
                   <el-dropdown-item v-if="currentRole === 'STUDENT'" @click="go('/orders')">订单管理</el-dropdown-item>
                   <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
                 </el-dropdown-menu>
@@ -59,6 +60,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { listForumNotifications } from './services/forum'
 import { getChatUnreadSummary, listSystemNotifications } from './services/message'
 import { useAuthStore } from './stores/auth'
+import { confirmLogout } from './utils/logoutConfirm'
 
 const route = useRoute()
 const router = useRouter()
@@ -111,6 +113,7 @@ async function refreshMessageUnreadTotal() {
 }
 
 async function handleLogout() {
+  if (!(await confirmLogout())) return
   await authStore.logoutAll()
   messageUnreadTotal.value = 0
   router.push('/auth')

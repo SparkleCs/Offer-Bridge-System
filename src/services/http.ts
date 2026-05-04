@@ -21,6 +21,9 @@ export class ApiError extends Error {
 const ACCESS_TOKEN_KEY = 'study_portal_access_token'
 const REFRESH_TOKEN_KEY = 'study_portal_refresh_token'
 const AUTH_META_KEY = 'study_portal_auth_meta'
+const TOKEN_REFRESH_SKEW_SECONDS = 60
+
+let refreshPromise: Promise<AuthResult> | null = null
 
 export function readAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
@@ -28,6 +31,25 @@ export function readAccessToken() {
 
 function readRefreshToken() {
   return localStorage.getItem(REFRESH_TOKEN_KEY)
+}
+
+function decodeJwtPayload(token: string) {
+  try {
+    const payload = token.split('.')[1]
+    if (!payload) return null
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = normalized.padEnd(normalized.length + (4 - normalized.length % 4) % 4, '=')
+    return JSON.parse(atob(padded)) as { exp?: number }
+  } catch {
+    return null
+  }
+}
+
+export function isAccessTokenExpiring(token: string | null, skewSeconds = TOKEN_REFRESH_SKEW_SECONDS) {
+  if (!token) return true
+  const payload = decodeJwtPayload(token)
+  if (!payload?.exp) return true
+  return payload.exp * 1000 <= Date.now() + skewSeconds * 1000
 }
 
 function persistAuth(result: AuthResult) {
@@ -57,10 +79,8 @@ async function doRequest<T>(
   }
 
   if (withAuth) {
-    const token = readAccessToken()
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`)
-    }
+    const token = await ensureAccessToken()
+    headers.set('Authorization', `Bearer ${token}`)
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
@@ -76,8 +96,12 @@ async function doRequest<T>(
   if (body.code === 'BIZ_UNAUTHORIZED' && withAuth && retry) {
     const refreshToken = readRefreshToken()
     if (refreshToken) {
-      await refreshByToken(refreshToken)
-      return doRequest<T>(path, init, withAuth, false)
+      try {
+        await refreshByToken(refreshToken)
+        return doRequest<T>(path, init, withAuth, false)
+      } catch {
+        clearLocalAuth()
+      }
     }
   }
 
@@ -103,6 +127,32 @@ export async function refreshByToken(refreshToken: string): Promise<AuthResult> 
 
   persistAuth(result)
   return result
+}
+
+export async function ensureAccessToken() {
+  const accessToken = readAccessToken()
+  if (accessToken && !isAccessTokenExpiring(accessToken)) {
+    return accessToken
+  }
+
+  const refreshToken = readRefreshToken()
+  if (!refreshToken) {
+    clearLocalAuth()
+    throw new ApiError('未登录或登录已过期', 'BIZ_UNAUTHORIZED', 401)
+  }
+
+  try {
+    if (!refreshPromise) {
+      refreshPromise = refreshByToken(refreshToken).finally(() => {
+        refreshPromise = null
+      })
+    }
+    const result = await refreshPromise
+    return result.accessToken
+  } catch {
+    clearLocalAuth()
+    throw new ApiError('未登录或登录已过期', 'BIZ_UNAUTHORIZED', 401)
+  }
 }
 
 export async function apiRequest<T>(path: string, init: RequestInit = {}, withAuth = false) {

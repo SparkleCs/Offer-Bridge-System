@@ -1,4 +1,4 @@
-import { apiRequest } from './http'
+import { apiRequest, apiRequestOptionalAuth } from './http'
 import type {
   AgencyOrgProfile,
   AgentStudentSearchItem,
@@ -276,11 +276,11 @@ export function listDiscoveryMembers(params: {
     if (value) search.append(key, value)
   })
   const query = search.toString()
-  return apiRequest<DiscoveryMemberItem[]>(`/api/v1/agency/discovery/members${query ? `?${query}` : ''}`, { method: 'GET' }, false)
+  return apiRequestOptionalAuth<DiscoveryMemberItem[]>(`/api/v1/agency/discovery/members${query ? `?${query}` : ''}`, { method: 'GET' })
 }
 
 export function getDiscoveryMemberDetail(memberId: number) {
-  return apiRequest<DiscoveryMemberDetail>(`/api/v1/agency/discovery/members/${memberId}`, { method: 'GET' }, false)
+  return apiRequestOptionalAuth<DiscoveryMemberDetail>(`/api/v1/agency/discovery/members/${memberId}`, { method: 'GET' })
 }
 
 export function listDiscoveryTeams(params: {
@@ -296,11 +296,23 @@ export function listDiscoveryTeams(params: {
     if (value) search.append(key, value)
   })
   const query = search.toString()
-  return apiRequest<DiscoveryTeamItem[]>(`/api/v1/agency/discovery/teams${query ? `?${query}` : ''}`, { method: 'GET' }, false)
+  return apiRequestOptionalAuth<DiscoveryTeamItem[]>(`/api/v1/agency/discovery/teams${query ? `?${query}` : ''}`, { method: 'GET' })
 }
 
 export function getDiscoveryTeamDetail(teamId: number) {
-  return apiRequest<DiscoveryTeamDetail>(`/api/v1/agency/discovery/teams/${teamId}`, { method: 'GET' }, false)
+  return apiRequestOptionalAuth<DiscoveryTeamDetail>(`/api/v1/agency/discovery/teams/${teamId}`, { method: 'GET' })
+}
+
+export function listFavoriteDiscoveryTeams() {
+  return apiRequest<DiscoveryTeamItem[]>('/api/v1/student/favorite-agency-teams', { method: 'GET' }, true)
+}
+
+export function favoriteDiscoveryTeam(teamId: number) {
+  return apiRequest<DiscoveryTeamItem>(`/api/v1/student/favorite-agency-teams/${teamId}`, { method: 'POST' }, true)
+}
+
+export function unfavoriteDiscoveryTeam(teamId: number) {
+  return apiRequest<DiscoveryTeamItem>(`/api/v1/student/favorite-agency-teams/${teamId}`, { method: 'DELETE' }, true)
 }
 
 export async function uploadFile(file: File, bucket: 'org-verification' | 'member-verification' | 'student-verification' | 'avatar' | 'general' | 'service-stage' = 'general') {

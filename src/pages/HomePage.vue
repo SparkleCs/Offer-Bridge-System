@@ -518,27 +518,33 @@ onBeforeUnmount(() => {
 }
 
 .text-action {
-  --el-button-text-color: var(--primary);
-  --el-button-hover-text-color: #155de8;
-  --el-button-active-text-color: #155de8;
+  --el-button-text-color: #536176;
+  --el-button-hover-text-color: #445167;
+  --el-button-active-text-color: #445167;
   --el-button-hover-bg-color: transparent;
   position: relative;
   margin-top: 22px;
   padding: 0;
-  color: var(--primary);
+  color: #536176;
+  font-size: 18px;
   font-weight: 800;
+  line-height: 1.2;
   transition: color 0.22s ease, transform 0.22s ease;
 }
 
 .text-action.el-button.is-text:not(.is-disabled):hover,
 .text-action.el-button.is-text:not(.is-disabled):focus {
   background: transparent;
-  color: #155de8;
+  color: #445167;
 }
 
 .text-action :deep(span) {
   display: inline-flex;
   align-items: center;
+  color: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  line-height: inherit;
 }
 
 .text-action::after {
@@ -548,7 +554,7 @@ onBeforeUnmount(() => {
   right: 0;
   bottom: -3px;
   height: 1px;
-  background: rgba(31, 107, 255, 0.32);
+  background: rgba(83, 97, 118, 0.28);
   transform: scaleX(0);
   transform-origin: left;
   transition: transform 0.22s ease;
@@ -556,7 +562,7 @@ onBeforeUnmount(() => {
 
 .text-action:hover,
 .text-action:focus {
-  color: #155de8;
+  color: #445167;
   transform: translateY(-1px);
 }
 
@@ -566,15 +572,14 @@ onBeforeUnmount(() => {
 }
 
 .action-arrow {
-  margin-left: 7px;
-  color: rgba(31, 107, 255, 0.72);
+  margin-left: 14px;
+  color: inherit;
   font-weight: 700;
   transition: transform 0.22s ease, color 0.22s ease;
 }
 
 .text-action:hover .action-arrow,
 .text-action:focus .action-arrow {
-  color: #155de8;
   transform: translateX(3px);
 }
 

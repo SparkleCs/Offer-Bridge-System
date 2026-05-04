@@ -20,8 +20,16 @@ public class AuthInterceptor implements HandlerInterceptor {
       return true;
     }
     String uri = request.getRequestURI();
-    // Discovery endpoints are public for pre-sign visibility.
-    if (uri != null && uri.startsWith("/api/v1/agency/discovery/")) {
+    // Discovery reads are public, but an optional token lets the UI enrich results with viewer state.
+    if (isPublicAgencyDiscoveryRead(request, uri)) {
+      String auth = request.getHeader("Authorization");
+      if (auth != null && auth.startsWith("Bearer ")) {
+        try {
+          AuthContext.setUserId(jwtService.parseUserId(auth.substring(7)));
+        } catch (Exception ignored) {
+          AuthContext.clear();
+        }
+      }
       return true;
     }
     if (uri != null && uri.startsWith("/api/v1/reviews/discovery/") && "GET".equalsIgnoreCase(request.getMethod())) {
@@ -73,5 +81,15 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
     if (uri.matches("^/api/v1/forum/posts/[^/]+$")) return true;
     return uri.matches("^/api/v1/forum/posts/[^/]+/comments$");
+  }
+
+  private boolean isPublicAgencyDiscoveryRead(HttpServletRequest request, String uri) {
+    if (!"GET".equalsIgnoreCase(request.getMethod()) || uri == null) {
+      return false;
+    }
+    if (!uri.startsWith("/api/v1/agency/discovery/")) {
+      return false;
+    }
+    return !uri.equals("/api/v1/agency/discovery/favorite-teams");
   }
 }

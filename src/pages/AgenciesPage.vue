@@ -4,6 +4,7 @@
       <div class="mode-tabs">
         <button class="mode-tab" :class="{ active: listMode === 'recommend' }" @click="switchMode('recommend')">推荐</button>
         <button class="mode-tab" :class="{ active: listMode === 'all' }" @click="switchMode('all')">全部中介</button>
+        <el-button v-if="authStore.authMeta?.role === 'STUDENT'" text class="favorites-link" @click="router.push('/agency-favorites')">我的中介收藏</el-button>
         <span v-if="recommendHint" class="recommend-hint">{{ recommendHint }}</span>
       </div>
       <div class="search-line">
@@ -93,6 +94,15 @@
           </div>
 
           <div class="card-actions">
+            <el-button
+              size="small"
+              class="favorite-card-btn"
+              :class="{ active: team.favorited }"
+              :loading="favoriteLoadingTeamId === team.teamId"
+              @click.stop="toggleFavorite(team)"
+            >
+              {{ team.favorited ? '已收藏' : '收藏' }}
+            </el-button>
             <el-button size="small" @click.stop="openGreetingDialog(team)">沟通</el-button>
           </div>
         </article>
@@ -109,7 +119,15 @@
                 <p class="sub">{{ detail.orgName }} · {{ detail.city }}</p>
               </div>
               <div class="head-actions">
-                <el-button size="large" class="ghost-btn">收藏</el-button>
+                <el-button
+                  size="large"
+                  class="ghost-btn favorite-detail-btn"
+                  :class="{ active: detail.favorited }"
+                  :loading="favoriteLoadingTeamId === detail.teamId"
+                  @click="toggleFavorite(detail)"
+                >
+                  {{ detail.favorited ? '已收藏' : '收藏' }}
+                </el-button>
                 <el-button size="large" type="success" :loading="creatingOrder" @click="createOrderFromDetail">创建订单</el-button>
                 <el-button size="large" type="primary" @click="openGreetingDialog(detail)">立即沟通</el-button>
               </div>
@@ -188,7 +206,7 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { getDiscoveryTeamDetail, listDiscoveryTeams } from '../services/agency'
+import { favoriteDiscoveryTeam, getDiscoveryTeamDetail, listDiscoveryTeams, unfavoriteDiscoveryTeam } from '../services/agency'
 import { startChat } from '../services/message'
 import { createServiceOrder } from '../services/order'
 import { listStudentAgencyTeamRecommendations } from '../services/recommendation'
@@ -220,8 +238,10 @@ const pendingChatTeam = ref<{ teamId: number; teamName: string } | null>(null)
 const startingChat = ref(false)
 const creatingOrder = ref(false)
 const activeRating = ref<RatingSummary | null>(null)
-const listMode = ref<AgencyListMode>(route.query.mode === 'all' ? 'all' : 'recommend')
+const initialMode = route.query.mode === 'all' ? 'all' : 'recommend'
+const listMode = ref<AgencyListMode>(initialMode)
 const recommendHint = ref('')
+const favoriteLoadingTeamId = ref<number | null>(null)
 
 const roleOptions = [
   { label: '咨询顾问', value: 'CONSULTANT' },
@@ -407,6 +427,43 @@ function isRecommendedTeam(team: AgencyTeamListItem): team is StudentAgencyTeamR
   return listMode.value === 'recommend' && 'recommendScore' in team
 }
 
+async function toggleFavorite(team: { teamId: number; teamName?: string; favorited?: boolean }) {
+  if (!authStore.isLoggedIn) {
+    await confirmLoginRequired(router, '收藏中介团队')
+    return
+  }
+  if (authStore.authMeta?.role !== 'STUDENT') {
+    ElMessage.warning('仅学生账号可以收藏中介团队')
+    return
+  }
+
+  favoriteLoadingTeamId.value = team.teamId
+  const nextFavorited = !team.favorited
+  try {
+    const saved = nextFavorited
+      ? await favoriteDiscoveryTeam(team.teamId)
+      : await unfavoriteDiscoveryTeam(team.teamId)
+    await syncFavoriteState(team.teamId, Boolean(saved.favorited))
+    ElMessage.success(saved.favorited ? '已收藏团队' : '已取消收藏')
+  } catch (error: any) {
+    ElMessage.error(error?.message || '收藏操作失败')
+  } finally {
+    favoriteLoadingTeamId.value = null
+  }
+}
+
+async function syncFavoriteState(teamId: number, favorited: boolean) {
+  teams.value = teams.value
+    .map((item) => item.teamId === teamId ? { ...item, favorited } : item)
+  if (detail.value?.teamId === teamId) {
+    detail.value = { ...detail.value, favorited }
+  }
+  const cached = detailCache.get(teamId)
+  if (cached) {
+    detailCache.set(teamId, { ...cached, favorited })
+  }
+}
+
 async function openGreetingDialog(team: { teamId: number; teamName: string }) {
   if (!authStore.isLoggedIn) {
     await confirmLoginRequired(router, '和中介沟通')
@@ -513,6 +570,15 @@ loadTeams()
   background: #dff7ff;
   color: #15516a;
   border-color: #7dd4ef;
+}
+
+.favorites-link {
+  color: #d7ecf9;
+  font-weight: 700;
+}
+
+.favorites-link:hover {
+  color: #ffffff;
 }
 
 .recommend-hint {
@@ -655,6 +721,14 @@ loadTeams()
   margin-top: 10px;
   display: flex;
   justify-content: flex-end;
+  gap: 8px;
+}
+
+.favorite-card-btn.active,
+.favorite-detail-btn.active {
+  border-color: #f3b24b;
+  background: #fff7e8;
+  color: #a35d00;
 }
 
 .team-detail-wrap {

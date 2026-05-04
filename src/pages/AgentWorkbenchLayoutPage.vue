@@ -62,6 +62,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { getMyAgencyProfile, updateMyAvatar, uploadFile } from '../services/agency'
 import type { MemberSelfProfile } from '../types/agency'
+import { confirmLogout } from '../utils/logoutConfirm'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 
 const route = useRoute()
@@ -111,6 +112,7 @@ async function onUploadAvatar(options: UploadRequestOptions) {
 }
 
 async function handleLogout() {
+  if (!(await confirmLogout())) return
   await authStore.logoutAll()
   router.push('/auth')
 }

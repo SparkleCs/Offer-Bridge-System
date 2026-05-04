@@ -29,6 +29,7 @@
 import { Bell, OfficeBuilding, Reading, UserFilled } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import { confirmLogout } from '../utils/logoutConfirm'
 
 const route = useRoute()
 const router = useRouter()
@@ -39,6 +40,7 @@ function go(path: string) {
 }
 
 async function logout() {
+  if (!(await confirmLogout())) return
   await authStore.logoutAll()
   router.push('/admin-auth')
 }

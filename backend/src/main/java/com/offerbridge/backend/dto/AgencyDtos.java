@@ -633,6 +633,7 @@ public class AgencyDtos {
     private String teamIntro;
     private String orgName;
     private String city;
+    private String logoUrl;
     private String serviceCountryScope;
     private String serviceMajorScope;
     private Integer caseCount;
@@ -640,6 +641,7 @@ public class AgencyDtos {
     private BigDecimal avgRating;
     private BigDecimal responseEfficiencyScore;
     private String priceTextPlaceholder;
+    private Boolean favorited;
 
     public Long getTeamId() { return teamId; }
     public void setTeamId(Long teamId) { this.teamId = teamId; }
@@ -651,6 +653,8 @@ public class AgencyDtos {
     public void setOrgName(String orgName) { this.orgName = orgName; }
     public String getCity() { return city; }
     public void setCity(String city) { this.city = city; }
+    public String getLogoUrl() { return logoUrl; }
+    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
     public String getServiceCountryScope() { return serviceCountryScope; }
     public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
     public String getServiceMajorScope() { return serviceMajorScope; }
@@ -665,6 +669,8 @@ public class AgencyDtos {
     public void setResponseEfficiencyScore(BigDecimal responseEfficiencyScore) { this.responseEfficiencyScore = responseEfficiencyScore; }
     public String getPriceTextPlaceholder() { return priceTextPlaceholder; }
     public void setPriceTextPlaceholder(String priceTextPlaceholder) { this.priceTextPlaceholder = priceTextPlaceholder; }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
   }
 
   public static class DiscoveryTeamMemberItem {
@@ -716,6 +722,7 @@ public class AgencyDtos {
     private String packagePlaceholderDesc;
     private OrgProfileView org;
     private List<DiscoveryTeamMemberItem> members;
+    private Boolean favorited;
 
     public Long getTeamId() { return teamId; }
     public void setTeamId(Long teamId) { this.teamId = teamId; }
@@ -751,6 +758,8 @@ public class AgencyDtos {
     public void setOrg(OrgProfileView org) { this.org = org; }
     public List<DiscoveryTeamMemberItem> getMembers() { return members; }
     public void setMembers(List<DiscoveryTeamMemberItem> members) { this.members = members; }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
   }
 
   public static class OrgVerificationSubmitRequest {

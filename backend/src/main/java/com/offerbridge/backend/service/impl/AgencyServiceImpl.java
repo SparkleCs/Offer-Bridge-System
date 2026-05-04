@@ -21,8 +21,10 @@ import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMemberRelMapper;
 import com.offerbridge.backend.mapper.AgencyTeamPublisherRelMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
+import com.offerbridge.backend.mapper.StudentFavoriteAgencyTeamMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
 import com.offerbridge.backend.mapper.VerificationRecordMapper;
+import com.offerbridge.backend.security.AuthContext;
 import com.offerbridge.backend.service.AgencyService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
@@ -38,6 +40,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -55,6 +58,7 @@ public class AgencyServiceImpl implements AgencyService {
   private final AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper;
   private final VerificationRecordMapper verificationRecordMapper;
   private final StudentProfileMapper studentProfileMapper;
+  private final StudentFavoriteAgencyTeamMapper studentFavoriteAgencyTeamMapper;
   private final UserAccountMapper userAccountMapper;
   private final ObjectMapper objectMapper;
 
@@ -70,6 +74,7 @@ public class AgencyServiceImpl implements AgencyService {
                            AgencyMemberPermissionRelMapper agencyMemberPermissionRelMapper,
                            VerificationRecordMapper verificationRecordMapper,
                            StudentProfileMapper studentProfileMapper,
+                           StudentFavoriteAgencyTeamMapper studentFavoriteAgencyTeamMapper,
                            UserAccountMapper userAccountMapper,
                            ObjectMapper objectMapper) {
     this.agencyOrgMapper = agencyOrgMapper;
@@ -84,6 +89,7 @@ public class AgencyServiceImpl implements AgencyService {
     this.agencyMemberPermissionRelMapper = agencyMemberPermissionRelMapper;
     this.verificationRecordMapper = verificationRecordMapper;
     this.studentProfileMapper = studentProfileMapper;
+    this.studentFavoriteAgencyTeamMapper = studentFavoriteAgencyTeamMapper;
     this.userAccountMapper = userAccountMapper;
     this.objectMapper = objectMapper;
   }
@@ -757,7 +763,9 @@ public class AgencyServiceImpl implements AgencyService {
                                                                String city,
                                                                String roleCode,
                                                                String serviceTag) {
-    return agencyTeamMapper.listDiscoveryTeams(keyword, country, direction, city, roleCode, serviceTag);
+    List<AgencyDtos.DiscoveryTeamItem> teams = agencyTeamMapper.listDiscoveryTeams(keyword, country, direction, city, roleCode, serviceTag);
+    markFavoriteState(AuthContext.getUserId(), teams);
+    return teams;
   }
 
   @Override
@@ -775,7 +783,94 @@ public class AgencyServiceImpl implements AgencyService {
       }
     }
     detail.setMembers(agencyTeamMapper.listDiscoveryTeamMembers(teamId));
+    detail.setFavorited(isFavorited(AuthContext.getUserId(), teamId));
     return detail;
+  }
+
+  @Override
+  public List<AgencyDtos.DiscoveryTeamItem> listFavoriteDiscoveryTeams(Long userId) {
+    requireStudent(userId);
+    Set<Long> favoriteIds = new LinkedHashSet<>(studentFavoriteAgencyTeamMapper.listTeamIdsByUserId(userId));
+    if (favoriteIds.isEmpty()) {
+      return List.of();
+    }
+    List<AgencyDtos.DiscoveryTeamItem> visibleTeams = agencyTeamMapper.listDiscoveryTeams(null, null, null, null, null, null);
+    List<AgencyDtos.DiscoveryTeamItem> result = new ArrayList<>();
+    for (AgencyDtos.DiscoveryTeamItem item : visibleTeams) {
+      if (favoriteIds.contains(item.getTeamId())) {
+        item.setFavorited(true);
+        result.add(item);
+      }
+    }
+    result.sort(Comparator.comparingInt(item -> indexOfFavorite(favoriteIds, item.getTeamId())));
+    return result;
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.DiscoveryTeamDetail favoriteDiscoveryTeam(Long userId, Long teamId) {
+    requireStudent(userId);
+    requireVisibleDiscoveryTeam(teamId);
+    studentFavoriteAgencyTeamMapper.insertIgnore(userId, teamId);
+    AgencyDtos.DiscoveryTeamDetail detail = getDiscoveryTeamDetail(teamId);
+    detail.setFavorited(true);
+    return detail;
+  }
+
+  @Override
+  @Transactional
+  public AgencyDtos.DiscoveryTeamDetail unfavoriteDiscoveryTeam(Long userId, Long teamId) {
+    requireStudent(userId);
+    studentFavoriteAgencyTeamMapper.deleteOne(userId, teamId);
+    AgencyDtos.DiscoveryTeamDetail detail = agencyTeamMapper.findDiscoveryTeamDetail(teamId);
+    if (detail == null) {
+      detail = new AgencyDtos.DiscoveryTeamDetail();
+      detail.setTeamId(teamId);
+    } else {
+      detail.setMembers(agencyTeamMapper.listDiscoveryTeamMembers(teamId));
+    }
+    detail.setFavorited(false);
+    return detail;
+  }
+
+  private void markFavoriteState(Long userId, List<AgencyDtos.DiscoveryTeamItem> teams) {
+    if (teams == null || teams.isEmpty()) return;
+    if (!isStudentUser(userId)) {
+      teams.forEach(item -> item.setFavorited(false));
+      return;
+    }
+    Set<Long> favoriteIds = new LinkedHashSet<>(studentFavoriteAgencyTeamMapper.listTeamIdsByUserId(userId));
+    teams.forEach(item -> item.setFavorited(favoriteIds.contains(item.getTeamId())));
+  }
+
+  private boolean isFavorited(Long userId, Long teamId) {
+    return isStudentUser(userId) && studentFavoriteAgencyTeamMapper.exists(userId, teamId) > 0;
+  }
+
+  private void requireStudent(Long userId) {
+    UserAccount user = requireUser(userId);
+    requireRole(user, "STUDENT");
+  }
+
+  private boolean isStudentUser(Long userId) {
+    if (userId == null) return false;
+    UserAccount user = userAccountMapper.findById(userId);
+    return user != null && "ACTIVE".equals(user.getStatus()) && "STUDENT".equals(user.getRole());
+  }
+
+  private void requireVisibleDiscoveryTeam(Long teamId) {
+    if (agencyTeamMapper.findDiscoveryTeamDetail(teamId) == null) {
+      throw new BizException("BIZ_NOT_FOUND", "团队不存在或不可展示");
+    }
+  }
+
+  private int indexOfFavorite(Set<Long> favoriteIds, Long teamId) {
+    int index = 0;
+    for (Long favoriteId : favoriteIds) {
+      if (favoriteId.equals(teamId)) return index;
+      index++;
+    }
+    return Integer.MAX_VALUE;
   }
 
   private void savePublisherMembers(Long teamId, Long orgId, List<Long> publisherMemberIds) {
@@ -1020,9 +1115,12 @@ public class AgencyServiceImpl implements AgencyService {
   }
 
   private UserAccount requireUser(Long userId) {
+    if (userId == null) {
+      throw new BizException("BIZ_UNAUTHORIZED", "未登录或登录已过期");
+    }
     UserAccount user = userAccountMapper.findById(userId);
     if (user == null) {
-      throw new BizException("BIZ_UNAUTHORIZED", "用户不存在");
+      throw new BizException("BIZ_UNAUTHORIZED", "登录状态已失效，请重新登录");
     }
     if (!"ACTIVE".equals(user.getStatus())) {
       throw new BizException("BIZ_ACCOUNT_DISABLED", "账号不可用");

@@ -7,6 +7,7 @@ import com.offerbridge.backend.service.AgencyService;
 import jakarta.validation.Valid;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -267,8 +268,23 @@ public class AgencyController {
     return ApiResponse.ok(agencyService.listDiscoveryTeams(keyword, country, direction, city, roleCode, serviceTag));
   }
 
+  @GetMapping("/discovery/favorite-teams")
+  public ApiResponse<List<AgencyDtos.DiscoveryTeamItem>> listFavoriteDiscoveryTeams() {
+    return ApiResponse.ok(agencyService.listFavoriteDiscoveryTeams(AuthContext.getUserId()));
+  }
+
   @GetMapping("/discovery/teams/{teamId}")
   public ApiResponse<AgencyDtos.DiscoveryTeamDetail> getDiscoveryTeamDetail(@PathVariable Long teamId) {
     return ApiResponse.ok(agencyService.getDiscoveryTeamDetail(teamId));
+  }
+
+  @PostMapping("/discovery/teams/{teamId}/favorite")
+  public ApiResponse<AgencyDtos.DiscoveryTeamDetail> favoriteDiscoveryTeam(@PathVariable Long teamId) {
+    return ApiResponse.ok(agencyService.favoriteDiscoveryTeam(AuthContext.getUserId(), teamId));
+  }
+
+  @DeleteMapping("/discovery/teams/{teamId}/favorite")
+  public ApiResponse<AgencyDtos.DiscoveryTeamDetail> unfavoriteDiscoveryTeam(@PathVariable Long teamId) {
+    return ApiResponse.ok(agencyService.unfavoriteDiscoveryTeam(AuthContext.getUserId(), teamId));
   }
 }

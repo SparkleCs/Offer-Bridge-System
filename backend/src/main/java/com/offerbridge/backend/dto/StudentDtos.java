@@ -516,4 +516,50 @@ public class StudentDtos {
     public boolean isVerificationCompleted() { return verificationCompleted; }
     public void setVerificationCompleted(boolean verificationCompleted) { this.verificationCompleted = verificationCompleted; }
   }
+
+  public static class FavoriteAgencyTeamItem {
+    private Long teamId;
+    private String teamName;
+    private String teamIntro;
+    private String orgName;
+    private String logoUrl;
+    private String city;
+    private String serviceCountryScope;
+    private String serviceMajorScope;
+    private Integer caseCount;
+    private BigDecimal successRate;
+    private BigDecimal avgRating;
+    private BigDecimal responseEfficiencyScore;
+    private String priceTextPlaceholder;
+    private Boolean favorited;
+
+    public Long getTeamId() { return teamId; }
+    public void setTeamId(Long teamId) { this.teamId = teamId; }
+    public String getTeamName() { return teamName; }
+    public void setTeamName(String teamName) { this.teamName = teamName; }
+    public String getTeamIntro() { return teamIntro; }
+    public void setTeamIntro(String teamIntro) { this.teamIntro = teamIntro; }
+    public String getOrgName() { return orgName; }
+    public void setOrgName(String orgName) { this.orgName = orgName; }
+    public String getLogoUrl() { return logoUrl; }
+    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
+    public String getCity() { return city; }
+    public void setCity(String city) { this.city = city; }
+    public String getServiceCountryScope() { return serviceCountryScope; }
+    public void setServiceCountryScope(String serviceCountryScope) { this.serviceCountryScope = serviceCountryScope; }
+    public String getServiceMajorScope() { return serviceMajorScope; }
+    public void setServiceMajorScope(String serviceMajorScope) { this.serviceMajorScope = serviceMajorScope; }
+    public Integer getCaseCount() { return caseCount; }
+    public void setCaseCount(Integer caseCount) { this.caseCount = caseCount; }
+    public BigDecimal getSuccessRate() { return successRate; }
+    public void setSuccessRate(BigDecimal successRate) { this.successRate = successRate; }
+    public BigDecimal getAvgRating() { return avgRating; }
+    public void setAvgRating(BigDecimal avgRating) { this.avgRating = avgRating; }
+    public BigDecimal getResponseEfficiencyScore() { return responseEfficiencyScore; }
+    public void setResponseEfficiencyScore(BigDecimal responseEfficiencyScore) { this.responseEfficiencyScore = responseEfficiencyScore; }
+    public String getPriceTextPlaceholder() { return priceTextPlaceholder; }
+    public void setPriceTextPlaceholder(String priceTextPlaceholder) { this.priceTextPlaceholder = priceTextPlaceholder; }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
+  }
 }

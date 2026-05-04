@@ -175,6 +175,86 @@ body {
   padding: 24px 12px;
 }
 
+.logout-confirm-box {
+  width: min(420px, calc(100vw - 32px));
+  border-radius: 18px;
+  padding: 22px 22px 18px;
+  border: 1px solid #e7edf5;
+  box-shadow: 0 24px 70px rgba(16, 34, 63, 0.18);
+}
+
+.logout-confirm-box .el-message-box__header {
+  padding: 0;
+}
+
+.logout-confirm-box .el-message-box__content {
+  padding: 0;
+}
+
+.logout-confirm-box .el-message-box__btns {
+  padding: 22px 0 0;
+  gap: 10px;
+}
+
+.logout-confirm-box .el-message-box__close {
+  color: #8a97a8;
+  font-size: 19px;
+}
+
+.logout-confirm-content {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  color: #172033;
+}
+
+.logout-confirm-content strong {
+  display: block;
+  margin: 1px 0 0;
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.logout-confirm-content p {
+  margin: 0;
+  color: #69778a;
+  line-height: 1.7;
+  font-size: 15px;
+}
+
+.logout-confirm-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff2d8;
+  color: #c87812;
+  font-weight: 800;
+  font-size: 21px;
+  box-shadow: inset 0 0 0 1px #ffd996;
+}
+
+.logout-confirm-secondary {
+  min-width: 92px;
+  height: 40px;
+  border-radius: 10px;
+  border-color: #d8e0eb;
+  color: #526173;
+  font-weight: 700;
+}
+
+.logout-confirm-primary {
+  min-width: 112px;
+  height: 40px;
+  border-radius: 10px;
+  border-color: #3c91f7;
+  background: #3c91f7;
+  font-weight: 750;
+}
+
 .el-drawer {
   max-height: 100vh;
 }

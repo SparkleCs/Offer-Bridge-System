@@ -21,6 +21,7 @@ public class RecommendationDtos {
     private String matchLevel;
     private List<String> matchReasons;
     private List<String> matchedTags;
+    private Boolean favorited;
 
     public Long getTeamId() { return teamId; }
     public void setTeamId(Long teamId) { this.teamId = teamId; }
@@ -54,6 +55,8 @@ public class RecommendationDtos {
     public void setMatchReasons(List<String> matchReasons) { this.matchReasons = matchReasons; }
     public List<String> getMatchedTags() { return matchedTags; }
     public void setMatchedTags(List<String> matchedTags) { this.matchedTags = matchedTags; }
+    public Boolean getFavorited() { return favorited; }
+    public void setFavorited(Boolean favorited) { this.favorited = favorited; }
   }
 
   public static class StudentAgencyTeamRecommendationCandidate extends StudentAgencyTeamRecommendationItem {

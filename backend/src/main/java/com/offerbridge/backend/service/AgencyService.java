@@ -44,4 +44,7 @@ public interface AgencyService {
   AgencyDtos.DiscoveryMemberDetail getDiscoveryMemberDetail(Long memberId);
   List<AgencyDtos.DiscoveryTeamItem> listDiscoveryTeams(String keyword, String country, String direction, String city, String roleCode, String serviceTag);
   AgencyDtos.DiscoveryTeamDetail getDiscoveryTeamDetail(Long teamId);
+  List<AgencyDtos.DiscoveryTeamItem> listFavoriteDiscoveryTeams(Long userId);
+  AgencyDtos.DiscoveryTeamDetail favoriteDiscoveryTeam(Long userId, Long teamId);
+  AgencyDtos.DiscoveryTeamDetail unfavoriteDiscoveryTeam(Long userId, Long teamId);
 }

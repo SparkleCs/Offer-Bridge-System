@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.StudentFavoriteAgencyTeamMapper">
+  <insert id="insertIgnore">
+    INSERT IGNORE INTO student_favorite_agency_team(user_id, team_id)
+    VALUES(#{userId}, #{teamId})
+  </insert>
+
+  <delete id="deleteOne">
+    DELETE FROM student_favorite_agency_team
+    WHERE user_id = #{userId}
+      AND team_id = #{teamId}
+  </delete>
+
+  <select id="exists" resultType="int">
+    SELECT COUNT(1)
+    FROM student_favorite_agency_team
+    WHERE user_id = #{userId}
+      AND team_id = #{teamId}
+  </select>
+
+  <select id="listTeamIdsByUserId" resultType="long">
+    SELECT team_id
+    FROM student_favorite_agency_team
+    WHERE user_id = #{userId}
+    ORDER BY created_at DESC, id DESC
+  </select>
+
+  <sql id="FavoriteTeamColumns">
+    t.id AS teamId,
+    t.team_name AS teamName,
+    t.team_intro AS teamIntro,
+    o.org_name AS orgName,
+    o.logo_url AS logoUrl,
+    o.city AS city,
+    t.service_country_scope AS serviceCountryScope,
+    t.service_major_scope AS serviceMajorScope,
+    COALESCE(SUM(mm.case_count), 0) AS caseCount,
+    COALESCE(ROUND(AVG(mm.success_rate), 2), 0) AS successRate,
+    COALESCE(ROUND(AVG(mm.avg_rating), 2), 0) AS avgRating,
+    COALESCE(ROUND(AVG(mm.response_efficiency_score), 2), 0) AS responseEfficiencyScore,
+    CASE
+      WHEN t.price_min &lt;= 0 AND t.price_max &lt;= 0 THEN '价格待沟通'
+      WHEN t.price_min = t.price_max THEN
+        CASE
+          WHEN t.price_min &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 10000, 1))), 'w')
+          WHEN t.price_min &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min / 1000, 1))), 'k')
+          ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(t.price_min, 1)))
+        END
+      ELSE
+        CASE
+          WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 AND GREATEST(t.price_min, t.price_max) &gt;= 10000
+            THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+          WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 AND GREATEST(t.price_min, t.price_max) &lt; 10000
+            THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), '-', TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+          ELSE CONCAT(
+            CASE
+              WHEN LEAST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 10000, 1))), 'w')
+              WHEN LEAST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max) / 1000, 1))), 'k')
+              ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(LEAST(t.price_min, t.price_max), 1)))
+            END,
+            '-',
+            CASE
+              WHEN GREATEST(t.price_min, t.price_max) &gt;= 10000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 10000, 1))), 'w')
+              WHEN GREATEST(t.price_min, t.price_max) &gt;= 1000 THEN CONCAT(TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max) / 1000, 1))), 'k')
+              ELSE TRIM(TRAILING '.' FROM TRIM(TRAILING '0' FROM FORMAT(GREATEST(t.price_min, t.price_max), 1)))
+            END
+          )
+        END
+    END AS priceTextPlaceholder,
+    1 AS favorited
+  </sql>
+
+  <sql id="VisibleTeamJoins">
+    FROM agency_team t
+    JOIN agency_org o ON o.id = t.org_id
+    LEFT JOIN agency_team_publisher_rel tr ON tr.team_id = t.id AND tr.status = 'ACTIVE'
+    LEFT JOIN agency_member_profile m ON m.id = tr.member_id AND m.status = 'ACTIVE' AND m.public_status = 'PUBLIC'
+    LEFT JOIN agency_member_metrics mm ON mm.member_id = m.id
+    WHERE t.status = 'ACTIVE'
+      AND t.publish_status = 'PUBLISHED'
+      AND t.is_front_visible = 1
+      AND o.status = 'ACTIVE'
+  </sql>
+
+  <select id="findVisibleTeam" resultType="com.offerbridge.backend.dto.StudentDtos$FavoriteAgencyTeamItem">
+    SELECT <include refid="FavoriteTeamColumns"/>
+    <include refid="VisibleTeamJoins"/>
+      AND t.id = #{teamId}
+    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.logo_url, o.city,
+             t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
+    LIMIT 1
+  </select>
+
+  <select id="listVisibleFavorites" resultType="com.offerbridge.backend.dto.StudentDtos$FavoriteAgencyTeamItem">
+    SELECT <include refid="FavoriteTeamColumns"/>
+    <include refid="VisibleTeamJoins"/>
+      AND EXISTS (
+        SELECT 1 FROM student_favorite_agency_team f
+        WHERE f.user_id = #{userId}
+          AND f.team_id = t.id
+      )
+    GROUP BY t.id, t.team_name, t.team_intro, o.org_name, o.logo_url, o.city,
+             t.service_country_scope, t.service_major_scope, t.price_min, t.price_max
+    ORDER BY (
+      SELECT MAX(f2.created_at)
+      FROM student_favorite_agency_team f2
+      WHERE f2.user_id = #{userId}
+        AND f2.team_id = t.id
+    ) DESC, t.id DESC
+  </select>
+</mapper>

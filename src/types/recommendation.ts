@@ -19,6 +19,7 @@ export interface StudentAgencyTeamRecommendationItem {
   matchLevel: RecommendationMatchLevel
   matchReasons: string[]
   matchedTags: string[]
+  favorited?: boolean
 }
 
 export interface AgencyTeamStudentRecommendationItem {

@@ -15,6 +15,7 @@ import com.offerbridge.backend.mapper.AgencyMemberProfileMapper;
 import com.offerbridge.backend.mapper.AgencyOrgMapper;
 import com.offerbridge.backend.mapper.AgencyTeamMapper;
 import com.offerbridge.backend.mapper.StudentLanguageScoreMapper;
+import com.offerbridge.backend.mapper.StudentFavoriteAgencyTeamMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.StudentTargetCountryMapper;
 import com.offerbridge.backend.mapper.UserAccountMapper;
@@ -39,6 +40,7 @@ public class RecommendationServiceImpl implements RecommendationService {
   private final AgencyMemberProfileMapper agencyMemberProfileMapper;
   private final AgencyOrgMapper agencyOrgMapper;
   private final VerificationRecordMapper verificationRecordMapper;
+  private final StudentFavoriteAgencyTeamMapper studentFavoriteAgencyTeamMapper;
 
   public RecommendationServiceImpl(UserAccountMapper userAccountMapper,
                                    StudentProfileMapper studentProfileMapper,
@@ -47,7 +49,8 @@ public class RecommendationServiceImpl implements RecommendationService {
                                    AgencyTeamMapper agencyTeamMapper,
                                    AgencyMemberProfileMapper agencyMemberProfileMapper,
                                    AgencyOrgMapper agencyOrgMapper,
-                                   VerificationRecordMapper verificationRecordMapper) {
+                                   VerificationRecordMapper verificationRecordMapper,
+                                   StudentFavoriteAgencyTeamMapper studentFavoriteAgencyTeamMapper) {
     this.userAccountMapper = userAccountMapper;
     this.studentProfileMapper = studentProfileMapper;
     this.studentTargetCountryMapper = studentTargetCountryMapper;
@@ -56,6 +59,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     this.agencyMemberProfileMapper = agencyMemberProfileMapper;
     this.agencyOrgMapper = agencyOrgMapper;
     this.verificationRecordMapper = verificationRecordMapper;
+    this.studentFavoriteAgencyTeamMapper = studentFavoriteAgencyTeamMapper;
   }
 
   @Override
@@ -72,10 +76,14 @@ public class RecommendationServiceImpl implements RecommendationService {
       return List.of();
     }
 
+    List<RecommendationDtos.StudentAgencyTeamRecommendationCandidate> candidates = agencyTeamMapper.listStudentAgencyTeamRecommendationCandidates();
+    Set<Long> favoriteTeamIds = new LinkedHashSet<>(studentFavoriteAgencyTeamMapper.listTeamIdsByUserId(userId));
+    FavoritePreference favoritePreference = buildFavoritePreference(candidates, favoriteTeamIds);
+
     List<RecommendationDtos.StudentAgencyTeamRecommendationItem> scored = new ArrayList<>();
-    for (RecommendationDtos.StudentAgencyTeamRecommendationCandidate candidate : agencyTeamMapper.listStudentAgencyTeamRecommendationCandidates()) {
+    for (RecommendationDtos.StudentAgencyTeamRecommendationCandidate candidate : candidates) {
       RecommendationDtos.StudentAgencyTeamRecommendationItem item = toStudentAgencyItem(candidate);
-      applyStudentAgencyScore(item, candidate, profile, countries, languageScores);
+      applyStudentAgencyScore(item, candidate, profile, countries, languageScores, favoriteTeamIds, favoritePreference);
       scored.add(item);
     }
     scored.sort(Comparator
@@ -136,7 +144,9 @@ public class RecommendationServiceImpl implements RecommendationService {
                                        RecommendationDtos.StudentAgencyTeamRecommendationCandidate candidate,
                                        StudentProfile profile,
                                        List<StudentTargetCountry> countries,
-                                       List<StudentLanguageScore> languageScores) {
+                                       List<StudentLanguageScore> languageScores,
+                                       Set<Long> favoriteTeamIds,
+                                       FavoritePreference favoritePreference) {
     int score = 0;
     List<String> reasons = new ArrayList<>();
     LinkedHashSet<String> tags = new LinkedHashSet<>();
@@ -176,6 +186,28 @@ public class RecommendationServiceImpl implements RecommendationService {
     if (qualityScore >= 10) {
       reasons.add("团队评分与案例表现较好");
       tags.add("评分表现");
+    }
+
+    boolean favorited = favoriteTeamIds.contains(candidate.getTeamId());
+    item.setFavorited(favorited);
+    if (favorited) {
+      score += 15;
+      reasons.add("已收藏，适合持续跟进");
+      tags.add("已收藏");
+    } else {
+      boolean countrySimilar = containsAnyToken(candidate.getServiceCountryScope(), favoritePreference.countryTokens());
+      boolean directionSimilar = containsAnyToken(candidate.getServiceMajorScope(), favoritePreference.directionTokens());
+      if (countrySimilar) {
+        score += 5;
+        reasons.add("与你收藏过的国家偏好相似");
+      }
+      if (directionSimilar) {
+        score += 10;
+        reasons.add("与你收藏过的方向相似");
+      }
+      if (countrySimilar || directionSimilar) {
+        tags.add("收藏相似");
+      }
     }
 
     item.setRecommendScore(Math.min(score, 100));
@@ -246,7 +278,31 @@ public class RecommendationServiceImpl implements RecommendationService {
     item.setAvgRating(candidate.getAvgRating());
     item.setResponseEfficiencyScore(candidate.getResponseEfficiencyScore());
     item.setPriceTextPlaceholder(candidate.getPriceTextPlaceholder());
+    item.setFavorited(false);
     return item;
+  }
+
+  private FavoritePreference buildFavoritePreference(List<RecommendationDtos.StudentAgencyTeamRecommendationCandidate> candidates,
+                                                     Set<Long> favoriteTeamIds) {
+    if (favoriteTeamIds.isEmpty()) {
+      return new FavoritePreference(Set.of(), Set.of());
+    }
+    LinkedHashSet<String> countryTokens = new LinkedHashSet<>();
+    LinkedHashSet<String> directionTokens = new LinkedHashSet<>();
+    for (RecommendationDtos.StudentAgencyTeamRecommendationCandidate candidate : candidates) {
+      if (!favoriteTeamIds.contains(candidate.getTeamId())) continue;
+      countryTokens.addAll(splitTokens(candidate.getServiceCountryScope()));
+      directionTokens.addAll(splitTokens(candidate.getServiceMajorScope()));
+    }
+    return new FavoritePreference(countryTokens, directionTokens);
+  }
+
+  private boolean containsAnyToken(String text, Set<String> tokens) {
+    if (isBlank(text) || tokens.isEmpty()) return false;
+    for (String token : tokens) {
+      if (notBlank(token) && firstMatchedToken(List.of(token), text) != null) return true;
+    }
+    return false;
   }
 
   private RecommendationDtos.AgencyTeamStudentRecommendationItem toAgencyTeamStudentItem(RecommendationDtos.AgencyTeamStudentRecommendationCandidate candidate) {
@@ -373,4 +429,6 @@ public class RecommendationServiceImpl implements RecommendationService {
   private boolean isBlank(String value) {
     return value == null || value.trim().isEmpty();
   }
+
+  private record FavoritePreference(Set<String> countryTokens, Set<String> directionTokens) {}
 }

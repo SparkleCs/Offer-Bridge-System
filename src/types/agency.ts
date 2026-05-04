@@ -311,6 +311,7 @@ export interface DiscoveryTeamItem {
   teamIntro: string
   orgName: string
   city: string
+  logoUrl?: string | null
   serviceCountryScope: string
   serviceMajorScope: string
   caseCount: number
@@ -318,6 +319,7 @@ export interface DiscoveryTeamItem {
   avgRating: number
   responseEfficiencyScore: number
   priceTextPlaceholder: string
+  favorited?: boolean
 }
 
 export interface DiscoveryTeamMemberItem {
@@ -350,4 +352,5 @@ export interface DiscoveryTeamDetail {
   packagePlaceholderDesc: string
   org: AgencyOrgProfile | null
   members: DiscoveryTeamMemberItem[]
+  favorited?: boolean
 }
