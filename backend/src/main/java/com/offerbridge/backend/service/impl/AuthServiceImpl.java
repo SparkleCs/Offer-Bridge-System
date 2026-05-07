@@ -20,7 +20,6 @@ import com.offerbridge.backend.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +30,6 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HexFormat;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class AuthServiceImpl implements AuthService {
@@ -41,7 +39,6 @@ public class AuthServiceImpl implements AuthService {
   private static final String LOGIN_METHOD_SMS_CODE = "SMS_CODE";
   private static final String LOGIN_METHOD_PASSWORD = "PASSWORD";
   private final AppProperties appProperties;
-  private final StringRedisTemplate redisTemplate;
   private final AuthSmsCodeMapper authSmsCodeMapper;
   private final UserAccountMapper userAccountMapper;
   private final StudentProfileMapper studentProfileMapper;
@@ -53,7 +50,6 @@ public class AuthServiceImpl implements AuthService {
   private final PasswordEncoder passwordEncoder;
 
   public AuthServiceImpl(AppProperties appProperties,
-                         StringRedisTemplate redisTemplate,
                          AuthSmsCodeMapper authSmsCodeMapper,
                          UserAccountMapper userAccountMapper,
                          StudentProfileMapper studentProfileMapper,
@@ -64,7 +60,6 @@ public class AuthServiceImpl implements AuthService {
                          JwtService jwtService,
                          PasswordEncoder passwordEncoder) {
     this.appProperties = appProperties;
-    this.redisTemplate = redisTemplate;
     this.authSmsCodeMapper = authSmsCodeMapper;
     this.userAccountMapper = userAccountMapper;
     this.studentProfileMapper = studentProfileMapper;
@@ -80,17 +75,10 @@ public class AuthServiceImpl implements AuthService {
   public AuthDtos.SendSmsResult sendSmsCode(AuthDtos.SendSmsRequest request) {
     String scene = normalizeScene(request.getScene());
     String dbScene = mapToDbScene(scene);
-    String rateKey = "sms:rate:" + scene + ":" + request.getPhone();
-    Boolean hasKey = redisTemplate.hasKey(rateKey);
-    if (Boolean.TRUE.equals(hasKey)) {
-      throw new BizException("BIZ_SMS_TOO_FREQUENT", "发送过于频繁，请稍后再试");
-    }
 
     String code = String.valueOf((int) ((Math.random() * 9 + 1) * 100000));
     LocalDateTime expiresAt = LocalDateTime.now().plusSeconds(appProperties.getSms().getCodeTtlSeconds());
     authSmsCodeMapper.insertCode(request.getPhone(), dbScene, sha256(code), expiresAt);
-
-    redisTemplate.opsForValue().set(rateKey, "1", appProperties.getSms().getSendIntervalSeconds(), TimeUnit.SECONDS);
 
     AuthDtos.SendSmsResult result = new AuthDtos.SendSmsResult();
     if (appProperties.getSms().isMockEnabled()) {

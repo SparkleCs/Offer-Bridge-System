@@ -14,6 +14,7 @@ interface SchoolFilterParams {
   directionCode?: string
   rankMin?: number
   rankMax?: number
+  rankingSource?: 'QS' | 'USNEWS'
   keyword?: string
 }
 

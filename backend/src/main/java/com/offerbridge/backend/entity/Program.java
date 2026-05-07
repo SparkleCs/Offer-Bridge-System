@@ -32,6 +32,7 @@ public class Program {
   private String countryCode;
   private String countryName;
   private Integer qsRank;
+  private Integer usnewsRank;
 
   public Long getId() { return id; }
   public void setId(Long id) { this.id = id; }
@@ -89,4 +90,6 @@ public class Program {
   public void setCountryName(String countryName) { this.countryName = countryName; }
   public Integer getQsRank() { return qsRank; }
   public void setQsRank(Integer qsRank) { this.qsRank = qsRank; }
+  public Integer getUsnewsRank() { return usnewsRank; }
+  public void setUsnewsRank(Integer usnewsRank) { this.usnewsRank = usnewsRank; }
 }

@@ -35,10 +35,11 @@ public class UniversityController {
     @RequestParam(required = false) String directionCode,
     @RequestParam(required = false) Integer rankMin,
     @RequestParam(required = false) Integer rankMax,
+    @RequestParam(required = false) String rankingSource,
     @RequestParam(required = false) String keyword
   ) {
     return ApiResponse.ok(
-      universityService.listSchools(countryCode, subjectCategoryCode, directionCode, rankMin, rankMax, keyword)
+      universityService.listSchools(countryCode, subjectCategoryCode, directionCode, rankMin, rankMax, rankingSource, keyword)
     );
   }
 

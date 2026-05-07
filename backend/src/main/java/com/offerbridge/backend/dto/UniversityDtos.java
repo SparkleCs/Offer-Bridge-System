@@ -44,6 +44,10 @@ public class UniversityDtos {
     private String countryName;
     private String cityName;
     private Integer qsRank;
+    private Integer usnewsRank;
+    private Integer usnewsRankingYear;
+    private Integer displayRank;
+    private String displayRankingSource;
     private String advantageSubjects;
     private BigDecimal tuitionMin;
     private BigDecimal tuitionMax;
@@ -63,6 +67,14 @@ public class UniversityDtos {
     public void setCityName(String cityName) { this.cityName = cityName; }
     public Integer getQsRank() { return qsRank; }
     public void setQsRank(Integer qsRank) { this.qsRank = qsRank; }
+    public Integer getUsnewsRank() { return usnewsRank; }
+    public void setUsnewsRank(Integer usnewsRank) { this.usnewsRank = usnewsRank; }
+    public Integer getUsnewsRankingYear() { return usnewsRankingYear; }
+    public void setUsnewsRankingYear(Integer usnewsRankingYear) { this.usnewsRankingYear = usnewsRankingYear; }
+    public Integer getDisplayRank() { return displayRank; }
+    public void setDisplayRank(Integer displayRank) { this.displayRank = displayRank; }
+    public String getDisplayRankingSource() { return displayRankingSource; }
+    public void setDisplayRankingSource(String displayRankingSource) { this.displayRankingSource = displayRankingSource; }
     public String getAdvantageSubjects() { return advantageSubjects; }
     public void setAdvantageSubjects(String advantageSubjects) { this.advantageSubjects = advantageSubjects; }
     public BigDecimal getTuitionMin() { return tuitionMin; }
@@ -82,6 +94,10 @@ public class UniversityDtos {
     private String cityName;
     private Integer qsRank;
     private Integer rankingYear;
+    private Integer usnewsRank;
+    private Integer usnewsRankingYear;
+    private Integer displayRank;
+    private String displayRankingSource;
     private String schoolSummary;
     private BigDecimal tuitionMin;
     private BigDecimal tuitionMax;
@@ -108,6 +124,14 @@ public class UniversityDtos {
     public void setQsRank(Integer qsRank) { this.qsRank = qsRank; }
     public Integer getRankingYear() { return rankingYear; }
     public void setRankingYear(Integer rankingYear) { this.rankingYear = rankingYear; }
+    public Integer getUsnewsRank() { return usnewsRank; }
+    public void setUsnewsRank(Integer usnewsRank) { this.usnewsRank = usnewsRank; }
+    public Integer getUsnewsRankingYear() { return usnewsRankingYear; }
+    public void setUsnewsRankingYear(Integer usnewsRankingYear) { this.usnewsRankingYear = usnewsRankingYear; }
+    public Integer getDisplayRank() { return displayRank; }
+    public void setDisplayRank(Integer displayRank) { this.displayRank = displayRank; }
+    public String getDisplayRankingSource() { return displayRankingSource; }
+    public void setDisplayRankingSource(String displayRankingSource) { this.displayRankingSource = displayRankingSource; }
     public String getSchoolSummary() { return schoolSummary; }
     public void setSchoolSummary(String schoolSummary) { this.schoolSummary = schoolSummary; }
     public BigDecimal getTuitionMin() { return tuitionMin; }
@@ -134,6 +158,9 @@ public class UniversityDtos {
     private String schoolNameCn;
     private String schoolNameEn;
     private Integer qsRank;
+    private Integer usnewsRank;
+    private Integer primaryRank;
+    private String rankingSource;
     private String countryCode;
     private String countryName;
     private String programName;
@@ -160,6 +187,12 @@ public class UniversityDtos {
     public void setSchoolNameEn(String schoolNameEn) { this.schoolNameEn = schoolNameEn; }
     public Integer getQsRank() { return qsRank; }
     public void setQsRank(Integer qsRank) { this.qsRank = qsRank; }
+    public Integer getUsnewsRank() { return usnewsRank; }
+    public void setUsnewsRank(Integer usnewsRank) { this.usnewsRank = usnewsRank; }
+    public Integer getPrimaryRank() { return primaryRank; }
+    public void setPrimaryRank(Integer primaryRank) { this.primaryRank = primaryRank; }
+    public String getRankingSource() { return rankingSource; }
+    public void setRankingSource(String rankingSource) { this.rankingSource = rankingSource; }
     public String getCountryCode() { return countryCode; }
     public void setCountryCode(String countryCode) { this.countryCode = countryCode; }
     public String getCountryName() { return countryName; }

@@ -19,6 +19,10 @@ export interface SchoolListItem {
   countryName: string
   cityName: string
   qsRank: number
+  usnewsRank: number | null
+  usnewsRankingYear: number | null
+  displayRank: number | null
+  displayRankingSource: 'QS' | 'USNEWS'
   advantageSubjects: string
   tuitionMin: number | null
   tuitionMax: number | null
@@ -31,6 +35,9 @@ export interface ProgramListItem {
   schoolNameCn: string
   schoolNameEn: string
   qsRank: number
+  usnewsRank?: number | null
+  primaryRank?: number | null
+  rankingSource?: 'QS' | 'USNEWS'
   countryCode: string
   countryName: string
   programName: string
@@ -76,6 +83,10 @@ export interface SchoolDetail {
   cityName: string
   qsRank: number
   rankingYear: number
+  usnewsRank: number | null
+  usnewsRankingYear: number | null
+  displayRank: number | null
+  displayRankingSource: 'QS' | 'USNEWS'
   schoolSummary: string
   tuitionMin: number | null
   tuitionMax: number | null

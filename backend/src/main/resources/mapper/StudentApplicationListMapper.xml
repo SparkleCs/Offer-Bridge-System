@@ -35,6 +35,7 @@
     <result column="country_code" property="countryCode"/>
     <result column="country_name" property="countryName"/>
     <result column="qs_rank" property="qsRank"/>
+    <result column="usnews_rank" property="usnewsRank"/>
   </resultMap>
 
   <insert id="upsert">
@@ -78,7 +79,8 @@
       s.school_name_en,
       s.country_code,
       s.country_name,
-      s.qs_rank
+      s.qs_rank,
+      s.usnews_rank
     FROM student_application_list a
     INNER JOIN program p ON p.id = a.program_id
     INNER JOIN school s ON s.id = p.school_id

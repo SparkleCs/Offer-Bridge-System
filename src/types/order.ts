@@ -83,7 +83,7 @@ export interface TodoItem {
 }
 
 export interface OrderDetail {
-  order: OrderSummary
+  order: OrderSummary | AgentOrderSummary
   stages: StageItem[]
   todos: TodoItem[]
 }

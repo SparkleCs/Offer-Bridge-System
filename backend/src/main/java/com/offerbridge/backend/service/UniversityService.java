@@ -11,6 +11,7 @@ public interface UniversityService {
                                                   String directionCode,
                                                   Integer rankMin,
                                                   Integer rankMax,
+                                                  String rankingSource,
                                                   String keyword);
   UniversityDtos.SchoolDetailView getSchoolDetail(Long schoolId);
   List<UniversityDtos.ProgramListItem> listPrograms(Long schoolId,

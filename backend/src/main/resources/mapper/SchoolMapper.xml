@@ -10,6 +10,8 @@
     <result column="city_name" property="cityName"/>
     <result column="qs_rank" property="qsRank"/>
     <result column="ranking_year" property="rankingYear"/>
+    <result column="usnews_rank" property="usnewsRank"/>
+    <result column="usnews_ranking_year" property="usnewsRankingYear"/>
     <result column="school_summary" property="schoolSummary"/>
     <result column="tuition_min" property="tuitionMin"/>
     <result column="tuition_max" property="tuitionMax"/>
@@ -28,10 +30,13 @@
 
   <select id="listSchools" resultMap="SchoolMap">
     SELECT DISTINCT s.id, s.school_name_cn, s.school_name_en, s.country_code, s.country_name,
-      s.city_name, s.qs_rank, s.ranking_year, s.school_summary, s.tuition_min, s.tuition_max,
+      s.city_name, s.qs_rank, s.ranking_year, s.usnews_rank, s.usnews_ranking_year, s.school_summary, s.tuition_min, s.tuition_max,
       s.tuition_currency, s.duration_min_month, s.duration_max_month, s.language_requirement_range, s.advantage_subjects
     FROM school s
     <where>
+      <if test="rankingSource == 'USNEWS'">
+        AND s.country_code = 'US'
+      </if>
       <if test="countryCode != null and countryCode != ''">
         AND s.country_code = #{countryCode}
       </if>
@@ -48,10 +53,24 @@
         )
       </if>
       <if test="rankMin != null">
-        AND s.qs_rank &gt;= #{rankMin}
+        <choose>
+          <when test="rankingSource == 'USNEWS'">
+            AND s.usnews_rank &gt;= #{rankMin}
+          </when>
+          <otherwise>
+            AND s.qs_rank &gt;= #{rankMin}
+          </otherwise>
+        </choose>
       </if>
       <if test="rankMax != null">
-        AND s.qs_rank &lt;= #{rankMax}
+        <choose>
+          <when test="rankingSource == 'USNEWS'">
+            AND s.usnews_rank &lt;= #{rankMax}
+          </when>
+          <otherwise>
+            AND s.qs_rank &lt;= #{rankMax}
+          </otherwise>
+        </choose>
       </if>
       <if test="keyword != null and keyword != ''">
         AND (
@@ -65,12 +84,19 @@
         )
       </if>
     </where>
-    ORDER BY s.qs_rank ASC, s.id ASC
+    <choose>
+      <when test="rankingSource == 'USNEWS'">
+        ORDER BY CASE WHEN s.usnews_rank IS NULL THEN 1 ELSE 0 END ASC, s.usnews_rank ASC, s.qs_rank ASC, s.id ASC
+      </when>
+      <otherwise>
+        ORDER BY s.qs_rank ASC, s.id ASC
+      </otherwise>
+    </choose>
   </select>
 
   <select id="findById" resultMap="SchoolMap">
     SELECT id, school_name_cn, school_name_en, country_code, country_name,
-      city_name, qs_rank, ranking_year, school_summary, tuition_min, tuition_max,
+      city_name, qs_rank, ranking_year, usnews_rank, usnews_ranking_year, school_summary, tuition_min, tuition_max,
       tuition_currency, duration_min_month, duration_max_month, language_requirement_range, advantage_subjects
     FROM school
     WHERE id = #{schoolId}

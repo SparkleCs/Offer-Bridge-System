@@ -15,6 +15,7 @@ public interface ServiceOrderMapper {
   ServiceOrder findByIdForUpdate(@Param("id") Long id);
   OrderDtos.OrderSummary findStudentSummary(@Param("id") Long id, @Param("studentUserId") Long studentUserId);
   OrderDtos.OrderSummary findSummaryById(@Param("id") Long id);
+  OrderDtos.AgentOrderSummary findAgentSummaryById(@Param("id") Long id);
   ServiceOrder findLatestByConversationKeys(@Param("studentUserId") Long studentUserId, @Param("orgId") Long orgId, @Param("teamId") Long teamId);
   List<OrderDtos.OrderSummary> listByStudent(@Param("studentUserId") Long studentUserId);
   List<OrderDtos.AgentOrderSummary> listByOrg(@Param("orgId") Long orgId);

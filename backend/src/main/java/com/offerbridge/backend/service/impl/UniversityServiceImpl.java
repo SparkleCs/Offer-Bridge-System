@@ -30,6 +30,8 @@ public class UniversityServiceImpl implements UniversityService {
   private static final Set<String> ALLOWED_STATUS = Set.of(
     "COLLECTED", "TO_EVALUATE", "PREPARING", "APPLYING", "SUBMITTED", "ADMITTED", "REJECTED"
   );
+  private static final String RANKING_SOURCE_QS = "QS";
+  private static final String RANKING_SOURCE_USNEWS = "USNEWS";
 
   private final SchoolMapper schoolMapper;
   private final ProgramMapper programMapper;
@@ -103,17 +105,20 @@ public class UniversityServiceImpl implements UniversityService {
                                                          String directionCode,
                                                          Integer rankMin,
                                                          Integer rankMax,
+                                                         String rankingSource,
                                                          String keyword) {
+    String normalizedRankingSource = normalizeRankingSource(rankingSource);
     return schoolMapper.listSchools(
         countryCode,
         subjectCategoryCode,
         directionCode,
         rankMin,
         rankMax,
+        normalizedRankingSource,
         normalizeKeyword(keyword)
       )
       .stream()
-      .map(this::toSchoolListItem)
+      .map(school -> toSchoolListItem(school, normalizedRankingSource))
       .toList();
   }
 
@@ -133,6 +138,10 @@ public class UniversityServiceImpl implements UniversityService {
     view.setCityName(school.getCityName());
     view.setQsRank(school.getQsRank());
     view.setRankingYear(school.getRankingYear());
+    view.setUsnewsRank(school.getUsnewsRank());
+    view.setUsnewsRankingYear(school.getUsnewsRankingYear());
+    view.setDisplayRank(school.getQsRank());
+    view.setDisplayRankingSource(RANKING_SOURCE_QS);
     view.setSchoolSummary(school.getSchoolSummary());
     view.setTuitionMin(school.getTuitionMin());
     view.setTuitionMax(school.getTuitionMax());
@@ -227,7 +236,7 @@ public class UniversityServiceImpl implements UniversityService {
     return getApplicationList(userId);
   }
 
-  private UniversityDtos.SchoolListItem toSchoolListItem(School school) {
+  private UniversityDtos.SchoolListItem toSchoolListItem(School school, String rankingSource) {
     UniversityDtos.SchoolListItem item = new UniversityDtos.SchoolListItem();
     item.setId(school.getId());
     item.setSchoolNameCn(school.getSchoolNameCn());
@@ -236,6 +245,10 @@ public class UniversityServiceImpl implements UniversityService {
     item.setCountryName(school.getCountryName());
     item.setCityName(school.getCityName());
     item.setQsRank(school.getQsRank());
+    item.setUsnewsRank(school.getUsnewsRank());
+    item.setUsnewsRankingYear(school.getUsnewsRankingYear());
+    item.setDisplayRank(displayRank(school, rankingSource));
+    item.setDisplayRankingSource(rankingSource);
     item.setAdvantageSubjects(school.getAdvantageSubjects());
     item.setTuitionMin(school.getTuitionMin());
     item.setTuitionMax(school.getTuitionMax());
@@ -250,6 +263,9 @@ public class UniversityServiceImpl implements UniversityService {
     item.setSchoolNameCn(program.getSchoolNameCn());
     item.setSchoolNameEn(program.getSchoolNameEn());
     item.setQsRank(program.getQsRank());
+    item.setUsnewsRank(program.getUsnewsRank());
+    item.setRankingSource(RANKING_SOURCE_QS);
+    item.setPrimaryRank(program.getQsRank());
     item.setCountryCode(program.getCountryCode());
     item.setCountryName(program.getCountryName());
     item.setProgramName(program.getProgramName());
@@ -414,5 +430,17 @@ public class UniversityServiceImpl implements UniversityService {
     if (keyword == null) return null;
     String value = keyword.trim();
     return value.isEmpty() ? null : value;
+  }
+
+  private Integer displayRank(School school, String rankingSource) {
+    if (RANKING_SOURCE_USNEWS.equals(rankingSource)) return school.getUsnewsRank();
+    return school.getQsRank();
+  }
+
+  private String normalizeRankingSource(String rankingSource) {
+    if (rankingSource != null && RANKING_SOURCE_USNEWS.equalsIgnoreCase(rankingSource.trim())) {
+      return RANKING_SOURCE_USNEWS;
+    }
+    return RANKING_SOURCE_QS;
   }
 }

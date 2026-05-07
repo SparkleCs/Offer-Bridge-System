@@ -298,7 +298,7 @@ public class OrderServiceImpl implements OrderService {
     if (order == null || !org.getId().equals(order.getOrgId())) {
       throw new BizException("BIZ_NOT_FOUND", "订单不存在");
     }
-    return buildDetail(serviceOrderMapper.findSummaryById(orderId));
+    return buildDetail(serviceOrderMapper.findAgentSummaryById(orderId));
   }
 
   @Override

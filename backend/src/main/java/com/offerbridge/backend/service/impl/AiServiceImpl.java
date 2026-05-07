@@ -41,6 +41,8 @@ public class AiServiceImpl implements AiService {
   private static final String REPORT_TYPE_PROGRAM_ANALYSIS = "PROGRAM_ANALYSIS";
   private static final String RISK_WARNING = "结果仅供申请规划参考，最终录取以学校审核为准。";
   private static final String AI_UNAVAILABLE_MESSAGE = "AI预测暂不可用，请稍后重试";
+  private static final String RANKING_SOURCE_QS = "QS";
+  private static final String RANKING_SOURCE_USNEWS = "USNEWS";
 
   private final StudentProfileMapper studentProfileMapper;
   private final StudentLanguageScoreMapper studentLanguageScoreMapper;
@@ -272,6 +274,9 @@ public class AiServiceImpl implements AiService {
     candidate.countryName = program.getCountryName();
     candidate.directionName = program.getDirectionName();
     candidate.qsRank = program.getQsRank();
+    candidate.usnewsRank = program.getUsnewsRank();
+    candidate.rankingSource = primaryRankingSource(inputs, program);
+    candidate.primaryRank = primaryRank(program, candidate.rankingSource);
     candidate.gpaMinRecommend = program.getGpaMinRecommend();
     candidate.languageType = program.getLanguageType();
     candidate.languageMinScore = program.getLanguageMinScore();
@@ -316,6 +321,9 @@ public class AiServiceImpl implements AiService {
     item.countryName = safeDefault(item.countryName, scored.program.getCountryName());
     item.directionName = safeDefault(item.directionName, scored.program.getDirectionName());
     item.qsRank = item.qsRank == null ? scored.program.getQsRank() : item.qsRank;
+    item.usnewsRank = item.usnewsRank == null ? scored.program.getUsnewsRank() : item.usnewsRank;
+    item.rankingSource = safeDefault(item.rankingSource, scored.candidate.rankingSource);
+    item.primaryRank = item.primaryRank == null ? scored.candidate.primaryRank : item.primaryRank;
     item.ruleMatchScore = item.ruleMatchScore == null ? scored.candidate.ruleMatchScore : item.ruleMatchScore;
     item.mlScore = item.mlScore == null ? item.ruleMatchScore : item.mlScore;
     item.admissionProbabilityEstimate = item.admissionProbabilityEstimate == null
@@ -392,6 +400,24 @@ public class AiServiceImpl implements AiService {
 
   private String displaySchoolName(Program program) {
     return safeDefault(program.getSchoolNameCn(), program.getSchoolNameEn());
+  }
+
+  private String primaryRankingSource(StudentInputs inputs, Program program) {
+    boolean targetsUs = inputs.countries.stream().anyMatch(it -> isUnitedStates(it.getCountryName()));
+    if (targetsUs && isUnitedStates(program.getCountryName())) return RANKING_SOURCE_USNEWS;
+    return RANKING_SOURCE_QS;
+  }
+
+  private Integer primaryRank(Program program, String rankingSource) {
+    if (RANKING_SOURCE_USNEWS.equals(rankingSource) && program.getUsnewsRank() != null) {
+      return program.getUsnewsRank();
+    }
+    return program.getQsRank();
+  }
+
+  private boolean isUnitedStates(String countryName) {
+    return "美国".equals(countryName) || "US".equalsIgnoreCase(countryName) || "USA".equalsIgnoreCase(countryName)
+      || "United States".equalsIgnoreCase(countryName) || "United States of America".equalsIgnoreCase(countryName);
   }
 
   private String safeDefault(String value, String fallback) {

@@ -3,7 +3,6 @@
     <header class="orders-head">
       <div>
         <h2 class="section-title">订单与申请进度</h2>
-        <p class="section-desc">查看报价、完成支付，并与中介双向确认每个服务阶段。</p>
       </div>
     </header>
 
@@ -479,6 +478,10 @@ loadOrders()
   justify-content: space-between;
   align-items: center;
   gap: 16px;
+}
+
+.orders-head .section-title {
+  margin-bottom: 0;
 }
 
 .orders-layout {

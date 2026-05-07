@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS school (
   city_name VARCHAR(100) NULL,
   qs_rank INT NOT NULL,
   ranking_year INT NOT NULL DEFAULT 2026,
+  usnews_rank INT NULL,
+  usnews_ranking_year INT NULL,
   school_summary TEXT NULL,
   tuition_min DECIMAL(12,2) NULL,
   tuition_max DECIMAL(12,2) NULL,
@@ -42,7 +44,8 @@ CREATE TABLE IF NOT EXISTS school (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   UNIQUE KEY uk_school_name_en (school_name_en),
-  INDEX idx_school_country_rank (country_code, qs_rank)
+  INDEX idx_school_country_rank (country_code, qs_rank),
+  INDEX idx_school_country_usnews_rank (country_code, usnews_rank)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS school_subject_rel (

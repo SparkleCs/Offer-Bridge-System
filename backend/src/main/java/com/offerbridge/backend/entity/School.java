@@ -11,6 +11,8 @@ public class School {
   private String cityName;
   private Integer qsRank;
   private Integer rankingYear;
+  private Integer usnewsRank;
+  private Integer usnewsRankingYear;
   private String schoolSummary;
   private BigDecimal tuitionMin;
   private BigDecimal tuitionMax;
@@ -36,6 +38,10 @@ public class School {
   public void setQsRank(Integer qsRank) { this.qsRank = qsRank; }
   public Integer getRankingYear() { return rankingYear; }
   public void setRankingYear(Integer rankingYear) { this.rankingYear = rankingYear; }
+  public Integer getUsnewsRank() { return usnewsRank; }
+  public void setUsnewsRank(Integer usnewsRank) { this.usnewsRank = usnewsRank; }
+  public Integer getUsnewsRankingYear() { return usnewsRankingYear; }
+  public void setUsnewsRankingYear(Integer usnewsRankingYear) { this.usnewsRankingYear = usnewsRankingYear; }
   public String getSchoolSummary() { return schoolSummary; }
   public void setSchoolSummary(String schoolSummary) { this.schoolSummary = schoolSummary; }
   public BigDecimal getTuitionMin() { return tuitionMin; }

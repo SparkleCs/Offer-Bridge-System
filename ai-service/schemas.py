@@ -14,6 +14,9 @@ class ProgramCandidate(BaseModel):
     countryName: str | None = None
     directionName: str | None = None
     qsRank: int | None = None
+    usnewsRank: int | None = None
+    rankingSource: str | None = None
+    primaryRank: int | None = None
     gpaMinRecommend: Decimal | None = None
     languageType: str | None = None
     languageMinScore: Decimal | None = None
@@ -49,6 +52,9 @@ class RecommendationItem(BaseModel):
     countryName: str | None = None
     directionName: str | None = None
     qsRank: int | None = None
+    usnewsRank: int | None = None
+    rankingSource: str | None = None
+    primaryRank: int | None = None
     ruleMatchScore: int = 0
     mlScore: int = 0
     admissionProbabilityEstimate: Decimal = Decimal("0")

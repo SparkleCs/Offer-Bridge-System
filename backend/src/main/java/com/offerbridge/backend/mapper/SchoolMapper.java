@@ -15,6 +15,7 @@ public interface SchoolMapper {
                            @Param("directionCode") String directionCode,
                            @Param("rankMin") Integer rankMin,
                            @Param("rankMax") Integer rankMax,
+                           @Param("rankingSource") String rankingSource,
                            @Param("keyword") String keyword);
 
   School findById(@Param("schoolId") Long schoolId);

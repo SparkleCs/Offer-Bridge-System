@@ -30,6 +30,7 @@
     <result column="country_code" property="countryCode"/>
     <result column="country_name" property="countryName"/>
     <result column="qs_rank" property="qsRank"/>
+    <result column="usnews_rank" property="usnewsRank"/>
   </resultMap>
 
   <resultMap id="DirectionMap" type="com.offerbridge.backend.entity.MajorDirection">
@@ -46,7 +47,7 @@
     p.language_type, p.language_min_score, p.gpa_min_recommend,
     p.requires_gre, p.requires_gmat, p.background_preference,
     p.application_rounds_overview, p.suitable_tags, p.intake_term, p.program_summary,
-    s.school_name_cn, s.school_name_en, s.country_code, s.country_name, s.qs_rank
+    s.school_name_cn, s.school_name_en, s.country_code, s.country_name, s.qs_rank, s.usnews_rank
   </sql>
 
   <select id="listPrograms" resultMap="ProgramMap">

@@ -40,13 +40,13 @@ def build_features(profile: dict[str, Any], program: ProgramCandidate) -> list[f
     language_gap = 0.0 if language is None or language_min <= 0 else language - language_min
     background = profile.get("backgroundScore") or {}
     overall_background = decimal_float(background.get("overallAcademicScore"), 50.0)
-    qs_rank = float(program.qsRank or 150)
+    primary_rank = float(program.primaryRank or program.qsRank or 150)
     rule_score = float(program.ruleMatchScore or 0)
     return [
         gpa,
         gpa - gpa_min,
         language_gap,
         overall_background / 100.0,
-        max(0.0, min(1.0, (150.0 - qs_rank) / 150.0)),
+        max(0.0, min(1.0, (150.0 - primary_rank) / 150.0)),
         rule_score / 100.0,
     ]

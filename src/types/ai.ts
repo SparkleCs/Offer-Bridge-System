@@ -19,6 +19,9 @@ export interface AiProgramRecommendationItem {
   countryName?: string | null
   directionName?: string | null
   qsRank?: number | null
+  usnewsRank?: number | null
+  rankingSource?: 'QS' | 'USNEWS' | null
+  primaryRank?: number | null
   ruleMatchScore: number
   mlScore: number
   admissionProbabilityEstimate: number

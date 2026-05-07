@@ -27,6 +27,9 @@ public class AiDtos {
     public String countryName;
     public String directionName;
     public Integer qsRank;
+    public Integer usnewsRank;
+    public String rankingSource;
+    public Integer primaryRank;
     public Integer ruleMatchScore;
     public Integer mlScore;
     public BigDecimal admissionProbabilityEstimate;
@@ -61,6 +64,9 @@ public class AiDtos {
     public String countryName;
     public String directionName;
     public Integer qsRank;
+    public Integer usnewsRank;
+    public String rankingSource;
+    public Integer primaryRank;
     public BigDecimal gpaMinRecommend;
     public String languageType;
     public BigDecimal languageMinScore;

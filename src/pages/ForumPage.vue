@@ -3,7 +3,6 @@
     <div class="forum-head">
       <div>
         <h2 class="section-title">论坛社区</h2>
-        <p class="section-desc">申请经验、offer 复盘与真实问答。</p>
       </div>
       <div class="head-actions">
         <el-button plain class="jump-btn" @click="goMine">我的</el-button>

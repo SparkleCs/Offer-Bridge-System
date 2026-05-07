@@ -128,7 +128,7 @@
                 >
                   {{ detail.favorited ? '已收藏' : '收藏' }}
                 </el-button>
-                <el-button size="large" type="success" :loading="creatingOrder" @click="createOrderFromDetail">创建订单</el-button>
+                <el-button size="large" type="success" :loading="creatingOrder" @click="createOrderFromDetail">下单</el-button>
                 <el-button size="large" type="primary" @click="openGreetingDialog(detail)">立即沟通</el-button>
               </div>
             </div>

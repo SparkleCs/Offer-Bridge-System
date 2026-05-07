@@ -73,6 +73,20 @@
     LIMIT 1
   </select>
 
+  <select id="findAgentSummaryById" resultType="com.offerbridge.backend.dto.OrderDtos$AgentOrderSummary">
+    SELECT
+      <include refid="SummaryColumns"/>,
+      o.student_user_id AS studentUserId,
+      ua.phone AS studentPhone,
+      sp.name AS studentName
+    FROM service_order o
+    LEFT JOIN student_service_case c ON c.order_id = o.id
+    LEFT JOIN user_account ua ON ua.id = o.student_user_id
+    LEFT JOIN student_profile sp ON sp.user_id = o.student_user_id
+    WHERE o.id = #{id}
+    LIMIT 1
+  </select>
+
   <select id="findLatestByConversationKeys" resultMap="BaseMap">
     SELECT *
     FROM service_order

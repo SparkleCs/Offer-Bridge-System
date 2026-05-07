@@ -3,9 +3,8 @@
     <div class="page-head">
       <p class="crumb">首页 / 院校</p>
       <h2 class="section-title">院校</h2>
-      <p class="section-desc">以筛选为主：国家、学科领域、专业方向、QS 排名，快速定位学校与项目并加入申请清单。</p>
       <div class="ai-actions">
-        <el-button type="primary" :loading="generatingAi" @click="generateAiReport">生成AI择校报告</el-button>
+        <el-button class="ai-report-button" type="primary" :loading="generatingAi" @click="generateAiReport">生成AI择校报告</el-button>
         <span v-if="aiReport" class="ai-status">最新报告：{{ aiReport.status }} · {{ formatDate(aiReport.generatedAt) }}</span>
       </div>
     </div>
@@ -24,6 +23,14 @@
     </section>
 
     <div class="filter-panel">
+      <div class="filter-row">
+        <div class="filter-label">榜单</div>
+        <div class="chip-group">
+          <button class="chip" :class="{ active: rankingSource === 'QS' }" @click="setRankingSource('QS')">QS</button>
+          <button class="chip" :class="{ active: rankingSource === 'USNEWS' }" @click="setRankingSource('USNEWS')">USNews</button>
+        </div>
+      </div>
+
       <div class="filter-row">
         <div class="filter-label">国家</div>
         <div class="chip-group">
@@ -79,9 +86,9 @@
           <button class="chip" :class="{ active: rankPreset === 'TOP100' }" @click="setRankPreset('TOP100')">50-100名</button>
         </div>
         <div class="rank-inputs">
-          <el-input-number v-model="filters.rankMin" :min="1" :max="500" controls-position="right" placeholder="最小QS" />
+          <el-input-number v-model="filters.rankMin" :min="1" :max="500" controls-position="right" :placeholder="`最小${rankingLabel}`" />
           <span>至</span>
-          <el-input-number v-model="filters.rankMax" :min="1" :max="500" controls-position="right" placeholder="最大QS" />
+          <el-input-number v-model="filters.rankMax" :min="1" :max="500" controls-position="right" :placeholder="`最大${rankingLabel}`" />
         </div>
       </div>
 
@@ -107,7 +114,7 @@
                 <h3>{{ school.schoolNameCn }}</h3>
                 <p class="school-en">{{ school.schoolNameEn }}</p>
               </div>
-              <div class="rank-badge">QS {{ school.qsRank }}</div>
+              <div class="rank-badge">{{ formatSchoolRank(school) }}</div>
             </div>
             <p class="school-meta">{{ school.countryName }} / {{ school.cityName }}</p>
             <p class="school-meta">费用区间：{{ formatTuitionRange(school.tuitionMin, school.tuitionMax, school.tuitionCurrency) }}</p>
@@ -172,6 +179,7 @@ import type { FilterOption, ProgramListItem, SchoolListItem, UniversityMeta } fr
 import { confirmLoginRequired } from '../utils/authPrompt'
 
 type RankPreset = 'ALL' | 'TOP20' | 'TOP50' | 'TOP100'
+type RankingSource = 'QS' | 'USNEWS'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -193,6 +201,7 @@ const filters = reactive({
 })
 
 const rankPreset = ref<RankPreset>('ALL')
+const rankingSource = ref<RankingSource>('QS')
 const loading = ref(false)
 const generatingAi = ref(false)
 const addingProgramId = ref<number | null>(null)
@@ -220,6 +229,7 @@ const aiRecommendationByProgram = computed(() => {
   }
   return map
 })
+const rankingLabel = computed(() => (rankingSource.value === 'USNEWS' ? 'USNews' : 'QS'))
 
 function readError(error: unknown) {
   if (error instanceof ApiError) return error.message
@@ -256,8 +266,30 @@ function splitTags(text: string | null) {
     .slice(0, 6)
 }
 
+function formatSchoolRank(school: SchoolListItem) {
+  const source = school.displayRankingSource || rankingSource.value
+  const label = source === 'USNEWS' ? 'USNews' : 'QS'
+  return `${label} ${school.displayRank ?? '-'}`
+}
+
 function toggleFilter(field: 'countryCode' | 'directionCode', value: string) {
+  if (rankingSource.value === 'USNEWS' && field === 'countryCode' && value !== 'US') return
   filters[field] = filters[field] === value ? '' : value
+  if (rankingSource.value === 'USNEWS' && field === 'countryCode' && !filters.countryCode) {
+    filters.countryCode = 'US'
+  }
+}
+
+function setRankingSource(source: RankingSource) {
+  rankingSource.value = source
+  if (source === 'USNEWS') {
+    filters.countryCode = 'US'
+  }
+  currentPage.value = 1
+  expandedSchoolIds.value = new Set()
+  search().catch(() => {
+    // ignored
+  })
 }
 
 function onSubjectSelect(code: string) {
@@ -287,7 +319,7 @@ function setRankPreset(preset: RankPreset) {
 }
 
 function resetFilters() {
-  filters.countryCode = ''
+  filters.countryCode = rankingSource.value === 'USNEWS' ? 'US' : ''
   filters.subjectCategoryCode = ''
   filters.directionCode = ''
   filters.rankMin = undefined
@@ -320,6 +352,7 @@ async function search() {
       directionCode: filters.directionCode || undefined,
       rankMin: filters.rankMin,
       rankMax: filters.rankMax,
+      rankingSource: rankingSource.value,
       keyword: filters.keyword || undefined
     })
     schools.value = schoolList
@@ -430,8 +463,22 @@ onMounted(async () => {
 
 .page-head {
   display: grid;
-  gap: 6px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
   padding: 6px 2px 2px;
+}
+
+.page-head .crumb {
+  grid-column: 1 / -1;
+}
+
+.universities-page .section-title {
+  margin-bottom: 0;
+  color: #0b1f3d;
+  font-size: 46px;
+  line-height: 1.05;
+  font-weight: 900;
 }
 
 .ai-actions {
@@ -439,7 +486,39 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   flex-wrap: wrap;
-  margin-top: 4px;
+  margin-top: 2px;
+  justify-content: flex-end;
+}
+
+.ai-report-button {
+  min-width: 168px;
+  height: 44px;
+  border: 0;
+  border-radius: 8px;
+  padding: 0 18px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #2d8cff 0%, #43a7ff 48%, #17b6a8 100%);
+  box-shadow: 0 14px 28px rgba(37, 132, 240, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.42);
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+}
+
+.ai-report-button:hover,
+.ai-report-button:focus {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.28), rgba(255, 255, 255, 0) 42%),
+    linear-gradient(135deg, #217fff 0%, #39a2ff 46%, #12aa9e 100%);
+  box-shadow: 0 18px 34px rgba(37, 132, 240, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.48);
+  filter: saturate(1.05);
+  transform: translateY(-1px);
+}
+
+.ai-report-button:active {
+  box-shadow: 0 10px 20px rgba(37, 132, 240, 0.24), inset 0 2px 6px rgba(9, 57, 126, 0.18);
+  transform: translateY(0);
 }
 
 .ai-status {
@@ -764,6 +843,19 @@ onMounted(async () => {
   .filter-row {
     grid-template-columns: 1fr;
     align-items: flex-start;
+  }
+
+  .page-head {
+    grid-template-columns: 1fr;
+    align-items: flex-start;
+  }
+
+  .page-head .crumb {
+    grid-column: auto;
+  }
+
+  .ai-actions {
+    justify-content: flex-start;
   }
 
   .rank-inputs {
