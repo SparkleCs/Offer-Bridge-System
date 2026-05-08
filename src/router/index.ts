@@ -54,6 +54,7 @@ const routes = [
   { path: '/agency-center', name: 'agency-center', component: () => import('../pages/AgencyCenterPage.vue'), meta: { requiresAuth: true, allowedRoles: ['AGENT_ORG', 'AGENT_MEMBER'] } },
   { path: '/agency-favorites', name: 'agency-favorites', component: () => import('../pages/AgencyFavoritesPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/messages', name: 'messages', component: () => import('../pages/MessagesPage.vue'), meta: { requiresAuth: true } },
+  { path: '/ai-report', name: 'ai-report', component: () => import('../pages/AiReportPage.vue'), meta: { requiresAuth: true, allowedRoles: ['STUDENT'] } },
   { path: '/me', name: 'me', component: () => import('../pages/MePage.vue'), meta: { requiresAuth: true } },
   { path: '/forum', name: 'forum', component: () => import('../pages/ForumPage.vue') },
   { path: '/forum/mine', name: 'forum-mine', component: () => import('../pages/ForumMinePage.vue'), meta: { requiresAuth: true } },

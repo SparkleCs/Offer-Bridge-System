@@ -5,13 +5,13 @@ from typing import Any
 
 from feature_engineering import best_language_score, decimal_float, normalized_gpa
 from ml_predictor import predictor
-from schemas import GapAnalysisItem, ImprovementSuggestionItem, ProgramCandidate, RecommendationItem
+from schemas import GapAnalysisItem, ImprovementSuggestionItem, ProgramCandidate, RecommendationItem, UsSchoolCandidate, UsSchoolRecommendationItem
 
 
 def tier_for_probability(probability: float) -> str:
-    if probability >= 0.75:
+    if probability >= 0.70:
         return "保底"
-    if probability >= 0.45:
+    if probability >= 0.30:
         return "匹配"
     return "冲刺"
 
@@ -96,3 +96,81 @@ def build_suggestions(gaps: list[GapAnalysisItem]) -> list[ImprovementSuggestion
     if not suggestions:
         suggestions.append(ImprovementSuggestionItem(priority="中", action="完善科研、实习和论文经历", reason="更完整的背景材料有助于提升申请竞争力评估稳定性。"))
     return suggestions
+
+
+def school_confidence(probability: float) -> str:
+    if 0.2 <= probability <= 0.85:
+        return "medium"
+    return "low"
+
+
+def build_us_school_recommendation(student_features: dict[str, Any], school: UsSchoolCandidate) -> UsSchoolRecommendationItem:
+    from ml_predictor import us_school_predictor
+
+    features = {
+        "gpaScore": student_features.get("gpaScore"),
+        "languageScore": student_features.get("languageScore"),
+        "softBackgroundScore": student_features.get("softBackgroundScore"),
+        "schoolSelectivityScore": school.schoolSelectivityScore,
+        "admissionBarScore": school.admissionBarScore,
+        "schoolHeatScore": school.schoolHeatScore,
+    }
+    probability = us_school_predictor.predict_probability(features)
+    ml_score = int(round(probability * 100))
+    tier = tier_for_probability(probability)
+    gpa = decimal_float(student_features.get("gpaScore"))
+    language = decimal_float(student_features.get("languageScore"))
+    soft = decimal_float(student_features.get("softBackgroundScore"))
+    factors = []
+    if gpa >= 80:
+        factors.append("GPA背景较强")
+    if language >= 75:
+        factors.append("语言基础较稳")
+    if soft >= 70:
+        factors.append("软背景有支撑")
+    if decimal_float(school.schoolSelectivityScore) >= 90:
+        factors.append("院校选择性较高")
+    if decimal_float(school.admissionBarScore) >= 85:
+        factors.append("录取门槛较高")
+    if not factors:
+        factors.append("基于学生背景与院校难度画像生成概率评估")
+    summary = f"{school.schoolName or '该校'}当前为{tier}选择，录取概率估计约{ml_score}%。"
+    return UsSchoolRecommendationItem(
+        schoolId=school.schoolId,
+        schoolName=school.schoolName,
+        countryName=school.countryName,
+        qsRank=school.qsRank,
+        usnewsRank=school.usnewsRank,
+        rankingSource=school.rankingSource,
+        primaryRank=school.primaryRank,
+        mlScore=ml_score,
+        admissionProbabilityEstimate=Decimal(str(round(probability, 4))),
+        matchTier=tier,
+        confidenceLevel=school_confidence(probability),
+        gpaScore=Decimal(str(round(gpa, 2))),
+        languageScore=Decimal(str(round(language, 2))),
+        softBackgroundScore=Decimal(str(round(soft, 2))),
+        schoolSelectivityScore=school.schoolSelectivityScore,
+        admissionBarScore=school.admissionBarScore,
+        schoolHeatScore=school.schoolHeatScore,
+        reasonTags=factors[:5],
+        aiSummary=summary,
+    )
+
+
+def build_us_school_gap_analysis(student_features: dict[str, Any]) -> list[GapAnalysisItem]:
+    gaps: list[GapAnalysisItem] = []
+    checks = [
+        ("GPA", decimal_float(student_features.get("gpaScore")), 80.0),
+        ("语言成绩", decimal_float(student_features.get("languageScore")), 75.0),
+        ("软背景", decimal_float(student_features.get("softBackgroundScore")), 70.0),
+    ]
+    for name, current, target in checks:
+        if current < target:
+            gaps.append(GapAnalysisItem(
+                dimension=name,
+                current=f"{current:.1f}/100",
+                target=f"建议提升至 {target:.0f}/100 以上",
+                priority="高" if current + 10 < target else "中",
+            ))
+    return gaps

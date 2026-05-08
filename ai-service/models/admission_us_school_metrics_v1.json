@@ -1,0 +1,17 @@
+{
+  "feature_schema_version": "US_SCHOOL_FEATURES_V1",
+  "features": [
+    "gpa_score",
+    "language_score",
+    "soft_background_score",
+    "school_selectivity_score",
+    "admission_bar_score",
+    "school_heat_score"
+  ],
+  "train_size": 840,
+  "valid_size": 180,
+  "test_size": 180,
+  "auc": 0.7342726486219258,
+  "pr_auc": 0.727868237413623,
+  "brier": 0.20956650597433757
+}

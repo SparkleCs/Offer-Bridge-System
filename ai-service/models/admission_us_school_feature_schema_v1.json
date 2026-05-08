@@ -1,0 +1,11 @@
+{
+  "features": [
+    "gpa_score",
+    "language_score",
+    "soft_background_score",
+    "school_selectivity_score",
+    "admission_bar_score",
+    "school_heat_score"
+  ],
+  "label": "admit_label"
+}

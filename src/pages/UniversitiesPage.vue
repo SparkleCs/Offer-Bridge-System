@@ -15,7 +15,7 @@
         <p>{{ aiReport.overallSummary }}</p>
       </div>
       <div class="ai-report-metrics">
-        <div v-for="item in aiReport.recommendations.slice(0, 3)" :key="item.programId" class="ai-mini-card">
+        <div v-for="item in aiSchoolRecommendations.slice(0, 3)" :key="item.schoolId" class="ai-mini-card">
           <strong>{{ item.schoolName }}</strong>
           <span>{{ item.matchTier }} · {{ probabilityText(item.admissionProbabilityEstimate) }}</span>
         </div>
@@ -118,6 +118,9 @@
             </div>
             <p class="school-meta">{{ school.countryName }} / {{ school.cityName }}</p>
             <p class="school-meta">费用区间：{{ formatTuitionRange(school.tuitionMin, school.tuitionMax, school.tuitionCurrency) }}</p>
+            <p v-if="aiRecommendationBySchool.get(school.id)" class="school-ai-line">
+              AI录取概率 {{ probabilityText(aiRecommendationBySchool.get(school.id)?.admissionProbabilityEstimate) }} · {{ aiRecommendationBySchool.get(school.id)?.matchTier }}
+            </p>
             <div class="tag-list">
               <span v-for="tag in splitTags(school.advantageSubjects)" :key="`${school.id}-${tag}`" class="tag-item">{{ tag }}</span>
             </div>
@@ -226,6 +229,14 @@ const aiRecommendationByProgram = computed(() => {
   const map = new Map<number, AiReportView['recommendations'][number]>()
   for (const item of aiReport.value?.recommendations || []) {
     map.set(item.programId, item)
+  }
+  return map
+})
+const aiSchoolRecommendations = computed(() => aiReport.value?.schoolRecommendations || [])
+const aiRecommendationBySchool = computed(() => {
+  const map = new Map<number, AiReportView['schoolRecommendations'][number]>()
+  for (const item of aiReport.value?.schoolRecommendations || []) {
+    map.set(item.schoolId, item)
   }
   return map
 })
@@ -427,6 +438,7 @@ async function generateAiReport() {
   try {
     aiReport.value = await generateAiRecommendations()
     ElMessage.success('AI择校报告已生成')
+    await router.push('/ai-report')
   } catch (error) {
     aiReport.value = null
     ElMessage.error(readError(error))
@@ -771,6 +783,13 @@ onMounted(async () => {
   margin: 0;
   color: var(--text-sub);
   font-size: 14px;
+}
+
+.school-ai-line {
+  margin: 4px 0 0;
+  color: #0f6fb8;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .tag-list {

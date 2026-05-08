@@ -5,19 +5,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.offerbridge.backend.dto.AiDtos;
 import com.offerbridge.backend.entity.AiAnalysisReport;
 import com.offerbridge.backend.entity.AiProgramRecommendation;
+import com.offerbridge.backend.entity.AiSchoolRecommendation;
 import com.offerbridge.backend.entity.Program;
+import com.offerbridge.backend.entity.School;
 import com.offerbridge.backend.entity.StudentBackgroundScore;
 import com.offerbridge.backend.entity.StudentLanguageScore;
 import com.offerbridge.backend.entity.StudentProfile;
 import com.offerbridge.backend.entity.StudentTargetCountry;
+import com.offerbridge.backend.entity.UsSchoolDifficultyProfile;
 import com.offerbridge.backend.exception.BizException;
 import com.offerbridge.backend.mapper.AiAnalysisReportMapper;
 import com.offerbridge.backend.mapper.AiProgramRecommendationMapper;
+import com.offerbridge.backend.mapper.AiSchoolRecommendationMapper;
 import com.offerbridge.backend.mapper.ProgramMapper;
+import com.offerbridge.backend.mapper.SchoolMapper;
 import com.offerbridge.backend.mapper.StudentLanguageScoreMapper;
 import com.offerbridge.backend.mapper.StudentProgramMatchResultMapper;
 import com.offerbridge.backend.mapper.StudentProfileMapper;
 import com.offerbridge.backend.mapper.StudentTargetCountryMapper;
+import com.offerbridge.backend.mapper.UsSchoolDifficultyProfileMapper;
 import com.offerbridge.backend.service.AiService;
 import com.offerbridge.backend.service.StudentBackgroundScoreService;
 import org.springframework.stereotype.Service;
@@ -43,15 +49,19 @@ public class AiServiceImpl implements AiService {
   private static final String AI_UNAVAILABLE_MESSAGE = "AI预测暂不可用，请稍后重试";
   private static final String RANKING_SOURCE_QS = "QS";
   private static final String RANKING_SOURCE_USNEWS = "USNEWS";
+  private static final String COUNTRY_CODE_US = "US";
 
   private final StudentProfileMapper studentProfileMapper;
   private final StudentLanguageScoreMapper studentLanguageScoreMapper;
   private final StudentTargetCountryMapper studentTargetCountryMapper;
   private final ProgramMapper programMapper;
+  private final SchoolMapper schoolMapper;
   private final StudentProgramMatchResultMapper studentProgramMatchResultMapper;
   private final StudentBackgroundScoreService studentBackgroundScoreService;
   private final AiAnalysisReportMapper aiAnalysisReportMapper;
   private final AiProgramRecommendationMapper aiProgramRecommendationMapper;
+  private final AiSchoolRecommendationMapper aiSchoolRecommendationMapper;
+  private final UsSchoolDifficultyProfileMapper usSchoolDifficultyProfileMapper;
   private final AiClient aiClient;
   private final ObjectMapper objectMapper;
 
@@ -59,20 +69,26 @@ public class AiServiceImpl implements AiService {
                        StudentLanguageScoreMapper studentLanguageScoreMapper,
                        StudentTargetCountryMapper studentTargetCountryMapper,
                        ProgramMapper programMapper,
+                       SchoolMapper schoolMapper,
                        StudentProgramMatchResultMapper studentProgramMatchResultMapper,
                        StudentBackgroundScoreService studentBackgroundScoreService,
                        AiAnalysisReportMapper aiAnalysisReportMapper,
                        AiProgramRecommendationMapper aiProgramRecommendationMapper,
+                       AiSchoolRecommendationMapper aiSchoolRecommendationMapper,
+                       UsSchoolDifficultyProfileMapper usSchoolDifficultyProfileMapper,
                        AiClient aiClient,
                        ObjectMapper objectMapper) {
     this.studentProfileMapper = studentProfileMapper;
     this.studentLanguageScoreMapper = studentLanguageScoreMapper;
     this.studentTargetCountryMapper = studentTargetCountryMapper;
     this.programMapper = programMapper;
+    this.schoolMapper = schoolMapper;
     this.studentProgramMatchResultMapper = studentProgramMatchResultMapper;
     this.studentBackgroundScoreService = studentBackgroundScoreService;
     this.aiAnalysisReportMapper = aiAnalysisReportMapper;
     this.aiProgramRecommendationMapper = aiProgramRecommendationMapper;
+    this.aiSchoolRecommendationMapper = aiSchoolRecommendationMapper;
+    this.usSchoolDifficultyProfileMapper = usSchoolDifficultyProfileMapper;
     this.aiClient = aiClient;
     this.objectMapper = objectMapper;
   }
@@ -81,12 +97,10 @@ public class AiServiceImpl implements AiService {
   @Transactional
   public AiDtos.AiReportView generateRecommendations(Long userId) {
     StudentInputs inputs = loadAndValidateInputs(userId);
-    List<ScoredProgram> scoredPrograms = programMapper.listPrograms(null, null, null, null, null).stream()
-      .map(program -> scoreProgram(userId, inputs, program))
-      .sorted(Comparator.comparing((ScoredProgram item) -> item.candidate.ruleMatchScore).reversed())
-      .limit(30)
-      .toList();
-    return buildCallAndPersist(userId, REPORT_TYPE_RECOMMENDATION, inputs, scoredPrograms, false);
+    if (inputs.countries.stream().noneMatch(it -> isUnitedStates(it.getCountryName()))) {
+      throw new BizException("BIZ_BAD_REQUEST", "美国院校级AI择校需要先将目标国家设置为美国");
+    }
+    return buildUsSchoolCallAndPersist(userId, inputs);
   }
 
   @Override
@@ -114,6 +128,150 @@ public class AiServiceImpl implements AiService {
       throw new BizException("BIZ_NOT_FOUND", "项目不存在");
     }
     return buildCallAndPersist(userId, REPORT_TYPE_PROGRAM_ANALYSIS, inputs, List.of(scoreProgram(userId, inputs, program)), true);
+  }
+
+  private AiDtos.AiReportView buildUsSchoolCallAndPersist(Long userId, StudentInputs inputs) {
+    BigDecimal gpaScore = requiredScore(inputs.backgroundScore.getGpaScore(), "GPA背景分");
+    BigDecimal languageScore = requiredScore(inputs.backgroundScore.getLanguageScore(), "语言背景分");
+    BigDecimal softBackgroundScore = softBackgroundScore(inputs.backgroundScore);
+
+    List<School> schools = schoolMapper.listSchools(COUNTRY_CODE_US, null, null, null, null, RANKING_SOURCE_USNEWS, null);
+    if (schools == null || schools.isEmpty()) {
+      throw new BizException("BIZ_AI_UNAVAILABLE", "未找到美国院校候选，暂无法生成AI择校报告");
+    }
+
+    Map<Long, UsSchoolDifficultyProfile> profileBySchoolId = usSchoolDifficultyProfileMapper.listAll().stream()
+      .collect(Collectors.toMap(UsSchoolDifficultyProfile::getSchoolId, item -> item, (left, right) -> left));
+    List<String> missingProfileSchools = schools.stream()
+      .filter(school -> !profileBySchoolId.containsKey(school.getId()))
+      .map(this::displaySchoolName)
+      .toList();
+    if (!missingProfileSchools.isEmpty()) {
+      throw new BizException(
+        "BIZ_AI_UNAVAILABLE",
+        "美国院校难度画像缺失，暂无法生成AI择校报告：" + String.join("、", missingProfileSchools)
+      );
+    }
+
+    AiDtos.AiUsSchoolRecommendationRequest request = new AiDtos.AiUsSchoolRecommendationRequest();
+    request.studentFeatures = Map.of(
+      "gpaScore", gpaScore,
+      "languageScore", languageScore,
+      "softBackgroundScore", softBackgroundScore
+    );
+
+    Map<Long, School> schoolById = new LinkedHashMap<>();
+    for (School school : schools) {
+      UsSchoolDifficultyProfile profile = profileBySchoolId.get(school.getId());
+      schoolById.put(school.getId(), school);
+      AiDtos.AiUsSchoolCandidate candidate = new AiDtos.AiUsSchoolCandidate();
+      candidate.schoolId = school.getId();
+      candidate.schoolName = displaySchoolName(school);
+      candidate.countryName = school.getCountryName();
+      candidate.qsRank = school.getQsRank();
+      candidate.usnewsRank = school.getUsnewsRank();
+      candidate.rankingSource = RANKING_SOURCE_USNEWS;
+      candidate.primaryRank = school.getUsnewsRank() == null ? school.getQsRank() : school.getUsnewsRank();
+      candidate.schoolSelectivityScore = profile.getSchoolSelectivityScore();
+      candidate.admissionBarScore = profile.getAdmissionBarScore();
+      candidate.schoolHeatScore = profile.getSchoolHeatScore();
+      request.schools.add(candidate);
+    }
+
+    if (request.schools.isEmpty()) {
+      throw new BizException("BIZ_AI_UNAVAILABLE", "美国院校难度画像未配置，暂无法生成AI择校报告");
+    }
+
+    AiDtos.AiUsSchoolRecommendationResponse response = aiClient.usSchoolRecommendations(request);
+    if (response == null || response.schoolRecommendations == null || response.schoolRecommendations.isEmpty()) {
+      throw new BizException("BIZ_AI_UNAVAILABLE", AI_UNAVAILABLE_MESSAGE);
+    }
+
+    AiDtos.AiReportView view = toSchoolReportView(response, schoolById, gpaScore, languageScore, softBackgroundScore);
+    persistSchoolReport(userId, request, view);
+    return view;
+  }
+
+  private AiDtos.AiReportView toSchoolReportView(AiDtos.AiUsSchoolRecommendationResponse response,
+                                                 Map<Long, School> schoolById,
+                                                 BigDecimal gpaScore,
+                                                 BigDecimal languageScore,
+                                                 BigDecimal softBackgroundScore) {
+    AiDtos.AiReportView view = new AiDtos.AiReportView();
+    view.status = safeDefault(response.status, "SUCCESS");
+    view.overallSummary = safeDefault(response.overallSummary, "已生成美国院校级AI择校报告。");
+    view.generatedAt = response.generatedAt == null ? LocalDateTime.now().toString() : response.generatedAt;
+    view.modelProvider = safeDefault(response.modelProvider, "fastapi-lightgbm");
+    view.modelVersion = safeDefault(response.modelVersion, "admission-us-school-lgbm-v1");
+    view.gapAnalysis = response.gapAnalysis == null ? new ArrayList<>() : response.gapAnalysis;
+    view.improvementSuggestions = response.improvementSuggestions == null ? new ArrayList<>() : response.improvementSuggestions;
+    view.riskWarnings = response.riskWarnings == null || response.riskWarnings.isEmpty() ? List.of(RISK_WARNING) : response.riskWarnings;
+    view.schoolRecommendations = response.schoolRecommendations.stream()
+      .filter(item -> item.schoolId != null && schoolById.containsKey(item.schoolId))
+      .map(item -> enrichSchoolRecommendation(item, schoolById.get(item.schoolId), gpaScore, languageScore, softBackgroundScore))
+      .sorted(Comparator.comparing((AiDtos.AiSchoolRecommendationItem item) -> item.admissionProbabilityEstimate == null ? BigDecimal.ZERO : item.admissionProbabilityEstimate).reversed())
+      .toList();
+    if (view.schoolRecommendations.isEmpty()) {
+      throw new BizException("BIZ_AI_UNAVAILABLE", AI_UNAVAILABLE_MESSAGE);
+    }
+    return view;
+  }
+
+  private AiDtos.AiSchoolRecommendationItem enrichSchoolRecommendation(AiDtos.AiSchoolRecommendationItem item,
+                                                                      School school,
+                                                                      BigDecimal gpaScore,
+                                                                      BigDecimal languageScore,
+                                                                      BigDecimal softBackgroundScore) {
+    item.schoolName = safeDefault(item.schoolName, displaySchoolName(school));
+    item.countryName = safeDefault(item.countryName, school.getCountryName());
+    item.qsRank = item.qsRank == null ? school.getQsRank() : item.qsRank;
+    item.usnewsRank = item.usnewsRank == null ? school.getUsnewsRank() : item.usnewsRank;
+    item.rankingSource = safeDefault(item.rankingSource, RANKING_SOURCE_USNEWS);
+    item.primaryRank = item.primaryRank == null ? (school.getUsnewsRank() == null ? school.getQsRank() : school.getUsnewsRank()) : item.primaryRank;
+    item.mlScore = item.mlScore == null ? 0 : item.mlScore;
+    item.admissionProbabilityEstimate = item.admissionProbabilityEstimate == null
+      ? BigDecimal.valueOf(item.mlScore).divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP)
+      : item.admissionProbabilityEstimate;
+    item.matchTier = safeDefault(item.matchTier, probabilityTier(item.admissionProbabilityEstimate));
+    item.confidenceLevel = safeDefault(item.confidenceLevel, "medium");
+    item.gpaScore = item.gpaScore == null ? gpaScore : item.gpaScore;
+    item.languageScore = item.languageScore == null ? languageScore : item.languageScore;
+    item.softBackgroundScore = item.softBackgroundScore == null ? softBackgroundScore : item.softBackgroundScore;
+    item.reasonTags = item.reasonTags == null ? List.of() : item.reasonTags;
+    item.aiSummary = safeDefault(item.aiSummary, "该校可作为当前美国院校组合中的候选院校。");
+    return item;
+  }
+
+  private void persistSchoolReport(Long userId, AiDtos.AiUsSchoolRecommendationRequest request, AiDtos.AiReportView view) {
+    AiAnalysisReport report = new AiAnalysisReport();
+    report.setUserId(userId);
+    report.setReportType(REPORT_TYPE_RECOMMENDATION);
+    report.setInputSnapshotJson(toJson(request));
+    report.setResultJson(toJson(view));
+    report.setModelProvider(safeDefault(view.modelProvider, "fastapi-lightgbm"));
+    report.setModelVersion(safeDefault(view.modelVersion, "admission-us-school-lgbm-v1"));
+    report.setStatus(view.status);
+    aiAnalysisReportMapper.insertOne(report);
+
+    view.reportId = report.getId();
+    for (AiDtos.AiSchoolRecommendationItem item : view.schoolRecommendations) {
+      AiSchoolRecommendation row = new AiSchoolRecommendation();
+      row.setReportId(report.getId());
+      row.setSchoolId(item.schoolId);
+      row.setMatchScore(item.mlScore == null ? 0 : item.mlScore);
+      row.setMatchTier(safeDefault(item.matchTier, "匹配"));
+      row.setProbabilityEstimate(item.admissionProbabilityEstimate == null ? BigDecimal.ZERO : item.admissionProbabilityEstimate);
+      row.setConfidenceLevel(item.confidenceLevel);
+      row.setGpaScore(item.gpaScore);
+      row.setLanguageScore(item.languageScore);
+      row.setSoftBackgroundScore(item.softBackgroundScore);
+      row.setSchoolSelectivityScore(item.schoolSelectivityScore);
+      row.setAdmissionBarScore(item.admissionBarScore);
+      row.setSchoolHeatScore(item.schoolHeatScore);
+      row.setReasonTagsJson(toJson(item.reasonTags == null ? List.of() : item.reasonTags));
+      row.setAiSummary(item.aiSummary);
+      aiSchoolRecommendationMapper.insertOne(row);
+    }
   }
 
   private AiDtos.AiReportView buildCallAndPersist(Long userId,
@@ -371,8 +529,8 @@ public class AiServiceImpl implements AiService {
 
   private String probabilityTier(BigDecimal probability) {
     if (probability == null) return "匹配";
-    if (probability.compareTo(new BigDecimal("0.75")) >= 0) return "保底";
-    if (probability.compareTo(new BigDecimal("0.45")) >= 0) return "匹配";
+    if (probability.compareTo(new BigDecimal("0.70")) >= 0) return "保底";
+    if (probability.compareTo(new BigDecimal("0.30")) >= 0) return "匹配";
     return "冲刺";
   }
 
@@ -400,6 +558,30 @@ public class AiServiceImpl implements AiService {
 
   private String displaySchoolName(Program program) {
     return safeDefault(program.getSchoolNameCn(), program.getSchoolNameEn());
+  }
+
+  private String displaySchoolName(School school) {
+    return safeDefault(school.getSchoolNameCn(), school.getSchoolNameEn());
+  }
+
+  private BigDecimal requiredScore(BigDecimal value, String label) {
+    if (value == null) {
+      throw new BizException("BIZ_BAD_REQUEST", "学生背景不完整，请先刷新或补充：" + label);
+    }
+    return value;
+  }
+
+  private BigDecimal softBackgroundScore(StudentBackgroundScore score) {
+    BigDecimal research = safeScore(score.getResearchScore()).multiply(new BigDecimal("0.30"));
+    BigDecimal internship = safeScore(score.getInternshipScore()).multiply(new BigDecimal("0.25"));
+    BigDecimal publication = safeScore(score.getPublicationScore()).multiply(new BigDecimal("0.20"));
+    BigDecimal competition = safeScore(score.getCompetitionScore()).multiply(new BigDecimal("0.15"));
+    BigDecimal exchange = safeScore(score.getExchangeScore()).multiply(new BigDecimal("0.10"));
+    return research.add(internship).add(publication).add(competition).add(exchange).setScale(2, RoundingMode.HALF_UP);
+  }
+
+  private BigDecimal safeScore(BigDecimal value) {
+    return value == null ? BigDecimal.ZERO : value;
   }
 
   private String primaryRankingSource(StudentInputs inputs, Program program) {

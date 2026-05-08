@@ -13,10 +13,33 @@ public class AiDtos {
     public String generatedAt;
     public String modelProvider;
     public String modelVersion;
+    public List<AiSchoolRecommendationItem> schoolRecommendations = new ArrayList<>();
     public List<AiProgramRecommendationItem> recommendations = new ArrayList<>();
     public List<GapAnalysisItem> gapAnalysis = new ArrayList<>();
     public List<ImprovementSuggestionItem> improvementSuggestions = new ArrayList<>();
     public List<String> riskWarnings = new ArrayList<>();
+  }
+
+  public static class AiSchoolRecommendationItem {
+    public Long schoolId;
+    public String schoolName;
+    public String countryName;
+    public Integer qsRank;
+    public Integer usnewsRank;
+    public String rankingSource;
+    public Integer primaryRank;
+    public Integer mlScore;
+    public BigDecimal admissionProbabilityEstimate;
+    public String matchTier;
+    public String confidenceLevel;
+    public BigDecimal gpaScore;
+    public BigDecimal languageScore;
+    public BigDecimal softBackgroundScore;
+    public BigDecimal schoolSelectivityScore;
+    public BigDecimal admissionBarScore;
+    public BigDecimal schoolHeatScore;
+    public List<String> reasonTags = new ArrayList<>();
+    public String aiSummary;
   }
 
   public static class AiProgramRecommendationItem {
@@ -84,6 +107,36 @@ public class AiDtos {
     public String modelProvider;
     public String modelVersion;
     public List<AiProgramRecommendationItem> recommendations = new ArrayList<>();
+    public List<GapAnalysisItem> gapAnalysis = new ArrayList<>();
+    public List<ImprovementSuggestionItem> improvementSuggestions = new ArrayList<>();
+    public List<String> riskWarnings = new ArrayList<>();
+  }
+
+  public static class AiUsSchoolRecommendationRequest {
+    public Map<String, Object> studentFeatures;
+    public List<AiUsSchoolCandidate> schools = new ArrayList<>();
+  }
+
+  public static class AiUsSchoolCandidate {
+    public Long schoolId;
+    public String schoolName;
+    public String countryName;
+    public Integer qsRank;
+    public Integer usnewsRank;
+    public String rankingSource;
+    public Integer primaryRank;
+    public BigDecimal schoolSelectivityScore;
+    public BigDecimal admissionBarScore;
+    public BigDecimal schoolHeatScore;
+  }
+
+  public static class AiUsSchoolRecommendationResponse {
+    public String status;
+    public String overallSummary;
+    public String generatedAt;
+    public String modelProvider;
+    public String modelVersion;
+    public List<AiSchoolRecommendationItem> schoolRecommendations = new ArrayList<>();
     public List<GapAnalysisItem> gapAnalysis = new ArrayList<>();
     public List<ImprovementSuggestionItem> improvementSuggestions = new ArrayList<>();
     public List<String> riskWarnings = new ArrayList<>();

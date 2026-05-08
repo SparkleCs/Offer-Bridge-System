@@ -108,12 +108,6 @@
                 <div class="program-cell-sub">{{ row.program.schoolNameCn }} · {{ row.program.directionName }}</div>
               </template>
             </el-table-column>
-            <el-table-column label="匹配" width="120">
-              <template #default="{ row }">
-                <div class="match-mini-score">{{ row.matchResult.matchScore }}</div>
-                <div class="match-mini-tier">{{ row.matchResult.matchTier }}</div>
-              </template>
-            </el-table-column>
             <el-table-column label="状态" width="180">
               <template #default="{ row }">
                 <el-select
@@ -156,9 +150,9 @@
             <span>{{ formatAiDate(latestAiReport.generatedAt) }}</span>
           </div>
           <div class="ai-rec-grid">
-            <article v-for="item in latestAiReport.recommendations.slice(0, 6)" :key="item.programId" class="ai-rec-card">
+            <article v-for="item in latestAiSchoolRecommendations.slice(0, 6)" :key="item.schoolId" class="ai-rec-card">
               <div class="ai-rec-title">{{ item.schoolName }}</div>
-              <div class="ai-rec-sub">{{ item.programName }}</div>
+              <div class="ai-rec-sub">{{ formatAiSchoolRank(item) }}</div>
               <div class="ai-rec-meta">AI匹配度 {{ item.mlScore }} · 录取概率估计 {{ probabilityText(item.admissionProbabilityEstimate) }} · {{ item.matchTier }}</div>
             </article>
           </div>
@@ -613,6 +607,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import type { UploadRequestOptions } from 'element-plus'
 import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
@@ -666,12 +661,14 @@ interface LoadErrorItem {
 type EditableSection = 'basic' | 'academic' | 'exchange' | 'research' | 'competition' | 'work' | 'verification'
 
 const authStore = useAuthStore()
+const router = useRouter()
 const centerPaneRef = ref<HTMLElement | null>(null)
 const activeSection = ref('basic')
 const rankInputText = ref('')
 const loadErrors = ref<LoadErrorItem[]>([])
 const latestAiReport = ref<AiReportView | null>(null)
 const generatingAiReport = ref(false)
+const latestAiSchoolRecommendations = computed(() => latestAiReport.value?.schoolRecommendations || [])
 const editingMap = reactive<Record<EditableSection, boolean>>({
   basic: false,
   academic: false,
@@ -1208,11 +1205,18 @@ function formatAiDate(value?: string | null) {
   return value.replace('T', ' ').slice(0, 16)
 }
 
+function formatAiSchoolRank(item: AiReportView['schoolRecommendations'][number]) {
+  if (item.rankingSource === 'USNEWS' && item.usnewsRank) return `USNews ${item.usnewsRank}`
+  if (item.qsRank) return `QS ${item.qsRank}`
+  return '院校级推荐'
+}
+
 async function generateAiReport() {
   generatingAiReport.value = true
   try {
     latestAiReport.value = await generateAiRecommendations()
     ElMessage.success('AI择校报告已生成')
+    await router.push('/ai-report')
   } catch (error) {
     latestAiReport.value = null
     ElMessage.error(readErrorMessage(error))
@@ -2023,17 +2027,6 @@ onMounted(() => {
 
 .program-cell-sub {
   color: #7a8aa3;
-  font-size: 12px;
-}
-
-.match-mini-score {
-  font-weight: 700;
-  color: #1f6bff;
-  font-size: 18px;
-}
-
-.match-mini-tier {
-  color: #5f6f88;
   font-size: 12px;
 }
 

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.offerbridge.backend.mapper.UsSchoolDifficultyProfileMapper">
+  <resultMap id="BaseMap" type="com.offerbridge.backend.entity.UsSchoolDifficultyProfile">
+    <id column="id" property="id"/>
+    <result column="school_id" property="schoolId"/>
+    <result column="school_selectivity_score" property="schoolSelectivityScore"/>
+    <result column="admission_bar_score" property="admissionBarScore"/>
+    <result column="school_heat_score" property="schoolHeatScore"/>
+    <result column="difficulty_version" property="difficultyVersion"/>
+    <result column="created_at" property="createdAt"/>
+    <result column="updated_at" property="updatedAt"/>
+  </resultMap>
+
+  <select id="listAll" resultMap="BaseMap">
+    SELECT id, school_id, school_selectivity_score, admission_bar_score,
+           school_heat_score, difficulty_version, created_at, updated_at
+    FROM us_school_difficulty_profile
+    ORDER BY school_id ASC
+  </select>
+
+  <select id="findBySchoolId" resultMap="BaseMap">
+    SELECT id, school_id, school_selectivity_score, admission_bar_score,
+           school_heat_score, difficulty_version, created_at, updated_at
+    FROM us_school_difficulty_profile
+    WHERE school_id = #{schoolId}
+    LIMIT 1
+  </select>
+</mapper>
