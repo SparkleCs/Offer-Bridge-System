@@ -21,6 +21,8 @@ public class SecurityConfig implements WebMvcConfigurer {
 
   @Override
   public void addInterceptors(InterceptorRegistry registry) {
+    // 学习入口：这里定义 API 鉴权边界。公开接口直接放行，其余 /api/v1/** 交给 AuthInterceptor 校验 JWT。
+    // 答辩时要强调：前端路由限制只是用户体验，后端拦截器才是真正的安全控制。
     registry.addInterceptor(authInterceptor)
       .addPathPatterns("/api/v1/**")
       .excludePathPatterns(

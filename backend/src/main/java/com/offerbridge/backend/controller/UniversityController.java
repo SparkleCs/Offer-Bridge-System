@@ -38,6 +38,7 @@ public class UniversityController {
     @RequestParam(required = false) String rankingSource,
     @RequestParam(required = false) String keyword
   ) {
+    // 院校浏览是学生做申请规划的公共入口，也为 AI 美国院校推荐提供候选学校数据。
     return ApiResponse.ok(
       universityService.listSchools(countryCode, subjectCategoryCode, directionCode, rankMin, rankMax, rankingSource, keyword)
     );
@@ -63,6 +64,7 @@ public class UniversityController {
 
   @GetMapping("/programs/{programId}")
   public ApiResponse<UniversityDtos.ProgramDetailView> getProgramDetail(@PathVariable Long programId) {
+    // 项目详情会带上当前学生的匹配信息，因此这里读取 AuthContext；游客也可通过可选登录态访问公开内容。
     return ApiResponse.ok(universityService.getProgramDetail(AuthContext.getUserId(), programId));
   }
 }

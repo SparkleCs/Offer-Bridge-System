@@ -2,6 +2,8 @@ import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { isAccessTokenExpiring } from '../services/http'
 
+// 学习入口：路由表是前端“角色入口图”。答辩时可以用它说明不同用户登录后看到的工作台不同：
+// 学生使用个人中心/消息/订单/AI 报告，机构管理员进入 org-admin，顾问进入 agent-workbench，平台管理员进入 admin。
 const routes = [
   { path: '/', name: 'home', component: () => import('../pages/HomePage.vue') },
   { path: '/auth', name: 'auth', component: () => import('../pages/AuthPage.vue') },
@@ -78,6 +80,8 @@ router.beforeEach(async (to) => {
   const requiresAuth = Boolean(to.meta?.requiresAuth)
   if (!requiresAuth) return true
 
+  // 第一层守卫：只处理“是否登录”。如果 access token 即将过期，先用 refresh token 静默续期。
+  // 这里和后端 AuthInterceptor 配合：前端负责体验，后端负责真正的接口安全边界。
   if (authStore.isLoggedIn && !isAccessTokenExpiring(authStore.accessToken)) {
     return true
   }
@@ -93,6 +97,8 @@ router.beforeEach((to) => {
   const authStore = useAuthStore()
   const role = authStore.authMeta?.role
 
+  // 第二层守卫：按角色限制页面入口。这个项目不是所有登录用户共用同一套后台，
+  // 而是按业务身份分成学生、机构管理员、顾问和平台管理员四种使用路径。
   if (role === 'AGENT_ORG') {
     if (to.path === '/auth') return '/org-admin/company'
     if (to.path === '/admin-auth') return '/org-admin/company'

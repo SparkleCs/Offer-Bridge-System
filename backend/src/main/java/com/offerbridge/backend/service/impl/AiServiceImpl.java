@@ -96,6 +96,8 @@ public class AiServiceImpl implements AiService {
   @Override
   @Transactional
   public AiDtos.AiReportView generateRecommendations(Long userId) {
+    // 学习主线：AI 推荐不是直接把前端数据传给模型，而是后端先校验学生画像完整性，
+    // 再组合背景分、目标国家、候选院校和难度画像，最后把结果持久化为可回看的报告。
     StudentInputs inputs = loadAndValidateInputs(userId);
     if (inputs.countries.stream().noneMatch(it -> isUnitedStates(it.getCountryName()))) {
       throw new BizException("BIZ_BAD_REQUEST", "美国院校级AI择校需要先将目标国家设置为美国");
@@ -131,6 +133,8 @@ public class AiServiceImpl implements AiService {
   }
 
   private AiDtos.AiReportView buildUsSchoolCallAndPersist(Long userId, StudentInputs inputs) {
+    // 美国院校推荐采用“院校级候选 + 难度画像 + 学生背景分”的输入结构，
+    // Python 服务负责概率预测，Java 服务负责业务校验、数据补全和入库。
     BigDecimal gpaScore = requiredScore(inputs.backgroundScore.getGpaScore(), "GPA背景分");
     BigDecimal languageScore = requiredScore(inputs.backgroundScore.getLanguageScore(), "语言背景分");
     BigDecimal softBackgroundScore = softBackgroundScore(inputs.backgroundScore);
@@ -187,6 +191,7 @@ public class AiServiceImpl implements AiService {
       throw new BizException("BIZ_AI_UNAVAILABLE", AI_UNAVAILABLE_MESSAGE);
     }
 
+    // 模型输出会被转换成前端展示结构，并同步写入 ai_analysis_report / ai_school_recommendation。
     AiDtos.AiReportView view = toSchoolReportView(response, schoolById, gpaScore, languageScore, softBackgroundScore);
     persistSchoolReport(userId, request, view);
     return view;

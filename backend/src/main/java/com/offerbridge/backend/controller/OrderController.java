@@ -28,6 +28,7 @@ public class OrderController {
 
   @PostMapping("/orders")
   public ApiResponse<OrderDtos.OrderSummary> createOrder(@Valid @RequestBody OrderDtos.CreateOrderRequest request) {
+    // 订单闭环起点：学生从团队产品进入下单，后续会流转到顾问报价、支付和阶段履约。
     return ApiResponse.ok(orderService.createStudentOrder(AuthContext.getUserId(), request));
   }
 
@@ -43,6 +44,7 @@ public class OrderController {
 
   @PostMapping("/orders/{orderId}/pay")
   public ApiResponse<OrderDtos.PayResult> pay(@PathVariable Long orderId) {
+    // 支付入口对接支付宝；本地/演示环境也提供 mock-success 方便答辩演示完整流程。
     return ApiResponse.ok(orderService.createPayment(AuthContext.getUserId(), orderId));
   }
 
@@ -64,6 +66,7 @@ public class OrderController {
 
   @PostMapping("/orders/{orderId}/stages/{stageId}/confirm")
   public ApiResponse<OrderDtos.OrderDetail> confirmStage(@PathVariable Long orderId, @PathVariable Long stageId) {
+    // 学生确认阶段成果后，订单继续向下一阶段推进，这是服务履约的关键状态转换。
     return ApiResponse.ok(orderService.confirmStage(AuthContext.getUserId(), orderId, stageId));
   }
 
@@ -93,6 +96,7 @@ public class OrderController {
 
   @PostMapping("/agency/service-orders/{orderId}/quote")
   public ApiResponse<OrderDtos.OrderDetail> quoteOrder(@PathVariable Long orderId, @Valid @RequestBody OrderDtos.QuoteOrderRequest request) {
+    // 顾问报价把学生的意向订单转为可支付服务，连接咨询结果和正式交易。
     return ApiResponse.ok(orderService.quoteOrder(AuthContext.getUserId(), orderId, request));
   }
 
@@ -102,6 +106,7 @@ public class OrderController {
     @PathVariable Long stageId,
     @Valid @RequestBody OrderDtos.SubmitStageRequest request
   ) {
+    // 顾问提交阶段成果，学生端随后确认或驳回，形成双方可追踪的服务进度。
     return ApiResponse.ok(orderService.submitStage(AuthContext.getUserId(), orderId, stageId, request));
   }
 

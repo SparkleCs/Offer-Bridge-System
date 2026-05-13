@@ -120,6 +120,9 @@ public class RecommendationServiceImpl implements RecommendationService {
 
     List<RecommendationDtos.AgencyTeamStudentRecommendationItem> scored = new ArrayList<>();
     for (RecommendationDtos.AgencyTeamStudentRecommendationCandidate candidate : studentProfileMapper.listAgencyTeamStudentRecommendationCandidates()) {
+      if (!hasCountryMatch(candidate.getTargetCountries(), team.getServiceCountryScope())) {
+        continue;
+      }
       RecommendationDtos.AgencyTeamStudentRecommendationItem item = toAgencyTeamStudentItem(candidate);
       applyAgencyTeamStudentScore(item, candidate, team);
       scored.add(item);
@@ -151,7 +154,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     List<String> reasons = new ArrayList<>();
     LinkedHashSet<String> tags = new LinkedHashSet<>();
 
-    List<String> countryNames = countries.stream().map(StudentTargetCountry::getCountryName).filter(this::notBlank).toList();
+    List<String> countryNames = countries.stream().map(StudentTargetCountry::getCountryName).filter(RecommendationServiceImpl::notBlank).toList();
     String matchedCountry = firstMatchedToken(countryNames, candidate.getServiceCountryScope());
     if (matchedCountry != null) {
       score += 30;
@@ -305,6 +308,11 @@ public class RecommendationServiceImpl implements RecommendationService {
     return false;
   }
 
+  static boolean hasCountryMatch(String studentTargetCountries, String serviceCountryScope) {
+    List<String> targetCountries = splitTokens(studentTargetCountries);
+    return !targetCountries.isEmpty() && firstMatchedToken(targetCountries, serviceCountryScope) != null;
+  }
+
   private RecommendationDtos.AgencyTeamStudentRecommendationItem toAgencyTeamStudentItem(RecommendationDtos.AgencyTeamStudentRecommendationCandidate candidate) {
     RecommendationDtos.AgencyTeamStudentRecommendationItem item = new RecommendationDtos.AgencyTeamStudentRecommendationItem();
     item.setStudentUserId(candidate.getStudentUserId());
@@ -390,7 +398,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     };
   }
 
-  private String firstMatchedToken(List<String> preferredTokens, String targetText) {
+  private static String firstMatchedToken(List<String> preferredTokens, String targetText) {
     if (isBlank(targetText)) return null;
     for (String token : preferredTokens) {
       if (notBlank(token) && targetText.contains(token)) return token;
@@ -402,7 +410,7 @@ public class RecommendationServiceImpl implements RecommendationService {
     return null;
   }
 
-  private List<String> splitTokens(String value) {
+  private static List<String> splitTokens(String value) {
     if (isBlank(value)) return List.of();
     List<String> tokens = new ArrayList<>();
     for (String part : value.split("[,，、/\\s]+")) {
@@ -422,11 +430,11 @@ public class RecommendationServiceImpl implements RecommendationService {
     return List.of("可作为备选对象进一步沟通确认");
   }
 
-  private boolean notBlank(String value) {
+  private static boolean notBlank(String value) {
     return !isBlank(value);
   }
 
-  private boolean isBlank(String value) {
+  private static boolean isBlank(String value) {
     return value == null || value.trim().isEmpty();
   }
 

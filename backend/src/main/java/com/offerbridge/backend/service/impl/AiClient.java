@@ -22,6 +22,8 @@ public class AiClient {
   private final String serviceUrl;
 
   public AiClient(@Value("${app.ai.service-url:http://127.0.0.1:8001}") String serviceUrl) {
+    // 学习入口：Java 后端通过这个客户端访问独立的 Python AI 服务。
+    // 超时设置避免 AI 服务不可用时拖垮主业务接口，失败时返回 null 交给 Service 转成业务错误。
     SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
     requestFactory.setConnectTimeout(3000);
     requestFactory.setReadTimeout(30000);
@@ -47,6 +49,7 @@ public class AiClient {
 
   private <T> T post(String path, Object request, Class<T> responseType) {
     try {
+      // 所有 AI 调用都用 JSON HTTP 请求，便于 Python FastAPI 和 Java Spring Boot 解耦部署。
       HttpHeaders headers = new HttpHeaders();
       headers.setContentType(MediaType.APPLICATION_JSON);
       return restTemplate.postForObject(

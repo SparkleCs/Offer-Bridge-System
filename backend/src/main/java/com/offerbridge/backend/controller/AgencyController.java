@@ -50,6 +50,7 @@ public class AgencyController {
 
   @PostMapping("/org/verification")
   public ApiResponse<AgencyDtos.OrgVerificationView> submitOrgVerification(@Valid @RequestBody AgencyDtos.OrgVerificationSubmitRequest request) {
+    // 机构认证提交后进入平台审核，属于“机构入驻 -> 管理员审核 -> 对外展示”的起点。
     return ApiResponse.ok(agencyService.submitOrgVerification(AuthContext.getUserId(), request));
   }
 
@@ -108,6 +109,7 @@ public class AgencyController {
 
   @PutMapping("/members/{memberId}/permissions")
   public ApiResponse<Void> updateOrgMemberPermissions(@PathVariable Long memberId, @Valid @RequestBody AgencyDtos.MemberPermissionsUpdateRequest request) {
+    // 机构管理员在这里配置顾问权限，答辩时可说明机构内部也有细粒度角色/权限控制。
     agencyService.updateOrgMemberPermissions(AuthContext.getUserId(), memberId, request);
     return ApiResponse.ok();
   }
@@ -141,6 +143,7 @@ public class AgencyController {
 
   @PostMapping("/team-products")
   public ApiResponse<AgencyDtos.TeamProductDetailView> createTeamProduct(@Valid @RequestBody AgencyDtos.TeamProductUpsertRequest request) {
+    // 团队产品是学生下单的商品化载体：顾问团队先发布服务，再被学生发现和购买。
     return ApiResponse.ok(agencyService.createTeamProduct(AuthContext.getUserId(), request));
   }
 
@@ -184,6 +187,7 @@ public class AgencyController {
     @RequestParam(required = false) String scoreBucket,
     @RequestParam(required = false) String subjectCategoryCode
   ) {
+    // 顾问工作台的学生搜索入口，用学生画像和背景分帮助顾问筛选潜在服务对象。
     return ApiResponse.ok(agencyService.searchAgentStudents(AuthContext.getUserId(), page, pageSize, keyword, country, educationLevel, scoreBucket, subjectCategoryCode));
   }
 
@@ -265,6 +269,7 @@ public class AgencyController {
     @RequestParam(required = false) String roleCode,
     @RequestParam(required = false) String serviceTag
   ) {
+    // 学生端机构发现页调用这里。公开浏览降低使用门槛，登录后可继续收藏、咨询和下单。
     return ApiResponse.ok(agencyService.listDiscoveryTeams(keyword, country, direction, city, roleCode, serviceTag));
   }
 
@@ -280,6 +285,7 @@ public class AgencyController {
 
   @PostMapping("/discovery/teams/{teamId}/favorite")
   public ApiResponse<AgencyDtos.DiscoveryTeamDetail> favoriteDiscoveryTeam(@PathVariable Long teamId) {
+    // 收藏团队是从“浏览机构”进入“潜在下单”的轻量转化动作。
     return ApiResponse.ok(agencyService.favoriteDiscoveryTeam(AuthContext.getUserId(), teamId));
   }
 

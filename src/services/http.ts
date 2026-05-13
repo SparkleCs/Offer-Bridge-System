@@ -2,6 +2,8 @@ import type { ApiResponse, AuthResult } from '../types/auth'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
+// 学习入口：所有前端 service 最终都会走这里。答辩时可以把它讲成“前端 API 网关”：
+// 统一拼接后端地址、统一携带 Authorization、统一解析 ApiResponse、统一处理 token 续期。
 export class ApiError extends Error {
   code: string
   status: number
@@ -79,6 +81,7 @@ async function doRequest<T>(
   }
 
   if (withAuth) {
+    // 需要登录的接口在请求前保证 access token 可用；如果快过期，会先走 refresh 流程。
     const token = await ensureAccessToken()
     headers.set('Authorization', `Bearer ${token}`)
   }
@@ -94,6 +97,8 @@ async function doRequest<T>(
   }
 
   if (body.code === 'BIZ_UNAUTHORIZED' && withAuth && retry) {
+    // 学习重点：后端返回未授权时，前端只重试一次刷新 token，避免无限循环。
+    // 这对应后端 refresh token 摘要校验和旧 token 吊销逻辑。
     const refreshToken = readRefreshToken()
     if (refreshToken) {
       try {
@@ -142,6 +147,7 @@ export async function ensureAccessToken() {
   }
 
   try {
+    // refreshPromise 用来合并并发刷新请求：多个组件同时请求接口时，只发起一次 refresh。
     if (!refreshPromise) {
       refreshPromise = refreshByToken(refreshToken).finally(() => {
         refreshPromise = null

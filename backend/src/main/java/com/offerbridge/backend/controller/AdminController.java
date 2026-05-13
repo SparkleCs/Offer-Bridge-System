@@ -32,6 +32,7 @@ public class AdminController {
     @RequestParam(required = false) String status,
     @RequestParam(required = false) String keyword
   ) {
+    // 管理员审核入口之一：机构、顾问、学生认证都汇入平台审核后台，保证撮合对象可信。
     return ApiResponse.ok(adminReviewService.listOrgReviews(AuthContext.getUserId(), page, pageSize, status, keyword));
   }
 
@@ -62,6 +63,7 @@ public class AdminController {
 
   @PostMapping("/reviews/{subjectType}/{userId}/approve")
   public ApiResponse<Void> approve(@PathVariable String subjectType, @PathVariable Long userId) {
+    // 审核通过会改变对应主体的认证状态，并可能触发系统通知。
     adminReviewService.approve(AuthContext.getUserId(), subjectType, userId);
     return ApiResponse.ok();
   }
@@ -70,6 +72,7 @@ public class AdminController {
   public ApiResponse<Void> reject(@PathVariable String subjectType,
                                   @PathVariable Long userId,
                                   @Valid @RequestBody AdminDtos.RejectRequest request) {
+    // 审核驳回保留原因，前端可展示给提交方用于重新修改材料。
     adminReviewService.reject(AuthContext.getUserId(), subjectType, userId, request.getReason());
     return ApiResponse.ok();
   }
@@ -82,4 +85,3 @@ public class AdminController {
     return ApiResponse.ok(adminReviewService.listAllNotifications(AuthContext.getUserId(), page, pageSize));
   }
 }
-

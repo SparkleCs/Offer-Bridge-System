@@ -603,7 +603,7 @@ public class AgencyServiceImpl implements AgencyService {
     requireRole(requireUser(userId), "AGENT_MEMBER");
     AgencyMemberProfile member = agencyMemberProfileMapper.findByUserId(userId);
     if (member == null) {
-      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在，请先接受机构邀请");
+      throw new BizException("BIZ_NOT_FOUND", "成员档案不存在，请联系机构管理员添加员工信息");
     }
     member.setDisplayName(request.getDisplayName().trim());
     member.setJobTitle(request.getJobTitle().trim());

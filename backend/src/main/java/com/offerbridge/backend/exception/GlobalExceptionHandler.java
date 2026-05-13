@@ -33,6 +33,8 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(BizException.class)
   public ResponseEntity<ApiResponse<Void>> handleBiz(BizException ex, HttpServletRequest request) {
+    // 学习重点：业务异常不会直接把 Java 异常暴露给前端，而是转成 ApiResponse。
+    // dev profile 会附带 traceId/detail，便于本地排错；生产环境则隐藏内部细节。
     String traceId = UUID.randomUUID().toString();
     boolean dev = isDevProfile();
     log.warn("[{}] BizException path={} code={} msg={}", traceId, request.getRequestURI(), ex.getCode(), ex.getMessage());
@@ -69,6 +71,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(Exception.class)
   public ApiResponse<Void> handleAny(Exception ex, HttpServletRequest request) {
+    // 兜底异常处理保证接口始终返回统一结构，前端不用为不同异常格式写多套逻辑。
     String traceId = UUID.randomUUID().toString();
     boolean dev = isDevProfile();
     log.error("[{}] InternalError path={} type={} msg={}", traceId, request.getRequestURI(), ex.getClass().getSimpleName(), ex.getMessage(), ex);

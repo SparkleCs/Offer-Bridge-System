@@ -22,6 +22,9 @@ from schemas import GapAnalysisItem, ImprovementSuggestionItem, RecommendationRe
 
 app = FastAPI(title="Offer Bridge AI Service", version="0.1.0")
 
+# 学习入口：这是独立的 Python AI 服务，不直接访问前端。
+# Java 后端 AiClient 会把学生背景分、候选院校/项目等结构化数据 POST 到这里，
+# 服务返回概率、分层、差距分析和改进建议，后端再保存成 AI 报告。
 
 @app.get("/")
 def root() -> dict[str, str]:
@@ -72,6 +75,8 @@ async def program_analysis(request: RecommendationRequest) -> RecommendationResp
 
 @app.post("/ai/us-school-recommendations", response_model=UsSchoolRecommendationResponse)
 async def us_school_recommendations(request: UsSchoolRecommendationRequest) -> UsSchoolRecommendationResponse:
+    # 答辩亮点：美国院校推荐使用院校难度画像和学生背景特征做概率预测，
+    # 再尝试调用大模型生成中文解释；如果大模型不可用，会返回明确的 503。
     return await build_us_school_response(request)
 
 

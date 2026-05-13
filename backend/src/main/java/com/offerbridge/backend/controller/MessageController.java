@@ -40,6 +40,8 @@ public class MessageController {
 
   @PostMapping("/chats/start")
   public ApiResponse<MessageDtos.ChatStartResult> startChat(@Valid @RequestBody MessageDtos.StartChatRequest request) {
+    // 学生从机构/团队详情页发起咨询，会在这里创建或复用会话。
+    // 它连接“浏览机构”和“服务订单”两个业务阶段。
     return ApiResponse.ok(messageService.startChat(AuthContext.getUserId(), request));
   }
 
@@ -76,6 +78,7 @@ public class MessageController {
     @PathVariable String conversationId,
     @Valid @RequestBody MessageDtos.SendChatMessageRequest request
   ) {
+    // 普通消息写入会话后，前端 ChatPanel 展示沟通记录；WebSocket 配置用于实时消息能力。
     return ApiResponse.ok(messageService.sendChatMessage(AuthContext.getUserId(), conversationId, request));
   }
 
@@ -84,6 +87,7 @@ public class MessageController {
     @PathVariable String conversationId,
     @Valid @RequestBody MessageDtos.ChatActionRequest request
   ) {
+    // 动作消息用于交换联系方式等结构化协作，不只是纯文本聊天。
     return ApiResponse.ok(messageService.startChatAction(AuthContext.getUserId(), conversationId, request));
   }
 

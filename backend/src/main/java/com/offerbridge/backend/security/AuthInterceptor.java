@@ -21,6 +21,7 @@ public class AuthInterceptor implements HandlerInterceptor {
     }
     String uri = request.getRequestURI();
     // Discovery reads are public, but an optional token lets the UI enrich results with viewer state.
+    // 学习重点：机构发现页允许游客浏览；如果用户已登录，则额外写入 AuthContext 以展示收藏状态。
     if (isPublicAgencyDiscoveryRead(request, uri)) {
       String auth = request.getHeader("Authorization");
       if (auth != null && auth.startsWith("Bearer ")) {
@@ -38,6 +39,7 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     String auth = request.getHeader("Authorization");
     if (isPublicReadEndpoint(request, uri)) {
+      // 院校、论坛详情等公开读接口也支持“可选登录态”，兼顾公开内容和个性化展示。
       if (auth != null && auth.startsWith("Bearer ")) {
         try {
           AuthContext.setUserId(jwtService.parseUserId(auth.substring(7)));
@@ -54,6 +56,8 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     String token = auth.substring(7);
     try {
+      // 后续 Controller/Service 不直接解析 token，而是从 AuthContext 读取当前用户 id。
+      // 这样业务代码只关心“当前是谁”，不关心 JWT 的技术细节。
       Long userId = jwtService.parseUserId(token);
       AuthContext.setUserId(userId);
       return true;

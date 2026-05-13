@@ -35,6 +35,7 @@ public class ReviewController {
     @PathVariable Long orderId,
     @Valid @RequestBody ReviewDtos.SubmitOrderReviewRequest request
   ) {
+    // 评价闭环：订单履约完成后，学生评价会沉淀到团队/顾问口碑，反过来影响机构发现页的信任感。
     return ApiResponse.ok(reviewService.submitOrderReview(AuthContext.getUserId(), orderId, request));
   }
 
@@ -65,6 +66,7 @@ public class ReviewController {
 
   @GetMapping("/agency/dashboard")
   public ApiResponse<ReviewDtos.AgencyDashboard> getAgencyDashboard() {
+    // 机构端数据看板汇总评价表现，帮助顾问和机构管理员了解服务质量。
     return ApiResponse.ok(reviewService.getAgencyDashboard(AuthContext.getUserId()));
   }
 }

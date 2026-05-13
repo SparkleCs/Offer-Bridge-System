@@ -33,6 +33,7 @@ public class StudentController {
 
   @GetMapping("/profile")
   public ApiResponse<StudentDtos.ProfileView> getProfile() {
+    // 学生画像入口：个人资料是背景评分、AI 推荐、机构搜索和审核展示的共同数据源。
     return ApiResponse.ok(studentService.getProfile(AuthContext.getUserId()));
   }
 
@@ -48,6 +49,7 @@ public class StudentController {
 
   @PutMapping("/profile/academic")
   public ApiResponse<StudentDtos.ProfileView> updateAcademicProfile(@Valid @RequestBody StudentDtos.ProfileAcademicUpdateRequest request) {
+    // 学术信息会影响背景分和 AI 择校输入，答辩时可以把它讲成“学生画像”的结构化部分。
     return ApiResponse.ok(studentService.updateAcademicProfile(AuthContext.getUserId(), request));
   }
 
@@ -100,11 +102,13 @@ public class StudentController {
 
   @PostMapping("/background-score/refresh")
   public ApiResponse<StudentDtos.BackgroundScoreView> refreshBackgroundScore() {
+    // 背景分把 GPA、语言、科研竞赛等资料聚合成可比较指标，是 AI 推荐前的重要中间结果。
     return ApiResponse.ok(studentService.refreshBackgroundScore(AuthContext.getUserId()));
   }
 
   @PostMapping("/verification/submit")
   public ApiResponse<Void> submitVerification(@Valid @RequestBody StudentDtos.VerificationSubmitRequest request) {
+    // 学生认证进入管理员审核流，审核通过后能提高平台撮合可信度。
     studentService.submitVerification(AuthContext.getUserId(), request);
     return ApiResponse.ok();
   }

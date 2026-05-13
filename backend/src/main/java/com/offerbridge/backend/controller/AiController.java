@@ -23,6 +23,7 @@ public class AiController {
 
   @PostMapping("/recommendations")
   public ApiResponse<AiDtos.AiReportView> generateRecommendations() {
+    // AI 亮点入口：后端先收集学生画像和候选院校，再调用 Python FastAPI 服务生成择校报告。
     return ApiResponse.ok(aiService.generateRecommendations(AuthContext.getUserId()));
   }
 
@@ -33,6 +34,7 @@ public class AiController {
 
   @PostMapping("/programs/{programId}/analysis")
   public ApiResponse<AiDtos.AiReportView> analyzeProgram(@PathVariable Long programId) {
+    // 单项目分析用于解释某个具体项目的申请竞争力，和批量推荐共用同一套学生画像输入。
     return ApiResponse.ok(aiService.analyzeProgram(AuthContext.getUserId(), programId));
   }
 }

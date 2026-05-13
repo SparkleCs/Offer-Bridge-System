@@ -18,7 +18,7 @@
       </div>
 
       <div class="hero-product" aria-label="OfferBridge 产品界面预览">
-        <img :src="agencyImage" alt="中介筛选产品界面预览" />
+        <img :src="heroImage" alt="OfferBridge 产品界面预览" />
       </div>
     </section>
 
@@ -86,12 +86,7 @@
       </div>
 
       <div class="feature-visual" :class="section.visualClass" aria-hidden="true">
-        <div class="visual-window">
-          <div class="visual-topline"></div>
-          <div class="visual-body">
-            <span v-for="item in section.visualItems" :key="item"></span>
-          </div>
-        </div>
+        <img :src="section.image" :alt="section.title" />
       </div>
     </section>
 
@@ -114,9 +109,15 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import agencyImage from '../assets/home/agency-screening.png'
-import forumImage from '../assets/home/forum-insights.png'
-import universityImage from '../assets/home/university-planning.png'
+import heroImage from '../assets/home/1.png'
+import agencyImage from '../assets/home/2.png'
+import universityImage from '../assets/home/3.png'
+import forumImage from '../assets/home/4.png'
+import transparentChoiceImage from '../assets/home/5.png'
+import programMapImage from '../assets/home/6.png'
+import applicationFlowImage from '../assets/home/7.png'
+import realStoriesImage from '../assets/home/8.png'
+import aiRecommendationImage from '../assets/home/9.png'
 import { useAuthStore } from '../stores/auth'
 
 interface HeroSlide {
@@ -137,7 +138,7 @@ interface ShowcaseSection {
   action: string
   path: string
   visualClass: string
-  visualItems: string[]
+  image: string
 }
 
 const router = useRouter()
@@ -185,7 +186,7 @@ const showcaseSections: ShowcaseSection[] = [
     action: '筛选中介',
     path: '/agencies',
     visualClass: 'visual-agency',
-    visualItems: ['92', '4.8', '12', '38']
+    image: transparentChoiceImage
   },
   {
     kicker: '02 / Program Map',
@@ -195,7 +196,7 @@ const showcaseSections: ShowcaseSection[] = [
     action: '查看院校',
     path: '/universities',
     visualClass: 'visual-school',
-    visualItems: ['UK', 'US', 'AU', 'SG']
+    image: programMapImage
   },
   {
     kicker: '03 / Application Flow',
@@ -205,7 +206,7 @@ const showcaseSections: ShowcaseSection[] = [
     action: '进入个人中心',
     path: '/me',
     visualClass: 'visual-flow',
-    visualItems: ['01', '02', '03', '04']
+    image: applicationFlowImage
   },
   {
     kicker: '04 / Real Stories',
@@ -215,7 +216,7 @@ const showcaseSections: ShowcaseSection[] = [
     action: '浏览论坛',
     path: '/forum',
     visualClass: 'visual-forum',
-    visualItems: ['Q', 'A', 'Hot', 'New']
+    image: realStoriesImage
   },
   {
     kicker: '05 / AI Recommendation',
@@ -225,7 +226,7 @@ const showcaseSections: ShowcaseSection[] = [
     action: '开始智能筛选',
     path: '/agencies',
     visualClass: 'visual-ai',
-    visualItems: ['AI', '92', 'Plan', 'Next']
+    image: aiRecommendationImage
   }
 ]
 
@@ -653,67 +654,17 @@ onBeforeUnmount(() => {
   min-height: 420px;
   display: grid;
   place-items: center;
+  padding: 14px;
   border-radius: 8px;
-  background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(242, 246, 251, 0.7)),
-    linear-gradient(135deg, rgba(31, 107, 255, 0.12), rgba(24, 179, 168, 0.09));
+  background: rgba(255, 255, 255, 0.72);
   box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.18), 0 24px 70px rgba(15, 23, 42, 0.08);
 }
 
-.visual-window {
-  width: min(78%, 520px);
-  min-height: 288px;
-  padding: 18px;
-  border: 1px solid rgba(148, 163, 184, 0.2);
+.feature-visual img {
+  display: block;
+  width: 100%;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.86);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.1);
-}
-
-.visual-topline {
-  width: 42%;
-  height: 10px;
-  border-radius: 999px;
-  background: #dbeafe;
-}
-
-.visual-body {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
-  margin-top: 28px;
-}
-
-.visual-body span {
-  min-height: 92px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  color: #0f172a;
-  background: #f8fafc;
-  font-size: 28px;
-  font-weight: 800;
-  box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.16);
-}
-
-.visual-agency .visual-body span:nth-child(1),
-.visual-school .visual-body span:nth-child(2),
-.visual-flow .visual-body span:nth-child(3),
-.visual-forum .visual-body span:nth-child(1),
-.visual-ai .visual-body span:nth-child(1) {
-  color: #ffffff;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-}
-
-.visual-ai .visual-body span:nth-child(2) {
-  color: #155de8;
-  background: linear-gradient(135deg, #f8fbff, #dbeafe);
-}
-
-.visual-ai .visual-body span:nth-child(3),
-.visual-ai .visual-body span:nth-child(4) {
-  color: #2e5fb9;
-  background: #f6f7f9;
 }
 
 .final-cta {
@@ -836,16 +787,7 @@ onBeforeUnmount(() => {
 
   .feature-visual {
     min-height: 330px;
-  }
-
-  .visual-window {
-    width: 88%;
-    min-height: 240px;
-  }
-
-  .visual-body span {
-    min-height: 76px;
-    font-size: 22px;
+    padding: 8px;
   }
 }
 

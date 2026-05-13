@@ -8,6 +8,8 @@ import type { StudentProfile } from '../types/student'
 
 const { accessTokenKey, refreshTokenKey, authMetaKey } = authStorageKeys()
 
+// 学习入口：Pinia 里的 auth store 是前端登录态中心。
+// token 负责接口鉴权，authMeta 负责前端角色跳转和资料完成状态展示。
 function readAuthMeta() {
   try {
     return JSON.parse(localStorage.getItem(authMetaKey) || 'null') as {
@@ -33,6 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
   const verificationCompleted = computed(() => authMeta.value?.verificationCompleted ?? false)
 
   function applyAuth(result: AuthResult) {
+    // 登录/刷新成功后同时更新内存状态和 localStorage，刷新页面后仍能恢复登录态。
     accessToken.value = result.accessToken
     refreshToken.value = result.refreshToken
     authMeta.value = {
@@ -76,6 +79,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function refreshSession() {
+    // 路由守卫会调用这里恢复会话；失败时清理本地状态，让用户回到登录页。
     if (!refreshToken.value) return false
     try {
       const result = await refreshByToken(refreshToken.value)
@@ -88,6 +92,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   async function loadProfile() {
+    // 学生画像是后续 AI 推荐、机构搜索、审核状态展示的基础数据。
     if (!isLoggedIn.value) return null
     const data = await getStudentProfile()
     profile.value = data
