@@ -135,36 +135,6 @@
         </div>
       </section>
 
-      <section id="aiReport" class="page-card section-card">
-        <div class="section-head-inline">
-          <h2>AI择校报告</h2>
-          <el-button type="primary" :loading="generatingAiReport" @click="generateAiReport">生成AI择校报告</el-button>
-        </div>
-        <el-empty v-if="!latestAiReport && !generatingAiReport" description="暂无AI择校报告" />
-        <div v-else-if="latestAiReport" class="ai-report-summary">
-          <div class="ai-summary-head">
-            <div>
-              <strong>AI申请竞争力评估</strong>
-              <p>{{ latestAiReport.overallSummary }}</p>
-            </div>
-            <span>{{ formatAiDate(latestAiReport.generatedAt) }}</span>
-          </div>
-          <div class="ai-rec-grid">
-            <article v-for="item in latestAiSchoolRecommendations.slice(0, 6)" :key="item.schoolId" class="ai-rec-card">
-              <div class="ai-rec-title">{{ item.schoolName }}</div>
-              <div class="ai-rec-sub">{{ formatAiSchoolRank(item) }}</div>
-              <div class="ai-rec-meta">AI匹配度 {{ item.mlScore }} · 录取概率估计 {{ probabilityText(item.admissionProbabilityEstimate) }} · {{ item.matchTier }}</div>
-            </article>
-          </div>
-          <div v-if="latestAiReport.improvementSuggestions.length" class="ai-suggestions">
-            <div v-for="item in latestAiReport.improvementSuggestions.slice(0, 3)" :key="`${item.priority}-${item.action}`">
-              <strong>{{ item.priority }}</strong>
-              <span>{{ item.action }}：{{ item.reason }}</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section id="academic" class="page-card section-card">
         <div class="section-head-inline section-head-edit">
           <h2>学术背景</h2>
@@ -613,7 +583,6 @@ import type { UploadRequestOptions } from 'element-plus'
 import AccountSecurityPanel from '../components/AccountSecurityPanel.vue'
 import { useAuthStore } from '../stores/auth'
 import { ApiError } from '../services/http'
-import { generateAiRecommendations, getLatestAiReport } from '../services/ai'
 import { getUploadErrorMessage, validateUploadFileSize } from '../utils/upload'
 import {
   getStudentCompetition,
@@ -649,7 +618,6 @@ import type {
   WorkItem
 } from '../types/student'
 import type { ApplicationListItem } from '../types/university'
-import type { AiReportView } from '../types/ai'
 import type { OrderDetail, StageItem } from '../types/order'
 
 interface LoadErrorItem {
@@ -666,9 +634,6 @@ const centerPaneRef = ref<HTMLElement | null>(null)
 const activeSection = ref('basic')
 const rankInputText = ref('')
 const loadErrors = ref<LoadErrorItem[]>([])
-const latestAiReport = ref<AiReportView | null>(null)
-const generatingAiReport = ref(false)
-const latestAiSchoolRecommendations = computed(() => latestAiReport.value?.schoolRecommendations || [])
 const editingMap = reactive<Record<EditableSection, boolean>>({
   basic: false,
   academic: false,
@@ -684,7 +649,6 @@ const navItems = [
   { id: 'security', label: '账号安全' },
   { id: 'basic', label: '基础信息' },
   { id: 'applicationList', label: '申请清单' },
-  { id: 'aiReport', label: 'AI报告' },
   { id: 'academic', label: '学术背景' },
   { id: 'exchange', label: '交换经历' },
   { id: 'research', label: '科研经历' },
@@ -1121,12 +1085,14 @@ async function loadApplicationList() {
 
 async function loadLatestServiceOrderProgress() {
   const orders = await listMyOrders()
-  const activeOrders = orders.filter((order) => ['PAID', 'IN_SERVICE', 'COMPLETED'].includes(order.orderStatus))
-  if (activeOrders.length === 0) {
+  const progressOrders = orders.filter((order) =>
+    ['PENDING_QUOTE', 'WAITING_PAYMENT', 'PAID', 'IN_SERVICE', 'COMPLETED'].includes(order.orderStatus)
+  )
+  if (progressOrders.length === 0) {
     latestServiceOrderDetail.value = null
     return
   }
-  const latest = activeOrders[0]
+  const latest = progressOrders[0]
   latestServiceOrderDetail.value = await getMyOrder(latest.id)
 }
 
@@ -1193,36 +1159,6 @@ function readErrorMessage(error: unknown) {
     return error.message
   }
   return '未知错误'
-}
-
-function probabilityText(value?: number | null) {
-  if (value === undefined || value === null) return '-'
-  return `${Math.round(Number(value) * 100)}%`
-}
-
-function formatAiDate(value?: string | null) {
-  if (!value) return '-'
-  return value.replace('T', ' ').slice(0, 16)
-}
-
-function formatAiSchoolRank(item: AiReportView['schoolRecommendations'][number]) {
-  if (item.rankingSource === 'USNEWS' && item.usnewsRank) return `USNews ${item.usnewsRank}`
-  if (item.qsRank) return `QS ${item.qsRank}`
-  return '院校级推荐'
-}
-
-async function generateAiReport() {
-  generatingAiReport.value = true
-  try {
-    latestAiReport.value = await generateAiRecommendations()
-    ElMessage.success('AI择校报告已生成')
-    await router.push('/ai-report')
-  } catch (error) {
-    latestAiReport.value = null
-    ElMessage.error(readErrorMessage(error))
-  } finally {
-    generatingAiReport.value = false
-  }
 }
 
 async function loadData() {
@@ -1322,13 +1258,6 @@ async function loadData() {
       onSuccess: (value) => {
         const data = value as { items: ApplicationListItem[] }
         applicationList.items = data.items || []
-      }
-    },
-    {
-      source: 'ai-report',
-      request: getLatestAiReport,
-      onSuccess: (value) => {
-        latestAiReport.value = value as AiReportView | null
       }
     },
     {
@@ -1569,8 +1498,76 @@ function nextActionForStage(stage: StageItem) {
   return `继续推进「${stage.stageName}」`
 }
 
-function buildServiceOrderProgress(detail: OrderDetail): ApplicationProgressView | null {
-  if (!detail.stages.length) return null
+function buildOrderStatusProgress(detail: OrderDetail): ApplicationProgressView {
+  const orderStatus = detail.order.orderStatus
+  const statusMap: Record<string, { currentStage: string; nextAction: string; percent: number; milestone: string; etaText: string }> = {
+    PENDING_QUOTE: {
+      currentStage: '待机构报价',
+      nextAction: '等待机构报价后确认服务订单',
+      percent: 0,
+      milestone: '服务订单待报价',
+      etaText: '待报价'
+    },
+    WAITING_PAYMENT: {
+      currentStage: '待支付',
+      nextAction: '前往订单页完成支付后启动服务',
+      percent: 0,
+      milestone: '服务订单待支付',
+      etaText: '待支付'
+    },
+    PAID: {
+      currentStage: '服务待启动',
+      nextAction: '等待中介创建并推进服务阶段',
+      percent: 0,
+      milestone: '服务阶段待创建',
+      etaText: '待开始'
+    },
+    IN_SERVICE: {
+      currentStage: '服务进行中',
+      nextAction: '等待中介更新服务阶段',
+      percent: 0,
+      milestone: '服务阶段待更新',
+      etaText: '进行中'
+    },
+    COMPLETED: {
+      currentStage: '服务完成',
+      nextAction: '可以回到订单页评价本次服务',
+      percent: 100,
+      milestone: '服务订单已完成',
+      etaText: '已完成'
+    }
+  }
+  const fallback = statusMap[orderStatus] || statusMap.PAID
+  return {
+    overallPercent: fallback.percent,
+    currentStage: fallback.currentStage,
+    nextAction: fallback.nextAction,
+    milestones: [{
+      name: fallback.milestone,
+      status: (fallback.percent === 100 ? 'done' : 'todo') as 'done' | 'doing' | 'todo',
+      etaText: fallback.etaText
+    }],
+    updatedAtText: detail.order.updatedAt || new Date().toLocaleString()
+  }
+}
+
+function buildEmptyOrderProgress(): ApplicationProgressView {
+  const stageNames = ['选校定位', '材料准备', '文书完善', '网申投递', '面试/笔试', 'Offer结果', '签证办理', '行前准备']
+  return {
+    overallPercent: 0,
+    currentStage: '服务未开始',
+    nextAction: '下单后将按服务阶段更新进度',
+    milestones: stageNames.map((name) => ({
+      name,
+      status: 'todo',
+      etaText: '待开始'
+    })),
+    updatedAtText: new Date().toLocaleString()
+  }
+}
+
+function buildServiceOrderProgress(detail: OrderDetail): ApplicationProgressView {
+  if (!detail.stages.length) return buildOrderStatusProgress(detail)
   const total = detail.stages.length
   const completedCount = detail.stages.filter((stage) => stage.status === 'COMPLETED').length
   const percent = detail.order.orderStatus === 'COMPLETED' ? 100 : Math.round((completedCount / total) * 100)
@@ -1589,60 +1586,8 @@ function buildServiceOrderProgress(detail: OrderDetail): ApplicationProgressView
   }
 }
 
-function buildProfileProgress(): ApplicationProgressView {
-  const sectionStates = [
-    Boolean(basicForm.name && basicForm.schoolName && basicForm.major),
-    applicationList.items.length > 0,
-    Boolean(academicForm.gpaScale && academicForm.gpaValue !== null && academicForm.languageScores.length > 0),
-    Boolean(exchangeForm.countryName && exchangeForm.universityName && exchangeForm.gpaValue !== null && exchangeForm.majorCourses),
-    researchForm.items.length > 0,
-    competitionForm.items.length > 0,
-    workForm.items.length > 0,
-    verificationStatus.realNameStatus === 'APPROVED' && verificationStatus.educationStatus === 'APPROVED'
-  ]
-
-  const doneCount = sectionStates.filter(Boolean).length
-  const percent = Math.round((doneCount / sectionStates.length) * 100)
-  const stageNames = ['选校定位', '材料准备', '文书完善', '网申投递', '面试/笔试', 'Offer结果', '签证办理', '行前准备']
-  const stageIndex = Math.min(Math.floor((percent / 100) * stageNames.length), stageNames.length - 1)
-  const currentStage = stageNames[stageIndex]
-
-  const nextAction = !sectionStates[0]
-    ? '补全基础信息'
-    : !sectionStates[1]
-      ? '从院校项目页加入申请清单'
-      : !sectionStates[2]
-      ? '补全学术背景与语言成绩'
-      : !sectionStates[3]
-        ? '补全交换经历'
-        : !sectionStates[4]
-          ? '完善科研经历'
-          : !sectionStates[5]
-            ? '完善竞赛经历'
-            : !sectionStates[6]
-              ? '完善工作经历'
-              : !sectionStates[7]
-                ? '提交并通过身份认证'
-                : '继续推进机构联动申请流程'
-
-  const milestones = stageNames.map((name, index) => ({
-    name,
-    status: (index < stageIndex ? 'done' : index === stageIndex ? 'doing' : 'todo') as 'done' | 'doing' | 'todo',
-    etaText: index < stageIndex ? '已完成' : index === stageIndex ? '进行中' : '待开始'
-  }))
-
-  return {
-    overallPercent: percent,
-    currentStage,
-    nextAction,
-    milestones,
-    updatedAtText: new Date().toLocaleString()
-  }
-}
-
 const progress = computed<ApplicationProgressView>(() => {
-  const serviceProgress = latestServiceOrderDetail.value ? buildServiceOrderProgress(latestServiceOrderDetail.value) : null
-  return serviceProgress || buildProfileProgress()
+  return latestServiceOrderDetail.value ? buildServiceOrderProgress(latestServiceOrderDetail.value) : buildEmptyOrderProgress()
 })
 
 onMounted(() => {
@@ -1858,81 +1803,6 @@ onMounted(() => {
 
 .table-scroll-wrap :deep(.el-table) {
   min-width: 660px;
-}
-
-.ai-report-summary {
-  display: grid;
-  gap: 12px;
-}
-
-.ai-summary-head {
-  border: 1px solid #d6e5f4;
-  border-radius: 12px;
-  padding: 12px;
-  background: #f7fbff;
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.ai-summary-head strong {
-  color: #284467;
-}
-
-.ai-summary-head p {
-  margin: 4px 0 0;
-  color: #607895;
-}
-
-.ai-summary-head span {
-  color: #7a8aa3;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.ai-rec-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.ai-rec-card {
-  border: 1px solid rgba(176, 202, 236, 0.55);
-  border-radius: 12px;
-  padding: 10px;
-  background: #fff;
-}
-
-.ai-rec-title {
-  font-weight: 700;
-  color: #2a4265;
-}
-
-.ai-rec-sub,
-.ai-rec-meta {
-  margin-top: 4px;
-  color: #7088a9;
-  font-size: 12px;
-}
-
-.ai-rec-meta {
-  color: #0f6fb8;
-  font-weight: 700;
-}
-
-.ai-suggestions {
-  display: grid;
-  gap: 6px;
-  color: #496384;
-}
-
-.ai-suggestions div {
-  display: flex;
-  gap: 8px;
-}
-
-.ai-suggestions strong {
-  color: #1f6bff;
 }
 
 .lang-tag {

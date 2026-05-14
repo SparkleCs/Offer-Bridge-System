@@ -6,7 +6,7 @@
         <div>
           <h2>AI择校报告</h2>
         </div>
-        <el-button type="primary" :loading="generating" @click="generateReport">重新生成报告</el-button>
+        <el-button v-if="report" type="primary" :loading="generating" @click="generateReport">重新生成报告</el-button>
       </div>
     </div>
 
@@ -139,7 +139,6 @@ async function generateReport() {
     report.value = await generateAiRecommendations()
     ElMessage.success('AI择校报告已生成')
   } catch (error) {
-    report.value = null
     ElMessage.error(readError(error))
   } finally {
     generating.value = false

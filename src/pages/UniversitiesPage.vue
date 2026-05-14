@@ -5,22 +5,8 @@
       <h2 class="section-title">院校</h2>
       <div class="ai-actions">
         <el-button class="ai-report-button" type="primary" :loading="generatingAi" @click="generateAiReport">生成AI择校报告</el-button>
-        <span v-if="aiReport" class="ai-status">最新报告：{{ aiReport.status }} · {{ formatDate(aiReport.generatedAt) }}</span>
       </div>
     </div>
-
-    <section v-if="aiReport" class="ai-report-panel">
-      <div>
-        <div class="ai-report-title">AI申请竞争力评估</div>
-        <p>{{ aiReport.overallSummary }}</p>
-      </div>
-      <div class="ai-report-metrics">
-        <div v-for="item in aiSchoolRecommendations.slice(0, 3)" :key="item.schoolId" class="ai-mini-card">
-          <strong>{{ item.schoolName }}</strong>
-          <span>{{ item.matchTier }} · {{ probabilityText(item.admissionProbabilityEstimate) }}</span>
-        </div>
-      </div>
-    </section>
 
     <div class="filter-panel">
       <div class="filter-row">
@@ -118,9 +104,6 @@
             </div>
             <p class="school-meta">{{ school.countryName }} / {{ school.cityName }}</p>
             <p class="school-meta">费用区间：{{ formatTuitionRange(school.tuitionMin, school.tuitionMax, school.tuitionCurrency) }}</p>
-            <p v-if="aiRecommendationBySchool.get(school.id)" class="school-ai-line">
-              AI录取概率 {{ probabilityText(aiRecommendationBySchool.get(school.id)?.admissionProbabilityEstimate) }} · {{ aiRecommendationBySchool.get(school.id)?.matchTier }}
-            </p>
             <div class="tag-list">
               <span v-for="tag in splitTags(school.advantageSubjects)" :key="`${school.id}-${tag}`" class="tag-item">{{ tag }}</span>
             </div>
@@ -140,9 +123,6 @@
                 <div class="program-name">{{ program.programName }}</div>
                 <div class="program-sub">
                   方向：{{ program.directionName }} · 类型：{{ displayStudyMode(program.studyMode) }} · 学制：{{ program.durationMonths || '-' }} 月
-                </div>
-                <div v-if="aiRecommendationByProgram.get(program.id)" class="program-ai-line">
-                  AI匹配度 {{ aiRecommendationByProgram.get(program.id)?.mlScore }} · 录取概率估计 {{ probabilityText(aiRecommendationByProgram.get(program.id)?.admissionProbabilityEstimate) }} · {{ aiRecommendationByProgram.get(program.id)?.matchTier }}
                 </div>
               </div>
               <el-button type="primary" plain size="small" :loading="addingProgramId === program.id" @click="addToList(program.id)">
@@ -174,10 +154,9 @@ import { computed, nextTick, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { ApiError } from '../services/http'
-import { generateAiRecommendations, getLatestAiReport } from '../services/ai'
+import { generateAiRecommendations } from '../services/ai'
 import { addApplication, getUniversityMeta, listPrograms, listSchools } from '../services/university'
 import { useAuthStore } from '../stores/auth'
-import type { AiReportView } from '../types/ai'
 import type { FilterOption, ProgramListItem, SchoolListItem, UniversityMeta } from '../types/university'
 import { confirmLoginRequired } from '../utils/authPrompt'
 
@@ -209,7 +188,6 @@ const loading = ref(false)
 const generatingAi = ref(false)
 const addingProgramId = ref<number | null>(null)
 const schools = ref<SchoolListItem[]>([])
-const aiReport = ref<AiReportView | null>(null)
 const currentPage = ref(1)
 const pageSize = 10
 const pageTopRef = ref<HTMLElement | null>(null)
@@ -224,21 +202,6 @@ const totalSchools = computed(() => schools.value.length)
 const pagedSchools = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   return schools.value.slice(start, start + pageSize)
-})
-const aiRecommendationByProgram = computed(() => {
-  const map = new Map<number, AiReportView['recommendations'][number]>()
-  for (const item of aiReport.value?.recommendations || []) {
-    map.set(item.programId, item)
-  }
-  return map
-})
-const aiSchoolRecommendations = computed(() => aiReport.value?.schoolRecommendations || [])
-const aiRecommendationBySchool = computed(() => {
-  const map = new Map<number, AiReportView['schoolRecommendations'][number]>()
-  for (const item of aiReport.value?.schoolRecommendations || []) {
-    map.set(item.schoolId, item)
-  }
-  return map
 })
 const rankingLabel = computed(() => (rankingSource.value === 'USNEWS' ? 'USNews' : 'QS'))
 
@@ -256,16 +219,6 @@ function displayStudyMode(studyMode: string) {
 function formatTuitionRange(min: number | null, max: number | null, currency: string | null) {
   if (min === null && max === null) return '-'
   return `${currency || ''} ${min ?? '-'} - ${max ?? '-'}`
-}
-
-function probabilityText(value?: number | null) {
-  if (value === undefined || value === null) return '-'
-  return `${Math.round(Number(value) * 100)}%`
-}
-
-function formatDate(value?: string | null) {
-  if (!value) return '-'
-  return value.replace('T', ' ').slice(0, 16)
 }
 
 function splitTags(text: string | null) {
@@ -420,15 +373,6 @@ async function addToList(programId: number) {
   }
 }
 
-async function loadLatestAiReport() {
-  if (!authStore.isLoggedIn) return
-  try {
-    aiReport.value = await getLatestAiReport()
-  } catch {
-    aiReport.value = null
-  }
-}
-
 async function generateAiReport() {
   if (!authStore.isLoggedIn) {
     await confirmLoginRequired(router, '生成AI择校报告')
@@ -436,11 +380,10 @@ async function generateAiReport() {
   }
   generatingAi.value = true
   try {
-    aiReport.value = await generateAiRecommendations()
+    await generateAiRecommendations()
     ElMessage.success('AI择校报告已生成')
     await router.push('/ai-report')
   } catch (error) {
-    aiReport.value = null
     ElMessage.error(readError(error))
   } finally {
     generatingAi.value = false
@@ -454,7 +397,6 @@ onMounted(async () => {
     meta.subjectCategories = result.subjectCategories
     meta.directions = result.directions
     meta.applicationStatuses = result.applicationStatuses
-    await loadLatestAiReport()
     await search()
   } catch (error) {
     ElMessage.error(readError(error))
@@ -531,53 +473,6 @@ onMounted(async () => {
 .ai-report-button:active {
   box-shadow: 0 10px 20px rgba(37, 132, 240, 0.24), inset 0 2px 6px rgba(9, 57, 126, 0.18);
   transform: translateY(0);
-}
-
-.ai-status {
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.ai-report-panel {
-  border: 1px solid #c7d8ea;
-  border-radius: 8px;
-  padding: 14px;
-  background: #f6fbff;
-  display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(260px, 1fr);
-  gap: 14px;
-}
-
-.ai-report-title {
-  font-weight: 800;
-  color: var(--text-main);
-  margin-bottom: 4px;
-}
-
-.ai-report-panel p {
-  margin: 0;
-  color: var(--text-sub);
-}
-
-.ai-report-metrics {
-  display: grid;
-  gap: 8px;
-}
-
-.ai-mini-card {
-  border: 1px solid #d6e5f4;
-  border-radius: 8px;
-  padding: 8px 10px;
-  background: #fff;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
-  color: var(--text-sub);
-  font-size: 13px;
-}
-
-.ai-mini-card strong {
-  color: var(--text-main);
 }
 
 .crumb {
@@ -785,13 +680,6 @@ onMounted(async () => {
   font-size: 14px;
 }
 
-.school-ai-line {
-  margin: 4px 0 0;
-  color: #0f6fb8;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 .tag-list {
   margin-top: 2px;
   display: flex;
@@ -847,18 +735,7 @@ onMounted(async () => {
   font-size: 13px;
 }
 
-.program-ai-line {
-  margin-top: 5px;
-  color: #0f6fb8;
-  font-size: 13px;
-  font-weight: 700;
-}
-
 @media (max-width: 960px) {
-  .ai-report-panel {
-    grid-template-columns: 1fr;
-  }
-
   .filter-row {
     grid-template-columns: 1fr;
     align-items: flex-start;
